@@ -11,6 +11,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
+import { Analytics } from "@vercel/analytics/react" // Note: use /react for Vite/SPAs
 
 const Home       = lazy(() => import("@/pages/home"));
 const CardsBrowse = lazy(() => import("@/pages/cards"));
@@ -78,6 +79,7 @@ function Router() {
             <Route path="/about" component={About} />
             <Route path="/privacy" component={Privacy} />
             <Route component={NotFound} />
+            <Analytics />
           </Switch>
         </Suspense>
       </main>
