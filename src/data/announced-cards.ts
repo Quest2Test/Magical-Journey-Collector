@@ -1,0 +1,50 @@
+import { Card } from "./cards";
+
+export const ANNOUNCED_CARDS: Card[] = [
+  {
+    id: "ann-1",
+    name: "Baymax",
+    subtitle: "Personal Healthcare Companion",
+    inkColor: "Sapphire",
+    type: "Character",
+    cost: 5,
+    inkable: true,
+    strength: 3,
+    willpower: 6,
+    lore: 2,
+    keywords: ["Support", "Ward"],
+    bodyText: "On a scale of 1 to 10, how would you rate your pain? \n[Support] (Whenever this character quests, you may add their Strength to another chosen character's Strength this turn.)",
+    flavorText: "I am programmed to assist those in need.",
+    set: "Azurite Sea",
+    expansion: "AZS",
+    setNum: 6,
+    cardNum: 1,
+    rarity: "Super Rare",
+    artist: "Disney",
+    image: "https://images.lorcania.com/cards/s5/baymax.webp", // Mock URL
+    releasedAt: "2024-11-15",
+  },
+  {
+    id: "ann-2",
+    name: "Honey Lemon",
+    subtitle: "Chemical Enthusiast",
+    inkColor: "Amethyst",
+    type: "Character",
+    cost: 3,
+    inkable: false,
+    strength: 2,
+    willpower: 4,
+    lore: 1,
+    keywords: ["Challenger 2"],
+    bodyText: "Chem-Ball Blast: When you play this character, you may move up to 2 damage from one of your characters to an opposing character.",
+    flavorText: "Science is magic!",
+    set: "Azurite Sea",
+    expansion: "AZS",
+    setNum: 6,
+    cardNum: 2,
+    rarity: "Rare",
+    artist: "Disney",
+    image: "https://images.lorcania.com/cards/s5/honey_lemon.webp", // Mock URL
+    releasedAt: "2024-11-15",
+  }
+];
