@@ -79,8 +79,8 @@ function Router() {
             <Route path="/about" component={About} />
             <Route path="/privacy" component={Privacy} />
             <Route component={NotFound} />
-            <Analytics />
           </Switch>
+          <Analytics />
         </Suspense>
       </main>
       <Footer />
