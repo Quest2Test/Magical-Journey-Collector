@@ -73,7 +73,7 @@ export default function AuthPage() {
     <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-[70vh]">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">Glimmercast</h1>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">Lorbound</h1>
           <p className="text-muted-foreground mt-2">
             Sign in to sync your collection and decks.
           </p>
