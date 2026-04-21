@@ -72,5 +72,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0"
-  }
+  },
+    "overrides": {
+  "vite": "8.0.9"
 }
+}
+
