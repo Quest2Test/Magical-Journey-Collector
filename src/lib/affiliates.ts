@@ -26,10 +26,10 @@ export function buildTCGPlayerUrl(card: Card): string {
   const affiliateId = import.meta.env.VITE_TCGPLAYER_AFFILIATE_ID || "";
   
   // If no affiliate ID is configured, return the plain link with basic internal tracking
-  if (!affiliateId || affiliateId === "inkbound") {
+  if (!affiliateId || affiliateId === "lorbound") {
     try {
       const backupUrl = new URL(card.tcgplayerUrl);
-      backupUrl.searchParams.set("utm_source", "inkbound");
+      backupUrl.searchParams.set("utm_source", "lorbound");
       return backupUrl.toString();
     } catch {
       return card.tcgplayerUrl;

@@ -10,7 +10,7 @@ export function MetaTags() {
   useEffect(() => {
     const siteName = "Lorbound";
     let title = siteName;
-    let description = "Your ultimate Lorcana fan site — Build decks, track your collection, and explore the meta.";
+    let description = "Your ultimate Lorcana fan site | Build decks, track your collection, and explore the meta.";
     let ogImage = "/opengraph.jpg"; // Default fallback
 
     // Map routes to titles/descriptions
@@ -50,7 +50,7 @@ export function MetaTags() {
       title = `Expert Resources & Tools | ${siteName}`;
       description = "Essential links, official rules, and community tools for every Lorcana Illumineer.";
     } else if (location === "/academy") {
-      title = `Inkbound Academy | Learn Lorcana`;
+      title = `Lorbound Academy | Learn Lorcana`;
       description = "Master the Great Illuminary with our comprehensive guide to rules, ink theory, and competitive play.";
     } else if (location.startsWith("/profile/")) {
       const username = location.split("/")[2]?.split("?")[0];

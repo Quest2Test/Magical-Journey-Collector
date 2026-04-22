@@ -289,7 +289,7 @@ export default function Home() {
               },
               {
                 icon: BookOpen,
-                title: "Inkbound Academy",
+                title: "Lorbound Academy",
                 desc: "Master the fundamentals. Learn about card types, rarities, keywords, and competitive formats in our comprehensive guide.",
                 href: "/academy",
                 color: "from-amber-500 to-orange-600",

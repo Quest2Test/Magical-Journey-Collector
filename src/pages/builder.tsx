@@ -1177,7 +1177,7 @@ export default function DeckBuilder() {
             </div>
 
             <div className="space-y-2 relative z-10">
-              <h2 className="text-3xl font-serif font-bold text-white tracking-tight">Save Your Inkbound Legacy</h2>
+              <h2 className="text-3xl font-serif font-bold text-white tracking-tight">Save Your Lorbound Legacy</h2>
               <p className="text-indigo-200/70 text-sm leading-relaxed max-w-sm mx-auto">
                 Sign up for a free account to securely save and manage your decks, track live card values, and export to tournament formats like Pixelborn and Melee.
               </p>
