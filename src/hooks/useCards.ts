@@ -55,7 +55,10 @@ export function apiCardToCard(apiCard: LorcastCard): Card {
     Location: "Location",
     Song: "Song",
   };
-  const type = (typeMap[apiCard.type?.[0]] ?? "Action") as Card["type"];
+  const apiTypes = apiCard.type || [];
+  const apiClassifications = apiCard.classifications || [];
+  const isSong = apiTypes.includes("Song") || apiClassifications.includes("Song");
+  const type = (isSong ? "Song" : (typeMap[apiTypes[0]] ?? "Action")) as Card["type"];
 
   const cardNum = parseInt(apiCard.collector_number) || 0;
   const setCode = apiCard.set.code;
@@ -92,7 +95,7 @@ export function apiCardToCard(apiCard: LorcastCard): Card {
   };
 }
 
-const CACHE_KEY = "lorcast_cards_cache";
+const CACHE_KEY = "lorcast_cards_cache_v2";
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 const LORCAST_CARDS_QUERY_KEY = ["lorcast-cards"];
 

@@ -2,6 +2,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useDecks } from "@/hooks/useDecks";
 import { inkHexColors, CardDisplay } from "@/components/ui/card-display";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { getFormattedSubtitle } from "@/lib/card-utils";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Copy, ThumbsUp, Share2, MessageSquare, Settings2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
@@ -190,10 +191,10 @@ export default function DeckDetail() {
                           <li className="flex justify-between items-center p-2 rounded hover:bg-secondary/50 transition-colors group cursor-pointer">
                             <Link href={`/cards/${item.card.id}`} className="flex-1 flex justify-between items-center">
                               <div className="flex items-center gap-3">
-                                <span className="font-mono font-bold text-muted-foreground w-5 text-center">{item.qty}</span>
-                                <span className="group-hover:text-primary transition-colors font-medium text-left">{item.card.name}</span>
-                                {item.card.subtitle && <span className="text-xs text-muted-foreground truncate max-w-[100px] hidden sm:inline-block">- {item.card.subtitle}</span>}
-                              </div>
+                                 <span className="font-mono font-bold text-muted-foreground w-5 text-center">{item.qty}</span>
+                                 <span className="group-hover:text-primary transition-colors font-medium text-left">{item.card.name}</span>
+                                 {getFormattedSubtitle(item.card) && <span className="text-xs text-muted-foreground truncate max-w-[150px] hidden sm:inline-block">- {getFormattedSubtitle(item.card)}</span>}
+                               </div>
                               <div className="flex gap-4 items-center">
                                  <div className="w-6 h-6 rounded flex items-center justify-center bg-muted text-xs font-bold border border-border/50 shrink-0">
                                     {item.card.cost}

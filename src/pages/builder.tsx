@@ -20,6 +20,7 @@ import { useCurrency } from "@/components/currency-provider";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
 import { Progress } from "@/components/ui/progress";
 import { getCardLegality } from "@/lib/legality";
 import { useDecks } from "@/hooks/useDecks";
@@ -191,7 +192,13 @@ export default function DeckBuilder() {
         if (!filterCost.includes(c.cost >= 7 ? "7+" : c.cost.toString())) return false;
       }
       if (filterInk.length > 0 && !filterInk.includes(c.inkColor)) return false;
-      if (filterType.length > 0 && !filterType.includes(c.type)) return false;
+      if (filterType.length > 0) {
+        const matchesType = filterType.some(t => {
+          if (t === "Action") return c.type === "Action" || c.type === "Song";
+          return c.type === t;
+        });
+        if (!matchesType) return false;
+      }
 
       // Smart Filter logic: locks browser to current deck inks if deck is saturated
       if (smartFilter && maxInksReached) {
@@ -783,7 +790,7 @@ export default function DeckBuilder() {
                                 {!card.inkable && <div className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" title="Uninkable" />}
                               </p>
                               <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest mt-0.5">
-                                Cost {card.cost} · {card.type} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}
+                                Cost {card.cost} · {getDisplayType(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}
                               </p>
                             </div>
                             {inDeckQty > 0 ? (
@@ -888,14 +895,14 @@ export default function DeckBuilder() {
                                     </span>
                                   )}
                                 </p>
-                                {card.subtitle && (
+                                {getFormattedSubtitle(card) && (
                                   <p className="text-[10px] text-muted-foreground truncate uppercase">
-                                    {card.subtitle} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}
+                                    {getFormattedSubtitle(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}
                                   </p>
                                 )}
-                                {!card.subtitle && (
+                                {!getFormattedSubtitle(card) && (
                                   <p className="text-[10px] text-muted-foreground truncate uppercase">
-                                    {card.type} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}
+                                    {getDisplayType(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}
                                   </p>
                                 )}
                               </div>
@@ -1177,7 +1184,7 @@ export default function DeckBuilder() {
             </div>
 
             <div className="space-y-2 relative z-10">
-              <h2 className="text-3xl font-serif font-bold text-white tracking-tight">Save Your Lorbound Legacy</h2>
+              <h2 className="text-3xl font-serif font-bold text-white tracking-tight">Save Your Inkbound Legacy</h2>
               <p className="text-indigo-200/70 text-sm leading-relaxed max-w-sm mx-auto">
                 Sign up for a free account to securely save and manage your decks, track live card values, and export to tournament formats like Pixelborn and Melee.
               </p>

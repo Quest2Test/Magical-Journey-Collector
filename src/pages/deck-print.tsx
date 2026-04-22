@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { useDecks } from "@/hooks/useDecks";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getFormattedSubtitle } from "@/lib/card-utils";
 
 export default function DeckPrint() {
   const { id } = useParams();
@@ -124,7 +125,7 @@ export default function DeckPrint() {
               <div key={idx} className="flex justify-between items-center py-1.5 border-b border-gray-200">
                 <div className="text-[13px] leading-tight">
                   <span className="font-bold block">{entry.card.name}</span>
-                  {entry.card.subtitle && <span className="text-gray-600 block text-[11px] italic">{entry.card.subtitle}</span>}
+                  {getFormattedSubtitle(entry.card) && <span className="text-gray-600 block text-[11px] italic">{getFormattedSubtitle(entry.card)}</span>}
                 </div>
                 <div className="font-bold text-lg w-8 text-center">{entry.qty}</div>
               </div>
@@ -148,7 +149,7 @@ export default function DeckPrint() {
               <div key={idx} className="flex justify-between items-center py-1.5 border-b border-gray-200">
                 <div className="text-[13px] leading-tight">
                   <span className="font-bold block">{entry.card.name}</span>
-                  {entry.card.subtitle && <span className="text-gray-600 block text-[11px] italic">{entry.card.subtitle}</span>}
+                  {getFormattedSubtitle(entry.card) && <span className="text-gray-600 block text-[11px] italic">{getFormattedSubtitle(entry.card)}</span>}
                 </div>
                 <div className="font-bold text-lg w-8 text-center">{entry.qty}</div>
               </div>

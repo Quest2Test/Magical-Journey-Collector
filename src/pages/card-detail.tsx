@@ -20,6 +20,7 @@ import {
 const FOIL_ONLY_RARITIES: string[] = ["Enchanted", "Iconic"];
 
 import { highlightRulesText, SYMBOL_ICONS } from "@/components/ui/card-text";
+import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
 
 
 export default function CardDetail() {
@@ -318,7 +319,7 @@ export default function CardDetail() {
                   ))}
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  {(card.allInkColors || [card.inkColor]).join(" / ")} • {card.type}
+                  {(card.allInkColors || [card.inkColor]).join(" / ")} • {getDisplayType(card)}
                 </span>
               </div>
               {card.franchise && (
@@ -329,8 +330,8 @@ export default function CardDetail() {
             </div>
             
             <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-foreground">{card.name}</h1>
-            {card.subtitle && (
-              <h2 className="text-xl md:text-2xl font-serif text-muted-foreground/80 italic">{card.subtitle}</h2>
+            {getFormattedSubtitle(card) && (
+              <h2 className="text-xl md:text-2xl font-serif text-muted-foreground/80 italic">{getFormattedSubtitle(card)}</h2>
             )}
 
             {isDisney100(card) && (

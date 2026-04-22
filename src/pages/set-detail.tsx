@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { SET_GRADIENTS, SET_ACCENT, SET_ACRONYMS } from "@/lib/sets";
 import { getCardPricing, getBaseCardValue } from "@/lib/pricing";
 import { BinderView } from "@/components/profile/BinderView";
+import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
 
 
 
@@ -165,7 +166,13 @@ export default function SetDetail() {
         if (!card.name.toLowerCase().includes(q) && !card.subtitle?.toLowerCase().includes(q)) return false;
       }
       if (selectedInks.length > 0 && !selectedInks.includes(card.inkColor)) return false;
-      if (selectedTypes.length > 0 && !selectedTypes.includes(card.type)) return false;
+      if (selectedTypes.length > 0) {
+        const matchesType = selectedTypes.some(t => {
+          if (t === "Action") return card.type === "Action" || card.type === "Song";
+          return card.type === t;
+        });
+        if (!matchesType) return false;
+      }
       if (selectedRarities.length > 0 && !selectedRarities.includes(card.rarity)) return false;
       if (inkableOnly && !card.inkable) return false;
 
@@ -817,8 +824,8 @@ export default function SetDetail() {
                           <Link href={`/cards/${encodeURIComponent(card.id)}?from=/sets/${setId}`}>
                             <p className="text-sm font-semibold truncate hover:text-primary transition-colors cursor-pointer">
                               {card.cardNum ? `#${String(card.cardNum).padStart(3, "0")} ` : ""}{card.name}
-                              {card.subtitle && (
-                                <span className="font-normal text-muted-foreground"> — {card.subtitle}</span>
+                              {getFormattedSubtitle(card) && (
+                                <span className="font-normal text-muted-foreground"> — {getFormattedSubtitle(card)}</span>
                               )}
                             </p>
                           </Link>
@@ -827,7 +834,7 @@ export default function SetDetail() {
                               className="w-2.5 h-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: inkHexColors[card.inkColor] }}
                             />
-                            <span>{card.type}</span>
+                            <span>{getDisplayType(card)}</span>
                             <span>·</span>
                             <span>Cost {card.cost}</span>
                             {card.strength !== undefined && (

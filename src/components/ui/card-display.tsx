@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Music, MapPin, Plus } from "lucide-react";
 import { Button } from "./button";
 import { useState, memo } from "react";
+import { getFormattedSubtitle } from "@/lib/card-utils";
 
 interface CardDisplayProps {
   card: Card;
@@ -135,7 +136,7 @@ export const CardDisplay = memo(function CardDisplay({
       {!hideInfo && (
         <div className="mt-1.5 px-0.5">
           <p className="text-sm font-semibold truncate leading-tight">{card.name}</p>
-          {card.subtitle && <p className="text-[10px] text-muted-foreground truncate leading-tight">{card.subtitle}</p>}
+          {getFormattedSubtitle(card) && <p className="text-[10px] text-muted-foreground truncate leading-tight">{getFormattedSubtitle(card)}</p>}
           {card.franchise && (
             <p className="text-[9px] font-bold uppercase tracking-wider text-primary/70 truncate mt-0.5">
               {card.franchise}

@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCollection } from "@/hooks/useCollection";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Trophy, Shield, Sword as SwordIcon, Banknote, UserCheck } from "lucide-react";
+import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
 
 const INK_COLORS = ["Amber", "Amethyst", "Emerald", "Ruby", "Sapphire", "Steel"];
 const CARD_TYPES = ["Character", "Action", "Item", "Location", "Song"];
@@ -134,7 +135,13 @@ export default function CardsBrowse() {
         if (!selectedKeywords.some(kw => card.keywords?.some(ckw => ckw.toLowerCase().includes(kw.toLowerCase())))) return false;
       }
       if (selectedInks.length > 0 && !selectedInks.includes(card.inkColor)) return false;
-      if (selectedTypes.length > 0 && !selectedTypes.includes(card.type)) return false;
+      if (selectedTypes.length > 0) {
+        const matchesType = selectedTypes.some(t => {
+          if (t === "Action") return card.type === "Action" || card.type === "Song";
+          return card.type === t;
+        });
+        if (!matchesType) return false;
+      }
       if (selectedRarities.length > 0 && !selectedRarities.includes(card.rarity)) return false;
       if (inkableOnly && !card.inkable) return false;
 
@@ -653,9 +660,9 @@ export default function CardsBrowse() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-bold truncate">{card.name}</span>
-                          {card.subtitle && (
+                          {getFormattedSubtitle(card) && (
                             <span className="text-sm text-muted-foreground truncate hidden sm:inline">
-                              — {card.subtitle}
+                              — {getFormattedSubtitle(card)}
                             </span>
                           )}
                         </div>
@@ -664,7 +671,7 @@ export default function CardsBrowse() {
                             className="w-2 h-2 rounded-full shrink-0"
                             style={{ backgroundColor: inkHexColors[card.inkColor] }}
                           />
-                          <span className="px-1.5 py-0.5 rounded-sm bg-muted">{card.type}</span>
+                          <span className="px-1.5 py-0.5 rounded-sm bg-muted">{getDisplayType(card)}</span>
                           <span>Cost {card.cost}</span>
                           {card.strength !== undefined && (
                             <span>• {card.strength}/{card.willpower}</span>
