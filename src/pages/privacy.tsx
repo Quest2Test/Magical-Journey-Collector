@@ -68,6 +68,21 @@ export default function PrivacyPolicy() {
             <div className="p-2 bg-primary/10 rounded-lg text-primary">
               <ShieldCheck className="w-6 h-6" />
             </div>
+            <h2 className="text-2xl font-serif font-bold m-0">Affiliate Disclosure</h2>
+          </div>
+          <p>
+            Lorbound participates in affiliate programs with <strong>TCGPlayer</strong>. This means that when you click on certain links on our site (such as "Buy on TCGPlayer") and make a purchase, we may receive a small commission at no additional cost to you.
+          </p>
+          <p>
+            These commissions help us cover the costs of hosting, development, and keeping Lorbound ad-free for the community. We only link to reputable marketplaces that we use ourselves.
+          </p>
+        </section>
+
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
             <h2 className="text-2xl font-serif font-bold m-0">Children's Privacy</h2>
           </div>
           <p>
@@ -118,7 +133,7 @@ export default function PrivacyPolicy() {
           </p>
           <p className="mt-8 pt-4 border-t border-border/50">
             <strong>Questions?</strong> Reach out to us at:<br />
-            <a href="mailto:hello@lorbound.com" className="text-primary hover:underline">hello@lorbound.com</a>
+            <a href="mailto:lorbound@proton.me" className="text-primary hover:underline">lorbound@proton.me</a>
           </p>
           <p className="mt-4 opacity-70 italic">
             Last updated: April 17, 2026

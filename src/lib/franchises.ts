@@ -22,6 +22,16 @@ const franchiseMap: Record<string, string> = {
   "David": "Lilo & Stitch",
   "Angel": "Lilo & Stitch",
 
+  // The Black Cauldron
+  "Taran": "The Black Cauldron",
+  "Eilonwy": "The Black Cauldron",
+  "Fflewddur Fflam": "The Black Cauldron",
+  "Gurgi": "The Black Cauldron",
+  "The Horned King": "The Black Cauldron",
+  "Doli": "The Black Cauldron",
+  "Adaon": "The Black Cauldron",
+  "Cauldron Born": "The Black Cauldron",
+
   // Mickey Mouse & Friends
   "Mickey Mouse": "Mickey Mouse & Friends",
   "Minnie Mouse": "Mickey Mouse & Friends",
@@ -38,12 +48,13 @@ const franchiseMap: Record<string, string> = {
   "Louie": "Mickey Mouse & Friends",
   "Clarabelle Cow": "Mickey Mouse & Friends",
   "Horace Horsecollar": "Mickey Mouse & Friends",
+  "Clarabelle": "Mickey Mouse & Friends",
 
   // The Goofy Movie
   "Max Goof": "The Goofy Movie",
   "Roxanne": "The Goofy Movie",
   "Powerline": "The Goofy Movie",
-  "Bobby Zimmeruski": "The Goofy Movie",
+  "Bobby Zimuruski": "The Goofy Movie",
   "P.J. Pete": "The Goofy Movie",
   "Stacy": "The Goofy Movie",
   "Beret Girl": "The Goofy Movie",
@@ -86,6 +97,7 @@ const franchiseMap: Record<string, string> = {
   "Duke of Weselton": "Frozen",
   "Agnarr": "Frozen",
   "Iduna": "Frozen",
+  "Bruni": "Frozen",
 
   // The Lion King
   "Simba": "The Lion King",
@@ -142,6 +154,7 @@ const franchiseMap: Record<string, string> = {
   "Chef Louis": "The Little Mermaid",
   "Grimsby": "The Little Mermaid",
   "Triton": "The Little Mermaid",
+  "Ariel’s Grotto": "The Little Mermaid",
 
   // Beauty and the Beast
   "Belle": "Beauty and the Beast",
@@ -227,6 +240,9 @@ const franchiseMap: Record<string, string> = {
   "Maximus": "Tangled",
   "Mother Gothel": "Tangled",
   "Shorty": "Tangled",
+  "Stabbington Brothers": "Tangled",
+  "Arianna": "Tangled",
+  "Big Nose": "Tangled",
 
   //The Great Mouse Detective
   "Basil": "The Great Mouse Detective",
@@ -251,6 +267,7 @@ const franchiseMap: Record<string, string> = {
   "Walrus": "Alice in Wonderland",
   "Carpenter": "Alice in Wonderland",
   "Card Soldiers": "Alice in Wonderland",
+  "Bill the Lizard": "Alice in Wonderland",
 
   // Hercules
   "Hercules": "Hercules",
@@ -264,6 +281,8 @@ const franchiseMap: Record<string, string> = {
   "Zeus": "Hercules",
   "Just in Time": "Hercules",
   "Cerberus": "Hercules",
+  "Ares": "Hercules",
+  "Arges": "Hercules",
 
   // Moana
   "Moana": "Moana",
@@ -314,6 +333,7 @@ const franchiseMap: Record<string, string> = {
   "Horace": "101 Dalmatians",
   "Jasper": "101 Dalmatians",
   "Sergeant Tibbs": "101 Dalmatians",
+  "Anita Radcliffe": "101 Dalmatians",
 
   // The Jungle Book
   "Mowgli": "The Jungle Book",
@@ -322,6 +342,7 @@ const franchiseMap: Record<string, string> = {
   "Shere Khan": "The Jungle Book",
   "King Louie": "The Jungle Book",
   "Kaa": "The Jungle Book",
+  "Akela": "The Jungle Book",
 
   // Mulan
   "Mulan": "Mulan",
@@ -331,6 +352,7 @@ const franchiseMap: Record<string, string> = {
   "Yao": "Mulan",
   "Ling": "Mulan",
   "Chien-Po": "Mulan",
+  "Chi-Fu": "Mulan",
 
   // Wreck-It Ralph
   "Wreck-It Ralph": "Wreck-It Ralph",
@@ -340,6 +362,8 @@ const franchiseMap: Record<string, string> = {
   "Sergeant Calhoun": "Wreck-It Ralph",
   "Adorabeezle Winterpop": "Wreck-It Ralph",
   "Calhoun": "Wreck-It Ralph",
+  "Bad-Anon": "Wreck-It Ralph",
+  "Candlehead": "Wreck-It Ralph",
 
   // Winnie the Pooh
   "Winnie the Pooh": "Winnie the Pooh",
@@ -352,6 +376,7 @@ const franchiseMap: Record<string, string> = {
   // Raya and the Last Dragon
   "Raya": "Raya and the Last Dragon",
   "Sisu": "Raya and the Last Dragon",
+  "Atitaya": "Raya and the Last Dragon",
   "Namaari": "Raya and the Last Dragon",
   "Tuk Tuk": "Raya and the Last Dragon",
   "Boun": "Raya and the Last Dragon",
@@ -374,6 +399,15 @@ const franchiseMap: Record<string, string> = {
   "The Ringmaster": "Dumbo",
   "Crows": "Dumbo",
 
+  //The Rescuers
+  "Bernard": "The Rescuers",
+  "Miss Bianca": "The Rescuers",
+  "Madame Medusa": "The Rescuers",
+  "Orville": "The Rescuers",
+  "Evinrude": "The Rescuers",
+  "Morteo": "The Rescuers",
+  "Brutus": "The Rescuers",
+
   // The Princess and the Frog
   "Tiana": "The Princess and the Frog",
   "Prince Naveen": "The Princess and the Frog",
@@ -383,6 +417,7 @@ const franchiseMap: Record<string, string> = {
   "Eudora": "The Princess and the Frog",
   "James": "The Princess and the Frog",
   "Eli La Bouff": "The Princess and the Frog",
+  "Charlotte La Bouff": "The Princess and the Frog",
 
   // Emperor's New Groove
   "Kuzco": "The Emperor's New Groove",
@@ -392,6 +427,7 @@ const franchiseMap: Record<string, string> = {
   "Tipo": "The Emperor's New Groove",
   "Chaca": "The Emperor's New Groove",
   "Bucky": "The Emperor's New Groove",
+  "Chicha": "The Emperor's New Groove",
 
   // Treasure Planet
   "Jim Hawkins": "Treasure Planet",
@@ -400,6 +436,7 @@ const franchiseMap: Record<string, string> = {
   "Captain Amelia": "Treasure Planet",
   "Dr. Doppler": "Treasure Planet",
   "Morph": "Treasure Planet",
+  "Billy Bones": "Treasure Planet",
 
   // Atlantis
   "Milo Thatch": "Atlantis",
@@ -407,6 +444,7 @@ const franchiseMap: Record<string, string> = {
   "Vinny": "Atlantis",
   "Audrey": "Atlantis",
   "Commander Rourke": "Atlantis",
+  "Audrey Ramirez": "Atlantis",
 
   // Pinocchio
   "Pinocchio": "Pinocchio",
@@ -419,6 +457,14 @@ const franchiseMap: Record<string, string> = {
   "Lampwick": "Pinocchio",
   "Honest John": "Pinocchio",
   "Gideon": "Pinocchio",
+
+  //Bolt
+  "Bolt": "Bolt",
+  "Penny": "Bolt",
+  "Mittens": "Bolt",
+  "Rhino": "Bolt",
+  "Dr. Calico": "Bolt",
+  "Bobby": "Bolt",
 
   // The Hunchback of Notre Dame
   "Quasimodo": "The Hunchback of Notre Dame",
@@ -439,12 +485,13 @@ const franchiseMap: Record<string, string> = {
   "Fangmeyer": "Zootopia",
   "Duke Weaselton": "Zootopia",
   "Mr. Big": "Zootopia",
-  "Dawn Bellwether": "Zootopia",
+  "Bellwether": "Zootopia",
   "Yax": "Zootopia",
   "Gazelle": "Zootopia",
   "Finnick": "Zootopia",
   "Manchas": "Zootopia",
   "Rain": "Zootopia",
+  "Clawhauser": "Zootopia",
 
   // Toy Story
   "Woody": "Toy Story",
@@ -493,6 +540,8 @@ const franchiseMap: Record<string, string> = {
   // DuckTales
   "Webby Vanderquack": "DuckTales",
   "Bentley Buzzard": "DuckTales",
+  "Beagle Boys": "DuckTales",
+  "Black Heron": "DuckTales",
 
   // TaleSpin
   "Kit Cloudkicker": "TaleSpin",
@@ -510,6 +559,8 @@ const franchiseMap: Record<string, string> = {
   "Big Mama": "The Fox and the Hound",
   "Amos Slade": "The Fox and the Hound",
   "Chief": "The Fox and the Hound",
+  "Widow Tweed": "The Fox and the Hound",
+  "Boomer": "The Fox and the Hound",
 
   // Gargoyles
   "Goliath": "Gargoyles",
