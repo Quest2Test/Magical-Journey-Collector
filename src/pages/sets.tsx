@@ -23,10 +23,10 @@ import { Link } from "wouter";
      <div className="container mx-auto px-4 md:px-6 py-12">
        <div className="mb-12">
          <h1 className="font-serif text-4xl md:text-5xl font-bold tracking-tight mb-4">
-           Expansions & Sets
+           Lorcana Collection Tracker
          </h1>
          <p className="text-lg text-muted-foreground max-w-2xl">
-           Explore cards by release set. Each chapter of Lorcana brings new mechanics, characters, and strategies to the inklands.
+           Explore cards by release set and track your collection. Each chapter of Lorcana brings new mechanics, characters, and strategies to the inklands.
          </p>
        </div>
  

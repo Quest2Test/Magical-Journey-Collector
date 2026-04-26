@@ -10,12 +10,12 @@ export function MetaTags() {
   useEffect(() => {
     const siteName = "Lorbound";
     let title = siteName;
-    let description = "Your ultimate Lorcana fan site | Build decks, track your collection, and explore the meta.";
+    let description = "Lorbound is the ultimate Lorcana Deck Builder and Lorcana Collection Tracker. Discover cards, build competitive decks, track your collection.";
     let ogImage = "/opengraph.jpg"; // Default fallback
 
     // Map routes to titles/descriptions
     if (location === "/") {
-      title = `${siteName} | Lorcana Collection Tracker & Deck Builder`;
+      title = `${siteName} | Lorcana Deck Builder & Collection Tracker`;
     } else if (location === "/cards") {
       title = `Card Database | ${siteName}`;
       description = "Browse every Disney Lorcana card with real-time pricing and collection tracking.";
@@ -28,8 +28,8 @@ export function MetaTags() {
         if (card.image) ogImage = card.image;
       }
     } else if (location === "/builder") {
-      title = `Deck Builder | ${siteName}`;
-      description = "Create and optimize your Lorcana decks with our professional-grade builder.";
+      title = `Lorcana Deck Builder | ${siteName}`;
+      description = "Create and optimize your Lorcana decks with the ultimate Lorcana Deck Builder.";
     } else if (location === "/decks") {
       title = `Community Decks | ${siteName}`;
       description = "Discover the latest top-performing Lorcana decks from the community.";
@@ -37,8 +37,8 @@ export function MetaTags() {
       title = `Meta Analysis | ${siteName}`;
       description = "Stay ahead of the game with our deep-dive analysis of the competitive Lorcana meta.";
     } else if (location === "/sets") {
-      title = `Sets & Expansions | ${siteName}`;
-      description = "Track your collection completion across every Lorcana set.";
+      title = `Lorcana Collection Tracker | ${siteName}`;
+      description = "Track your collection completion across every Lorcana set with our Lorcana Collection Tracker.";
     } else if (location.startsWith("/sets/")) {
       const setId = location.split("/")[2]?.split("?")[0];
       const set = sets.find(s => s.id === setId);
@@ -50,7 +50,7 @@ export function MetaTags() {
       title = `Expert Resources & Tools | ${siteName}`;
       description = "Essential links, official rules, and community tools for every Lorcana Illumineer.";
     } else if (location === "/academy") {
-      title = `Lorbound Academy | Learn Lorcana`;
+      title = `Inkbound Academy | Learn Lorcana`;
       description = "Master the Great Illuminary with our comprehensive guide to rules, ink theory, and competitive play.";
     } else if (location.startsWith("/profile/")) {
       const username = location.split("/")[2]?.split("?")[0];

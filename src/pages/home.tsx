@@ -84,7 +84,7 @@ export default function Home() {
               </h1>
 
               <p className="text-lg md:text-xl text-muted-foreground max-w-xl mb-10 font-sans font-light leading-relaxed">
-                Master the inklands. Discover every glimmer, build legendary decks, and track your growing collection in a professional toolkit designed for true Illumineers.
+                Lorbound is the ultimate Lorcana Deck Builder and Lorcana Collection Tracker. Master the inklands, discover every glimmer, build legendary decks, and track your growing collection in a professional toolkit designed for true Illumineers.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -280,7 +280,7 @@ export default function Home() {
             {[
               {
                 icon: Layers,
-                title: "Deck Builder",
+                title: "Lorcana Deck Builder",
                 desc: "Craft, refine, and export tournament-ready decks with real-time analytics, ink curve visualisation, and price tracking.",
                 href: "/builder",
                 color: "from-violet-500 to-purple-600",
@@ -289,7 +289,7 @@ export default function Home() {
               },
               {
                 icon: BookOpen,
-                title: "Lorbound Academy",
+                title: "Inkbound Academy",
                 desc: "Master the fundamentals. Learn about card types, rarities, keywords, and competitive formats in our comprehensive guide.",
                 href: "/academy",
                 color: "from-amber-500 to-orange-600",
@@ -298,7 +298,7 @@ export default function Home() {
               },
               {
                 icon: Archive,
-                title: "Sets",
+                title: "Lorcana Collection Tracker",
                 desc: "Browse every expansion, track your collected cards, and explore set-specific collections.",
                 href: "/sets",
                 color: "from-emerald-500 to-teal-600",

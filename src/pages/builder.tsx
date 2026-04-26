@@ -4,7 +4,7 @@ import { useAllCards } from "@/hooks/useCards";
 import { Card } from "@/data/cards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Save, Plus, Minus, Trash2, Loader2, Copy, Filter, SlidersHorizontal, Settings2, Sparkles, AlertTriangle, FileText, ClipboardPaste, Droplet, Clock, Info } from "lucide-react";
+import { Search, Save, Plus, Minus, Trash2, Loader2, Copy, Filter, SlidersHorizontal, Settings2, Sparkles, AlertTriangle, FileText, ClipboardPaste, Droplet, Clock, Info, Archive } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as ChartTooltip, PieChart, Pie, Cell } from "recharts";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -53,6 +53,7 @@ export default function DeckBuilder() {
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
@@ -471,6 +472,7 @@ export default function DeckBuilder() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-16 flex flex-col bg-background overflow-hidden z-40 animate-in fade-in duration-300">
+      <h1 className="sr-only">Lorcana Deck Builder</h1>
       {/* Top bar */}
       <div className="h-14 border-b bg-card flex items-center justify-between px-4 shrink-0 overflow-x-auto gap-4">
         <Input
@@ -515,6 +517,14 @@ export default function DeckBuilder() {
             </span>
           )}
           <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setHelpOpen(true)}
+              className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+            >
+              <Info className="w-3.5 h-3.5" /> Guide
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -1172,6 +1182,64 @@ export default function DeckBuilder() {
           </div>
         </div>
       )}
+      {/* Help / Guide Modal */}
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+        <DialogContent className="sm:max-w-[600px] border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Deck Builder Guide
+            </DialogTitle>
+            <DialogDescription>
+              Master the Lorcana Deck Builder with these quick tips and features.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="max-h-[60vh] pr-4 mt-2">
+            <div className="space-y-6 pb-4">
+              <div className="space-y-2">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-primary" />
+                  Smart Filtering
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Toggle <strong className="text-foreground font-semibold">Smart Sync</strong> (the sparkles icon) to automatically lock your ink filters once your deck reaches the maximum of 2 ink colors. The browser will only show cards that match your current inks.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <ClipboardPaste className="w-4 h-4 text-primary" />
+                  Import & Export
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  You can paste decklists from Dreamborn, Pixelborn, or plain text using the <strong className="text-foreground font-semibold">Import</strong> button. Want to play a tournament? Use the <strong className="text-foreground font-semibold">Export</strong> menu to grab a Melee.gg compatible format or a printable deck sheet.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <Droplet className="w-4 h-4 text-primary" />
+                  Ink & Legality Analysis
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Keep an eye on the <strong className="text-foreground font-semibold">Deck Analysis</strong> panel. It tracks your uninkable ratio to prevent bricking your inkwell, monitors your ink curve, and validates your deck for specific formats like Core or Infinity Constructed.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <Archive className="w-4 h-4 text-primary" />
+                  Collection Sync
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  If you track your collection on Lorbound, the builder will highlight any cards you are missing from your deck and calculate the estimated market cost to finish building it.
+                </p>
+              </div>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
       {/* Auth Guard Modal */}
       <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
         <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-0 shadow-2xl">
