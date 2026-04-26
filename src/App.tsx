@@ -11,29 +11,50 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
-import { Analytics } from "@vercel/analytics/react" // Note: use /react for Vite/SPAs
 
-const Home       = lazy(() => import("@/pages/home"));
-const CardsBrowse = lazy(() => import("@/pages/cards"));
-const CardDetail = lazy(() => import("@/pages/card-detail"));
-const DeckBuilder = lazy(() => import("@/pages/builder"));
-const DecksBrowse = lazy(() => import("@/pages/decks"));
-const DeckDetail = lazy(() => import("@/pages/deck-detail"));
-const DeckPrint  = lazy(() => import("@/pages/deck-print"));
-const Meta       = lazy(() => import("@/pages/meta"));
-const MetaAnalysis = lazy(() => import("@/pages/meta-analysis"));
-const Sets       = lazy(() => import("@/pages/sets"));
-const SetDetail  = lazy(() => import("@/pages/set-detail"));
-const Profile    = lazy(() => import("@/pages/profile"));
-const AuthPage   = lazy(() => import("@/pages/auth"));
-const About      = lazy(() => import("@/pages/about"));
-const Privacy    = lazy(() => import("@/pages/privacy"));
-// const NewsPage   = lazy(() => import("@/pages/news"));
-// const ArticlePage = lazy(() => import("@/pages/article"));
-// const AdminNews   = lazy(() => import("@/pages/admin-news"));
-const Resources   = lazy(() => import("@/pages/resources"));
-const Academy    = lazy(() => import("@/pages/academy"));
-const NotFound   = lazy(() => import("@/pages/not-found"));
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+  lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+    );
+
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      return component;
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed) {
+        window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+        window.location.reload();
+        // Return a promise that never resolves so React Suspense keeps showing fallback until reload happens
+        return new Promise<any>(() => {});
+      }
+      throw error;
+    }
+  });
+
+const Home       = lazyWithRetry(() => import("@/pages/home"));
+const CardsBrowse = lazyWithRetry(() => import("@/pages/cards"));
+const CardDetail = lazyWithRetry(() => import("@/pages/card-detail"));
+const DeckBuilder = lazyWithRetry(() => import("@/pages/builder"));
+const DecksBrowse = lazyWithRetry(() => import("@/pages/decks"));
+const DeckDetail = lazyWithRetry(() => import("@/pages/deck-detail"));
+const DeckPrint  = lazyWithRetry(() => import("@/pages/deck-print"));
+const Meta       = lazyWithRetry(() => import("@/pages/meta"));
+const MetaAnalysis = lazyWithRetry(() => import("@/pages/meta-analysis"));
+const Sets       = lazyWithRetry(() => import("@/pages/sets"));
+const SetDetail  = lazyWithRetry(() => import("@/pages/set-detail"));
+const Profile    = lazyWithRetry(() => import("@/pages/profile"));
+const AuthPage   = lazyWithRetry(() => import("@/pages/auth"));
+const AuthCallback = lazyWithRetry(() => import("@/pages/auth-callback"));
+const About      = lazyWithRetry(() => import("@/pages/about"));
+const Privacy    = lazyWithRetry(() => import("@/pages/privacy"));
+// const NewsPage   = lazyWithRetry(() => import("@/pages/news"));
+// const ArticlePage = lazyWithRetry(() => import("@/pages/article"));
+// const AdminNews   = lazyWithRetry(() => import("@/pages/admin-news"));
+const Resources   = lazyWithRetry(() => import("@/pages/resources"));
+const Academy    = lazyWithRetry(() => import("@/pages/academy"));
+const NotFound   = lazyWithRetry(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient();
 
@@ -59,6 +80,7 @@ function Router() {
           <Switch>
             <Route path="/" component={Home} />
             <Route path="/login" component={AuthPage} />
+            <Route path="/auth/callback" component={AuthCallback} />
             <Route path="/cards" component={CardsBrowse} />
             <Route path="/cards/:id" component={CardDetail} />
             <Route path="/cards/:id/*" component={CardDetail} />
@@ -80,7 +102,6 @@ function Router() {
             <Route path="/privacy" component={Privacy} />
             <Route component={NotFound} />
           </Switch>
-          <Analytics />
         </Suspense>
       </main>
       <Footer />
