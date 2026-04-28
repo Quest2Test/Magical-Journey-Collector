@@ -54,6 +54,8 @@ export function Header() {
             <img 
               src="/LorBound_Logo.webp" 
               alt="Lorbound" 
+              width="120"
+              height="40"
               className="h-10 w-auto object-contain"
             />
           </Link>

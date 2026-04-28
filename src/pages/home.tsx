@@ -65,12 +65,7 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
             {/* Left — Text & CTAs */}
-            <motion.div
-              initial={{ opacity: 0, x: -40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
-              className="text-left"
-            >
+<div className="text-left">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 px-4 py-1.5 text-xs font-bold uppercase tracking-widest mb-8 bg-primary/5 backdrop-blur-md text-primary shadow-sm">
                 <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
                 Illumineer Bureau Access Granted
@@ -113,16 +108,11 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </div>
 
             {/* Right — 3D Rotating Card of the Day */}
-            <motion.div
-              initial={{ opacity: 0, x: 40, rotateY: -15 }}
-              animate={{ opacity: 1, x: 0, rotateY: 0 }}
-              transition={{ duration: 0.9, delay: 0.2, ease: "easeOut" }}
-              className="relative flex items-center justify-center perspective-[1200px]"
-            >
-              {cardOfTheDay && (
+            <div className="relative flex items-center justify-center perspective-[1200px]">
+              {cardOfTheDay ? (
                 <div className="relative group">
                   {/* Dynamic ink glow behind card */}
                   <div
@@ -136,12 +126,7 @@ export default function Home() {
                   </div>
 
                   {/* Card name badge floating below */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 }}
-                    className="mt-6 text-center"
-                  >
+                  <div className="mt-6 text-center">
                     <Link href={cardOfTheDay ? `/cards/${cardOfTheDay.id}` : "#"}>
                       <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-card/80 backdrop-blur-xl border border-border/50 shadow-lg hover:border-primary/40 hover:shadow-xl transition-all cursor-pointer group/badge">
                         <img src={getInkLogo(cardOfTheDay.inkColor)} alt={cardOfTheDay.inkColor} className="w-5 h-5 object-contain" />
@@ -152,10 +137,12 @@ export default function Home() {
                         <ArrowRight className="w-4 h-4 text-muted-foreground group-hover/badge:text-primary group-hover/badge:translate-x-0.5 transition-all" />
                       </div>
                     </Link>
-                  </motion.div>
+                  </div>
                 </div>
+              ) : (
+                <div className="w-full max-w-xs md:max-w-sm mx-auto rounded-2xl bg-muted/70 border border-border/50 shadow-2xl aspect-[2.5/3.5]" />
               )}
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
@@ -163,8 +150,10 @@ export default function Home() {
       <section className="py-24 bg-muted/20 border-y border-border/40 relative overflow-hidden">
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           {cardsLoading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-8">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="aspect-[2.5/3.5] rounded-2xl bg-muted/70 border border-border/50 shadow-2xl" />
+              ))}
             </div>
           ) : (
             <div>

@@ -11,6 +11,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
+import Home from "@/pages/home";
 
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
   lazy(async () => {
@@ -33,7 +34,6 @@ const lazyWithRetry = (componentImport: () => Promise<any>) =>
     }
   });
 
-const Home       = lazyWithRetry(() => import("@/pages/home"));
 const CardsBrowse = lazyWithRetry(() => import("@/pages/cards"));
 const CardDetail = lazyWithRetry(() => import("@/pages/card-detail"));
 const DeckBuilder = lazyWithRetry(() => import("@/pages/builder"));
