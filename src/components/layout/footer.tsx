@@ -8,8 +8,10 @@ export function Footer() {
           <div className="md:col-span-2">
             <Link href="/" className="inline-block mb-4 h-10 transition-opacity hover:opacity-90">
               <img 
-                src="/LorBound_Logo.png" 
-                alt="Lorbound" 
+                src="/LorBound_Logo.webp" 
+                alt="Lorbound"
+                width="180"
+                height="40"
                 className="h-full w-auto object-contain"
               />
             </Link>
@@ -43,6 +45,9 @@ export function Footer() {
           </p>
           <p>
             Disney Lorcana and all related trademarks are property of their respective owners. This site is created by fans, for fans.
+          </p>
+          <p className="mt-2 italic opacity-80">
+            This site contains affiliate links. We may receive a commission for purchases made through these links.
           </p>
         </div>
       </div>

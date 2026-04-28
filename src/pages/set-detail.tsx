@@ -321,7 +321,7 @@ export default function SetDetail() {
                       style={{ backgroundColor: inkHexColors[ink as keyof typeof inkHexColors] }}
                       title={ink}
                     >
-                      <img src={`/inks/COLOR_${ink.toUpperCase()}_RGB.png`} alt={ink} className="w-5 h-5 object-contain brightness-[1.2]" />
+                      <img src={`/inks/COLOR_${ink.toUpperCase()}_RGB.webp`} alt={ink} className="w-5 h-5 object-contain brightness-[1.2]" />
                     </button>
                   ))}
                 </div>
@@ -878,7 +878,7 @@ export default function SetDetail() {
                               <>
                                 <span>·</span>
                                 <div className="flex items-center gap-1">
-                                  <img src="/rarities/Disney_100_logo.png" alt="" className="w-3 h-3 object-contain" />
+                                  <img src="/rarities/Disney_100_logo.webp" alt="" className="w-3 h-3 object-contain" />
                                   <span className="text-[10px] font-bold text-amber-500">D100</span>
                                 </div>
                               </>

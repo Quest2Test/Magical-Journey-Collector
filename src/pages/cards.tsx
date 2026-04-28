@@ -291,7 +291,7 @@ export default function CardsBrowse() {
                       style={{ backgroundColor: inkHexColors[ink] }}
                       title={ink}
                     >
-                      <img src={`/inks/COLOR_${ink.toUpperCase()}_RGB.png`} alt={ink} className="w-5 h-5 object-contain brightness-[1.2]" />
+                      <img src={`/inks/COLOR_${ink.toUpperCase()}_RGB.webp`} alt={ink} className="w-5 h-5 object-contain brightness-[1.2]" />
                     </button>
                   ))}
                 </div>

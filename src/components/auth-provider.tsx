@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
 
 type AuthContextType = {
   user: User | null;
@@ -16,32 +15,45 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
+const supabasePromise = import("@/lib/supabase").then((mod) => mod.supabase as any);
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
+    let canceled = false;
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    supabasePromise.then((supabase) => {
+      if (canceled) return;
+
+      supabase.auth.getSession().then(({ data: { session } }: any) => {
+        if (!canceled) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setIsLoading(false);
+        }
+      });
+
+      subscription = supabase.auth.onAuthStateChange((_event: any, session: Session) => {
+        if (!canceled) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setIsLoading(false);
+        }
+      }).data.subscription;
     });
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      canceled = true;
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
+    const supabase = await supabasePromise;
     await supabase.auth.signOut();
   };
 

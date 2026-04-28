@@ -52,7 +52,7 @@ export function Header() {
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 group transition-opacity hover:opacity-90">
             <img 
-              src="/LorBound_Logo.png" 
+              src="/LorBound_Logo.webp" 
               alt="Lorbound" 
               className="h-10 w-auto object-contain"
             />
@@ -157,8 +157,10 @@ export function Header() {
             <SheetContent side="right" className="flex flex-col gap-4">
               <div className="mb-4">
                 <img 
-                  src="/LorBound_Logo.png" 
-                  alt="Lorbound" 
+                  src="/LorBound_Logo.webp" 
+                  alt="Lorbound"
+                  width="180"
+                  height="40"
                   className="h-8 w-auto object-contain"
                 />
               </div>

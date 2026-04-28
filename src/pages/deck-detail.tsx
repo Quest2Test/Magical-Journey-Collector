@@ -1,270 +1,485 @@
-import { useParams, Link, useLocation } from "wouter";
-import { useDecks } from "@/hooks/useDecks";
-import { inkHexColors, CardDisplay } from "@/components/ui/card-display";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { getFormattedSubtitle } from "@/lib/card-utils";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy, ThumbsUp, Share2, MessageSquare, Settings2 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
-import { useMemo } from "react";
+import { useParams, Link, useSearch } from "wouter";
 import { useAllCards } from "@/hooks/useCards";
-import { STARTER_DECKS } from "@/data/starter-decks";
+import { useCollection } from "@/hooks/useCollection";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Loader2, Maximize2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { CardDisplay, inkHexColors, inkGradients, rarityIcons, isDisney100, getInkLogo } from "@/components/ui/card-display";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { useCurrency } from "@/components/currency-provider";
+import { getCardLegality } from "@/lib/legality";
+import { detectRegion, buildTCGPlayerUrl, buildCardMarketUrl } from "@/lib/affiliates";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-export default function DeckDetail() {
+const FOIL_ONLY_RARITIES: string[] = ["Enchanted", "Iconic"];
+
+import { highlightRulesText, SYMBOL_ICONS } from "@/components/ui/card-text";
+import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
+
+
+export default function CardDetail() {
   const { id } = useParams();
-  const [, setLocation] = useLocation();
-  const { decks } = useDecks();
-  const { data: allCards = [] } = useAllCards();
+  const { data: allCards = [], isLoading } = useAllCards();
+  const { getEntry, addCopy, removeCopy, toggleCollected, isCollected } = useCollection();
+  const { formatPrice } = useCurrency();
+  const [imgError, setImgError] = useState(false);
 
-  // Combine user decks and official starter decks for lookup
-  const deck = useMemo(() => {
-    // 1. Check user decks
-    const userDeck = decks.find(d => d.id === id);
-    if (userDeck) return userDeck;
+  const decodedId = id ? decodeURIComponent(id) : "";
+  const card = allCards.find(c => c.id === decodedId);
+  const collectionEntry = card ? getEntry(card.id) : { normal: 0, foil: 0 };
+  const foilOnly = card ? FOIL_ONLY_RARITIES.includes(card.rarity) : false;
+  const legality = card ? getCardLegality(card, allCards) : null;
 
-    // 2. Check starter decks
-    const starterDef = STARTER_DECKS.find(s => s.id === id);
-    if (starterDef && allCards.length > 0) {
-      // Aggressive normalization: lowercase, strip diacritics, and remove all punctuation/spaces
-      const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const searchStr = useSearch();
+  const urlParams = new URLSearchParams(searchStr);
+  const fromUrl = urlParams.get("from");
 
-      const entries = starterDef.cards.map(entry => {
-        const targetName = normalize(entry.name);
-        const targetSub = entry.subtitle ? normalize(entry.subtitle) : "";
 
-        const card = allCards.find(c => {
-          const cName = normalize(c.name);
-          const cSub = c.subtitle ? normalize(c.subtitle) : "";
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-20 flex justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-          const nameMatch = cName === targetName;
-          const subMatch = !entry.subtitle || cSub === targetSub;
-
-          return nameMatch && subMatch;
-        });
-        return card ? { card, qty: entry.qty } : null;
-      }).filter((e): e is { card: any, qty: number } => e !== null);
-
-      return {
-        ...starterDef,
-        entries,
-        totalCards: entries.reduce((acc, e) => acc + e.qty, 0),
-        totalValue: entries.reduce((acc, e) => acc + (e.card.priceUsd || 0) * e.qty, 0),
-        format: "Core",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isOfficial: true,
-      } as any;
-    }
-
-    return null;
-  }, [id, decks, allCards]);
-
-  if (!deck) {
+  if (!card) {
     return (
       <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-3xl font-serif font-bold mb-4">Deck Not Found</h1>
-        <Link href="/decks">
-          <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> Back to Decks</Button>
+        <h1 className="text-3xl font-serif font-bold mb-4">Card Not Found</h1>
+        <Link href={fromUrl ? fromUrl : "/cards"}>
+          <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> {fromUrl ? "Back to Set" : "Back to Cards"}</Button>
         </Link>
       </div>
     );
   }
 
-  // Handler for cloning decks to the builder
-  const handleCopyToBuilder = () => {
-    localStorage.setItem("lorcana_import_temp", JSON.stringify({
-      name: `${deck.name} (Copy)`,
-      cards: deck.entries.map((e: any) => ({ name: e.card.name, subtitle: e.card.subtitle, qty: e.qty }))
-    }));
-    setLocation("/builder?import=latest");
-  };
+  const relatedCards = allCards
+    .filter(c => c.id !== card.id && (c.type === card.type || c.inkColor === card.inkColor))
+    .slice(0, 5);
 
-  // Aggregate and sort deck data
-  const totalCards = deck.totalCards;
-  const cardsByType: Record<string, { card: any, qty: number }[]> = {
-    Character: [],
-    Action: [],
-    Item: [],
-    Song: [],
-    Location: []
-  };
+  const artistCards = card.artist
+    ? allCards
+        .filter(c => c.id !== card.id && c.artist === card.artist && !!c.image)
+        .slice(0, 8)
+    : [];
 
-  const inkDistribution: Record<string, number> = {};
-  const costCurve = [
-    { cost: '1', count: 0 },
-    { cost: '2', count: 0 },
-    { cost: '3', count: 0 },
-    { cost: '4', count: 0 },
-    { cost: '5', count: 0 },
-    { cost: '6', count: 0 },
-    { cost: '7+', count: 0 },
-  ];
-
-  deck.entries.forEach((entry: { card: any; qty: number }) => {
-    const card = entry.card;
-    const qty = entry.qty;
-
-    if (card) {
-      if (!cardsByType[card.type]) cardsByType[card.type] = [];
-      cardsByType[card.type].push({ card, qty });
-
-      inkDistribution[card.inkColor] = (inkDistribution[card.inkColor] || 0) + qty;
-
-      const costIndex = Math.min(card.cost - 1, 6);
-      if (costIndex >= 0) {
-        costCurve[costIndex].count += qty;
-      }
-    }
-  });
-
-  // Sort each group by cost ascending
-  Object.keys(cardsByType).forEach(type => {
-    cardsByType[type].sort((a, b) => (a.card.cost || 0) - (b.card.cost || 0));
-  });
-
-  const pieData = Object.entries(inkDistribution).map(([name, value]) => ({ name, value }));
+  const hexColor = inkHexColors[card.inkColor] ?? "#f59e0b";
+  const gradient = inkGradients[card.inkColor] ?? inkGradients.Amber;
+  const hasImage = !!card.image && !imgError;
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-8">
-      <Link href="/decks" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back to Decks
+      <Link href={fromUrl ? fromUrl : "/cards"} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <ArrowLeft className="w-4 h-4 mr-1" /> {fromUrl ? "Back to Set" : "Back to Browse"}
       </Link>
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 pb-8 border-b">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex gap-1">
-              {deck.inkColors.map((color: string) => (
-                <div
-                  key={color}
-                  className="w-5 h-5 rounded-full border shadow-sm"
-                  style={{ backgroundColor: inkHexColors[color as keyof typeof inkHexColors] }}
-                  title={color}
-                />
-              ))}
-            </div>
-            <span className="font-medium text-muted-foreground uppercase tracking-wider text-sm">{deck.format}</span>
-          </div>
-          <h1 className="text-3xl md:text-5xl font-serif font-bold tracking-tight mb-2">{deck.name}</h1>
-          <p className="text-lg text-muted-foreground">Saved on {new Date(deck.updatedAt).toLocaleDateString()}</p>
-        </div>
+      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 mb-16">
+        {/* Left: Card Art */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="w-full lg:w-[360px] shrink-0"
+        >
+          <div className="sticky top-24">
+            <Dialog>
+              {hasImage ? (
+                <div className="relative group overflow-hidden rounded-2xl shadow-2xl border border-border/50 aspect-[2.5/3.5]">
+                  <img
+                    src={card.image}
+                    alt={card.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={() => setImgError(true)}
+                  />
+                  
+                  {/* Hover Overlay with Enlarge Icon */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                    <DialogTrigger asChild>
+                      <button className="p-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 pointer-events-auto hover:bg-white/30">
+                        <Maximize2 className="w-8 h-8" />
+                      </button>
+                    </DialogTrigger>
+                  </div>
+                </div>
+              ) : (
+                <div className="aspect-[2.5/3.5] rounded-2xl overflow-hidden shadow-2xl relative">
+                  <img src="/LCardBack.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40", gradient)} />
+                  <div className="absolute inset-0 bg-black/20" />
+                </div>
+              )}
 
-        <div className="flex gap-3 w-full md:w-auto">
-          {!deck.isOfficial && (
-            <Link href={`/builder?edit=${deck.id}`}>
-              <Button variant="outline" className="flex-1 md:flex-none gap-2">
-                <Settings2 className="w-4 h-4" /> Edit Deck
-              </Button>
-            </Link>
-          )}
-          <Button variant="outline" onClick={handleCopyToBuilder} className="flex-1 md:flex-none gap-2">
-            <Copy className="w-4 h-4" /> Copy Deck
-          </Button>
-          <Button variant="outline" size="icon"><Share2 className="w-4 h-4" /></Button>
-        </div>
-      </div>
+              {/* Enlarged Card Dialog Content */}
+              {hasImage && (
+                <DialogContent className="max-w-[98vw] md:max-w-fit w-auto h-auto p-0 overflow-hidden bg-transparent border-none shadow-none focus:outline-none flex items-center justify-center">
+                  <DialogTitle className="sr-only">Enlarged card view of {card.name}</DialogTitle>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex justify-center p-2 sm:p-6 w-full h-full"
+                  >
+                    <div className="relative h-[85vh] max-h-[900px] aspect-[2.5/3.5] rounded-2xl md:rounded-[2rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.7)] border border-white/20 ring-1 ring-white/10 m-auto">
+                      <img
+                        src={card.image}
+                        alt={card.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </motion.div>
+                </DialogContent>
+              )}
+            </Dialog>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Main List */}
-        <div className="flex-1 space-y-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-serif font-bold">Decklist</h2>
-            <span className="px-3 py-1 bg-secondary rounded-full font-bold text-sm">{totalCards} Cards</span>
-          </div>
+            {/* Regional Marketplace CTA */}
+            {(card.priceUsd != null || card.priceUsdFoil != null) && (
+              <div className="rounded-2xl border bg-card/80 backdrop-blur overflow-hidden mt-4 group">
+                <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Market Availability
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">Real-time Pricing</span>
+                </div>
+                
+                <div className="p-4 space-y-4">
+                  {/* Primary CTA (Regional) */}
+                  {(() => {
+                    const region = detectRegion();
+                    const isUS = region === "US" || region === "Other";
+                    const primaryLink = isUS ? buildTCGPlayerUrl(card) : buildCardMarketUrl(card);
+                    const primaryName = isUS ? "TCGPlayer" : "CardMarket";
+                    const secondaryName = isUS ? "CardMarket" : "TCGPlayer";
+                    const secondaryLink = isUS ? buildCardMarketUrl(card) : buildTCGPlayerUrl(card);
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-            {Object.entries(cardsByType).map(([type, list]) => {
-              if (list.length === 0) return null;
-              return (
-                <div key={type}>
-                  <h3 className="font-bold border-b pb-2 mb-3 flex justify-between">
-                    {type}s
-                    <span className="text-muted-foreground font-normal">
-                      {list.reduce((acc, item) => acc + item.qty, 0)}
+                    return (
+                      <>
+                        <a
+                          href={primaryLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
+                        >
+                          Buy on {primaryName}
+                          <ArrowLeft className="w-4 h-4 rotate-180" />
+                        </a>
+                        <div className="grid grid-cols-2 gap-2">
+                           {/* Normal Price - Hidden for Foil-Only rarities */}
+                           {!foilOnly && (
+                             <div className="flex flex-col p-2.5 rounded-lg bg-muted/30 border border-border/40">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight mb-1">Normal</span>
+                                <span className="text-sm font-black" style={{ color: hexColor }}>
+                                   {card.priceUsd ? formatPrice(card.priceUsd) : "N/A"}
+                                </span>
+                             </div>
+                           )}
+ 
+                           {/* Foil Price - Expand if Normal is hidden */}
+                           <div className={cn("flex flex-col p-2.5 rounded-lg bg-muted/30 border border-border/40", foilOnly ? "col-span-2" : "col-span-1")}>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight mb-1">Cold Foil</span>
+                              <span className="text-sm font-black" style={{ color: hexColor }}>
+                                 {card.priceUsdFoil ? formatPrice(card.priceUsdFoil) : "N/A"}
+                              </span>
+                           </div>
+                        </div>
+
+                        <a
+                          href={secondaryLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full text-center text-xs font-bold py-2 rounded-lg border border-border bg-muted/50 hover:bg-muted text-muted-foreground transition-all"
+                        >
+                          View on {secondaryName} ↗
+                        </a>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+              {/* Collection Tracker */}
+              <div className="rounded-2xl border bg-card/80 backdrop-blur overflow-hidden mt-4">
+                <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">My Collection</span>
+                  <span
+                    className="text-xs font-bold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: `${hexColor}22`, color: hexColor }}
+                  >
+                    {collectionEntry.normal + collectionEntry.foil} total
+                  </span>
+                </div>
+
+                <div className="divide-y divide-border/40">
+                  {!foilOnly && (
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold">Normal</p>
+                        <p className="text-xs text-muted-foreground">Standard print</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => removeCopy(card.id, "normal")}
+                          disabled={collectionEntry.normal === 0}
+                          className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          −
+                        </button>
+                        <span className="w-8 text-center text-lg font-bold tabular-nums" style={{ color: collectionEntry.normal > 0 ? hexColor : undefined }}>
+                          {collectionEntry.normal}
+                        </span>
+                        <button
+                          onClick={() => addCopy(card.id, "normal")}
+                          className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors"
+                          style={collectionEntry.normal > 0 ? { borderColor: hexColor, color: hexColor } : {}}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold">Cold Foil</p>
+                      <p className="text-xs text-muted-foreground">Foil treatment</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => removeCopy(card.id, "foil")}
+                        disabled={collectionEntry.foil === 0}
+                        className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center text-lg font-bold tabular-nums" style={{ color: collectionEntry.foil > 0 ? hexColor : undefined }}>
+                        {collectionEntry.foil}
+                      </span>
+                      <button
+                        onClick={() => addCopy(card.id, "foil")}
+                        className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors"
+                        style={collectionEntry.foil > 0 ? { borderColor: hexColor, color: hexColor } : {}}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            {/* Tournament Legality */}
+            {legality && (
+              <div className="rounded-2xl border bg-card/80 backdrop-blur overflow-hidden mt-4 text-sm">
+                <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Format Legality</span>
+                </div>
+                <div className="divide-y divide-border/40">
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <span className="font-medium">Core Constructed</span>
+                    <span className={cn("font-bold", legality.core === 'Legal' ? 'text-emerald-500' : 'text-destructive')}>
+                      {legality.core}
                     </span>
-                  </h3>
-                  <ul className="space-y-1">
-                    {list.map((item, i) => (
-                      <HoverCard key={i} openDelay={200} closeDelay={50}>
-                        <HoverCardTrigger asChild>
-                          <li className="flex justify-between items-center p-2 rounded hover:bg-secondary/50 transition-colors group cursor-pointer">
-                            <Link href={`/cards/${item.card.id}`} className="flex-1 flex justify-between items-center">
-                              <div className="flex items-center gap-3">
-                                 <span className="font-mono font-bold text-muted-foreground w-5 text-center">{item.qty}</span>
-                                 <span className="group-hover:text-primary transition-colors font-medium text-left">{item.card.name}</span>
-                                 {getFormattedSubtitle(item.card) && <span className="text-xs text-muted-foreground truncate max-w-[150px] hidden sm:inline-block">- {getFormattedSubtitle(item.card)}</span>}
-                               </div>
-                              <div className="flex gap-4 items-center">
-                                 <div className="w-6 h-6 rounded flex items-center justify-center bg-muted text-xs font-bold border border-border/50 shrink-0">
-                                    {item.card.cost}
-                                 </div>
-                                 <div
-                                   className="w-2.5 h-2.5 rounded-full shrink-0"
-                                   style={{ backgroundColor: inkHexColors[item.card.inkColor as keyof typeof inkHexColors] }}
-                                 />
-                              </div>
-                            </Link>
-                          </li>
-                        </HoverCardTrigger>
-                        <HoverCardContent side="right" className="w-[300px] p-0 border-0 shadow-2xl bg-transparent" align="start">
-                          <CardDisplay card={item.card} className="w-full" />
-                        </HoverCardContent>
-                      </HoverCard>
-                    ))}
-                  </ul>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <span className="font-medium">Infinity Constructed</span>
+                    <span className={cn("font-bold", legality.infinity === 'Legal' ? 'text-emerald-500' : 'text-destructive')}>
+                      {legality.infinity}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Right: Card Details */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="flex-1 space-y-6"
+        >
+          {/* BUREAU: Identity */}
+          <section className="space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  {(card.allInkColors || [card.inkColor]).map(c => (
+                    <div
+                      key={c}
+                      className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm"
+                      style={{ backgroundColor: inkHexColors[c] ?? "#888" }}
+                    />
+                  ))}
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  {(card.allInkColors || [card.inkColor]).join(" / ")} • {getDisplayType(card)}
+                </span>
+              </div>
+              {card.franchise && (
+                <span className="text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 rounded bg-primary/5 text-primary border border-primary/10">
+                  {card.franchise}
+                </span>
+              )}
+            </div>
+            
+            <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-foreground">{card.name}</h1>
+            {getFormattedSubtitle(card) && (
+              <h2 className="text-xl md:text-2xl font-serif text-muted-foreground/80 italic">{getFormattedSubtitle(card)}</h2>
+            )}
+
+            {isDisney100(card) && (
+              <div className="mt-3 flex items-center gap-2 px-3 py-1 rounded bg-amber-500/5 border border-amber-500/20 w-fit">
+                <img src="/rarities/Disney_100_logo.webp" alt="D100" className="w-5 h-5 object-contain" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-amber-600/80">Disney 100 Edition</span>
+              </div>
+            )}
+          </section>
+
+          {/* BUREAU: Combat Stats */}
+          <section className="grid grid-cols-4 gap-3">
+            {[
+              { label: "Cost", value: card.cost, color: "bg-slate-100 dark:bg-slate-800", icon: "{I}" },
+              { label: "Strength", value: card.strength, color: "bg-red-50 dark:bg-red-950/30", icon: "{S}", hide: card.type !== "Character" },
+              { label: "Willpower", value: card.willpower, color: "bg-blue-50 dark:bg-blue-950/30", icon: "{W}", hide: card.type !== "Character" && card.type !== "Location" },
+              { label: "Lore", value: card.lore, color: "bg-amber-50 dark:bg-amber-950/30", icon: "{L}", hide: card.type !== "Character" && card.type !== "Location" },
+              { label: "Inkable", value: card.inkable ? "Yes" : "No", color: "bg-secondary/40", hide: card.type === "Character" || card.type === "Location" }
+            ].filter(s => !s.hide).map(stat => (
+              <div key={stat.label} className={cn("flex flex-col items-center justify-center p-3 rounded-2xl border border-border/40 shadow-sm", stat.color)}>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{stat.label}</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold tabular-nums">{stat.value ?? 0}</span>
+                  {stat.icon && (
+                    <span className={cn("w-3 h-3 rounded-full flex items-center justify-center", SYMBOL_ICONS[stat.icon].bg)}>
+                      <svg viewBox="0 0 24 24" className={cn("w-2 h-2", SYMBOL_ICONS[stat.icon].color)}>{SYMBOL_ICONS[stat.icon].symbol}</svg>
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </section>
+
+          {/* BUREAU: Abilities & Text */}
+          <section className="space-y-5 p-6 rounded-3xl bg-card border shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
+              <img src={getInkLogo(card.inkColor)} alt="" className="w-32 h-32 rotate-12" />
+            </div>
+
+            {/* Classifications */}
+            {card.classifications && card.classifications.length > 0 && (() => {
+              const ORIGINS = ["Storyborn", "Dreamborn", "Floodborn", "Inkborn"];
+              const ORIGIN_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+                Storyborn:  { bg: "bg-amber-500/10",   text: "text-amber-600 dark:text-amber-400",   border: "border-amber-500/20",   dot: "#f59e0b" },
+                Dreamborn:  { bg: "bg-violet-500/10",  text: "text-violet-600 dark:text-violet-400",  border: "border-violet-500/20",  dot: "#8b5cf6" },
+                Floodborn:  { bg: "bg-sky-500/10",     text: "text-sky-600 dark:text-sky-400",     border: "border-sky-500/20",     dot: "#38bdf8" },
+                Inkborn:    { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/20", dot: "#10b981" },
+              };
+              const origins = card.classifications.filter(c => ORIGINS.includes(c));
+              const roles = card.classifications.filter(c => !ORIGINS.includes(c));
+              return (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-4 border-b border-border/40">
+                  {origins.map(origin => {
+                    const style = ORIGIN_STYLES[origin] ?? { bg: "bg-secondary", text: "text-foreground", border: "border-border", dot: hexColor };
+                    return (
+                      <span key={origin} className={cn("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border tracking-widest uppercase", style.bg, style.text, style.border)}>
+                        <span className="w-1 h-1 rounded-full" style={{ backgroundColor: style.dot }} />
+                        {origin}
+                      </span>
+                    );
+                  })}
+                  <div className="flex flex-wrap gap-1.5 font-sans italic text-sm text-muted-foreground/80">
+                    {roles.join(" • ")}
+                  </div>
                 </div>
               );
-            })}
-          </div>
-        </div>
+            })()}
 
-        {/* Sidebar Stats */}
-        <aside className="w-full lg:w-80 shrink-0 space-y-6">
-          <div className="p-6 rounded-xl border bg-card space-y-6">
-            <h3 className="font-bold text-lg">Stats</h3>
+            {card.bodyText && (
+              <div className="min-h-[60px]">
+                {highlightRulesText(card.bodyText)}
+              </div>
+            )}
 
-            {/* Ink Distribution */}
+
+            {card.flavorText && (
+              <div className="pt-4 border-t border-border/40">
+                <p className="text-sm md:text-base font-serif italic leading-relaxed text-muted-foreground/90">
+                  {card.flavorText}
+                </p>
+              </div>
+            )}
+          </section>
+
+          {/* BUREAU: Technical Info */}
+          <section className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 rounded-3xl border bg-secondary/20 text-[11px]">
             <div>
-              <span className="text-sm text-muted-foreground mb-2 block">Ink Distribution</span>
-              <div className="h-32">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={30}
-                      outerRadius={50}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={inkHexColors[entry.name] ?? "#888"} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }} itemStyle={{ color: 'hsl(var(--foreground))' }} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <span className="text-muted-foreground uppercase tracking-widest block mb-1">Set & Expansion</span>
+              <span className="font-bold flex items-center gap-1">
+                {card.set} <span className="text-muted-foreground font-normal">({card.expansion})</span>
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground uppercase tracking-widest block mb-1">Rarity</span>
+              <div className="flex items-center gap-1.5">
+                {rarityIcons[card.rarity] && <img src={rarityIcons[card.rarity]} alt="" className="w-3.5 h-3.5 object-contain" />}
+                <span className="font-bold">{card.rarity}</span>
               </div>
             </div>
-
-            {/* Cost Curve */}
             <div>
-              <span className="text-sm text-muted-foreground mb-2 block">Ink Curve</span>
-              <div className="h-32">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={costCurve}>
-                    <XAxis dataKey="cost" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                    <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }} itemStyle={{ color: 'hsl(var(--foreground))' }} />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <span className="text-muted-foreground uppercase tracking-widest block mb-1">Artist</span>
+              <span className="font-bold">{card.artist || "Unknown"}</span>
             </div>
-          </div>
-        </aside>
+            <div>
+              <span className="text-muted-foreground uppercase tracking-widest block mb-1">Language</span>
+              <span className="font-bold">English</span>
+            </div>
+          </section>
+        </motion.div>
       </div>
+
+      {/* Artist Gallery */}
+      {card.artist && artistCards.length > 0 && (
+        <section className="mt-10 pt-8 border-t border-border/40">
+          <div className="flex items-center gap-4 mb-6">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-0.5">More by this artist</p>
+              <h3 className="text-2xl font-serif font-bold">{card.artist}</h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+            {artistCards.map(c => (
+              <Link key={c.id} href={`/cards/${encodeURIComponent(c.id)}${fromUrl ? `?from=${fromUrl}` : ""}`}>
+                <motion.div
+                  whileHover={{ y: -3, scale: 1.03 }}
+                  transition={{ duration: 0.15 }}
+                  className="aspect-[2.5/3.5] rounded-xl overflow-hidden border border-border/50 shadow-md hover:shadow-xl cursor-pointer bg-muted"
+                >
+                  <img src={c.image} alt={c.name} className="w-full h-full object-cover" />
+                </motion.div>
+                <p className="text-xs text-muted-foreground truncate mt-1 px-0.5">{c.name}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Similar Cards */}
+      {relatedCards.length > 0 && (
+        <section className="mt-8 pt-6 border-t border-border/40">
+          <h3 className="text-xl font-serif font-bold mb-4 text-muted-foreground">More Like This</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {relatedCards.map(c => (
+              <CardDisplay key={c.id} card={c} returnTo={fromUrl ?? undefined} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

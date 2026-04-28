@@ -37,15 +37,15 @@ export const inkHexColors: Record<string, string> = {
 };
 
 export const rarityIcons: Record<string, string> = {
-  "Common": "/rarities/Common.png",
-  "Uncommon": "/rarities/Uncommon.png",
-  "Rare": "/rarities/Rare.png",
-  "Super Rare": "/rarities/Super_Rare.png",
-  "Epic": "/rarities/epic.png",
-  "Legendary": "/rarities/Legendary.png",
-  "Enchanted": "/rarities/Enchanted.png",
-  "Iconic": "/rarities/iconic.png",
-  "Promo": "/rarities/Promo.png",
+  "Common": "/rarities/Common.webp",
+  "Uncommon": "/rarities/Uncommon.webp",
+  "Rare": "/rarities/Rare.webp",
+  "Super Rare": "/rarities/Super_Rare.webp",
+  "Epic": "/rarities/epic.webp",
+  "Legendary": "/rarities/Legendary.webp",
+  "Enchanted": "/rarities/Enchanted.webp",
+  "Iconic": "/rarities/iconic.webp",
+  "Promo": "/rarities/Promo.webp",
 };
 
 export function isDisney100(card: Card): boolean {
@@ -68,7 +68,7 @@ const inkColors = {
   Steel: "bg-[#6b7280]",
 };
 
-export const getInkLogo = (ink: string) => `/inks/COLOR_${ink.toUpperCase()}_RGB.png`;
+export const getInkLogo = (ink: string) => `/inks/COLOR_${ink.toUpperCase()}_RGB.webp`;
 
 export const CardDisplay = memo(function CardDisplay({
   card,
