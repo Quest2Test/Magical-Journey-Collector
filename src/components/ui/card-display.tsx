@@ -36,6 +36,15 @@ export const inkHexColors: Record<string, string> = {
   Steel: "#6b7280",
 };
 
+export const inkTextColors: Record<string, string> = {
+  Amber: "#f59e0b",
+  Amethyst: "#d8b4fe",
+  Emerald: "#10b981",
+  Ruby: "#ef4444",
+  Sapphire: "#3b82f6",
+  Steel: "#d1d5db",
+};
+
 export const rarityIcons: Record<string, string> = {
   "Common": "/rarities/Common.webp",
   "Uncommon": "/rarities/Uncommon.webp",

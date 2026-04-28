@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link } from "wouter";
 import { useAllCards, useSets } from "@/hooks/useCards";
 import { Card } from "@/data/cards";
-import { CardDisplay, inkHexColors, getInkLogo } from "@/components/ui/card-display";
+import { CardDisplay, inkHexColors, inkTextColors, getInkLogo } from "@/components/ui/card-display";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Search, Layers, TrendingUp, Loader2, BookOpen, Archive, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
@@ -243,7 +243,7 @@ export default function Home() {
                     </div>
                     <span
                       className="font-bold text-lg tracking-wide uppercase transition-colors"
-                      style={{ color: inkHexColors[ink as keyof typeof inkHexColors] }}
+                      style={{ color: inkTextColors[ink as keyof typeof inkTextColors] }}
                     >
                       {ink}
                     </span>
