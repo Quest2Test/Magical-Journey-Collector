@@ -1,4 +1,5 @@
 import { useRoute, Link, useLocation } from "wouter";
+import { useAuth } from "@/components/auth-provider";
 import { useAllCards } from "@/hooks/useCards";
 import { ARCHETYPES } from "@/data/archetypes";
 import { useCollection } from "@/hooks/useCollection";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 export default function MetaAnalysis({ params }: { params: { id: string } }) {
   const { data: allCards = [], isLoading: loadingCards } = useAllCards();
+  const { user } = useAuth();
   const { collection, isCollected, getEntry } = useCollection();
   const { formatPrice } = useCurrency();
   const [, setLocation] = useLocation();
@@ -176,24 +178,41 @@ export default function MetaAnalysis({ params }: { params: { id: string } }) {
              <CardDescription>How close are you to this tournament shell?</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-               <div className="flex justify-between text-sm font-bold">
-                  <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
-                  <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
-               </div>
-               <Progress value={analysis.completionPct} className="h-2.5" />
-            </div>
+            {user ? (
+              <>
+                <div className="space-y-2">
+                   <div className="flex justify-between text-sm font-bold">
+                      <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
+                      <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
+                   </div>
+                   <Progress value={analysis.completionPct} className="h-2.5" />
+                </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-               <div className="space-y-1">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Market Value</p>
-                  <p className="text-lg font-bold">{formatPrice(analysis.totalValue)}</p>
-               </div>
-               <div className="space-y-1">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
-                  <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
-               </div>
-            </div>
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                   <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Market Value</p>
+                      <p className="text-lg font-bold">{formatPrice(analysis.totalValue)}</p>
+                   </div>
+                   <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
+                      <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
+                   </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-4 text-center space-y-4">
+                <div className="p-3 rounded-full bg-primary/10">
+                  <Library className="w-6 h-6 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold">Track your collection</p>
+                  <p className="text-xs text-muted-foreground">Sign in to see your readiness for this archetype.</p>
+                </div>
+                <Button asChild size="sm" className="w-full">
+                  <Link href="/login">Sign In to Lorbound</Link>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -415,14 +434,23 @@ export default function MetaAnalysis({ params }: { params: { id: string } }) {
                   <>
                     <CardDisplay card={ad.card} className={cn(
                       "transition-opacity",
-                      ad.ownedQty === 0 && "opacity-40 grayscale-[0.6]"
+                      user && ad.ownedQty === 0 && "opacity-40 grayscale-[0.6]"
                     )} />
-                    <div className="absolute -top-3 -right-3 min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
-                       {ad.ownedQty} <span className="mx-0.5 opacity-40">/</span> {ad.qty}
-                    </div>
-                    {ad.missingQty > 0 && (
-                      <div className="absolute -bottom-2 -left-2 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[9px] font-bold uppercase tracking-wider shadow-lg z-10">
-                        Missing {ad.missingQty}
+                    {user && (
+                      <>
+                        <div className="absolute -top-3 -right-3 min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
+                           {ad.ownedQty} <span className="mx-0.5 opacity-40">/</span> {ad.qty}
+                        </div>
+                        {ad.missingQty > 0 && (
+                          <div className="absolute -bottom-2 -left-2 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[9px] font-bold uppercase tracking-wider shadow-lg z-10">
+                            Missing {ad.missingQty}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {!user && (
+                      <div className="absolute -top-3 -right-3 min-w-[28px] h-7 px-2 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
+                         x{ad.qty}
                       </div>
                     )}
                   </>

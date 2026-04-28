@@ -1,5 +1,6 @@
 import { useState, useMemo, useDeferredValue, useRef, useEffect } from "react";
 import { useParams, Link, useLocation } from "wouter";
+import { useAuth } from "@/components/auth-provider";
 import { useAllCards, useCardsBySet } from "@/hooks/useCards";
 import { useCollection } from "@/hooks/useCollection";
 import { Card } from "@/data/cards";
@@ -54,6 +55,7 @@ export default function SetDetail() {
 
   const { data: allCards = [], isLoading } = useAllCards();
   const { data: setCardsData = [], isLoading: isSetLoading } = useCardsBySet(setId);
+  const { user } = useAuth();
   const { collection, getEntry, addCopy, removeCopy, toggleCollected, isCollected, collectedCount } = useCollection();
 
   // Derive set metadata from card data
@@ -534,8 +536,18 @@ export default function SetDetail() {
                     </div>
                     <div className="flex gap-4 text-xs text-muted-foreground">
                       <span>{setCards.length} total cards</span>
-                      <span>•</span>
-                      <span>{setCards.length - collectedInSet} missing</span>
+                      {!user && (
+                        <>
+                          <span>•</span>
+                          <Link href="/login" className="text-primary hover:underline font-bold">Sign in to track your collection</Link>
+                        </>
+                      )}
+                      {user && (
+                        <>
+                          <span>•</span>
+                          <span>{setCards.length - collectedInSet} missing</span>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -760,18 +772,24 @@ export default function SetDetail() {
                             </div>
                           )}
                         </div>
-                        <button
-                          onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
-                          className="w-full rounded-md border border-border bg-card py-2 text-xs transition-colors hover:bg-secondary/50 flex items-center justify-center gap-2"
-                          title={isCollected(card.id) ? "Remove from collection" : "Add to collection"}
-                        >
-                          {isCollected(card.id) ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-400" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-muted-foreground" />
-                          )}
-                          <span>{isCollected(card.id) ? "Collected" : "Add to Collection"}</span>
-                        </button>
+                        {user ? (
+                          <button
+                            onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
+                            className="w-full rounded-md border border-border bg-card py-2 text-xs transition-colors hover:bg-secondary/50 flex items-center justify-center gap-2"
+                            title={isCollected(card.id) ? "Remove from collection" : "Add to collection"}
+                          >
+                            {isCollected(card.id) ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-400" />
+                            ) : (
+                              <Circle className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <span>{isCollected(card.id) ? "Collected" : "Add to Collection"}</span>
+                          </button>
+                        ) : (
+                          <Link href="/login" className="w-full text-center py-2 text-[10px] font-bold text-primary hover:underline opacity-80 hover:opacity-100 transition-opacity">
+                            Login to add to collection
+                          </Link>
+                        )}
                       </motion.div>
                     );
                   })}
@@ -792,21 +810,29 @@ export default function SetDetail() {
                     return (
                       <div key={card.id} className="flex items-center gap-3 p-2.5 rounded-lg border bg-card hover:bg-secondary/40 transition-colors">
                         <div className="flex flex-col items-center gap-2 shrink-0 w-12">
-                          <button
-                            onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
-                            className="shrink-0"
-                            title={collected ? "Remove from collection" : "Add to collection"}
-                          >
-                            {collected ? (
-                              <CheckCircle2 className="w-5 h-5 text-green-400" />
-                            ) : (
-                              <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
-                            )}
-                          </button>
+                          {user ? (
+                            <>
+                              <button
+                                onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
+                                className="shrink-0"
+                                title={collected ? "Remove from collection" : "Add to collection"}
+                              >
+                                {collected ? (
+                                  <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+                                )}
+                              </button>
 
-                          <div className="text-[10px] text-muted-foreground text-center leading-tight">
-                            {!foilOnly ? `${entry.normal} normal · ${entry.foil} foil` : `${entry.foil} foil only`}
-                          </div>
+                              <div className="text-[10px] text-muted-foreground text-center leading-tight">
+                                {!foilOnly ? `${entry.normal} normal · ${entry.foil} foil` : `${entry.foil} foil only`}
+                              </div>
+                            </>
+                          ) : (
+                            <Link href="/login" className="text-primary hover:underline text-[9px] font-bold text-center leading-tight">
+                              Login to track
+                            </Link>
+                          )}
                         </div>
 
                         <div className="w-12 h-16 rounded overflow-hidden shrink-0 bg-muted">

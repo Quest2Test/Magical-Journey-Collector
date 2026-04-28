@@ -3,31 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth-provider";
 
-const STORAGE_KEY = "glimmercast-collection";
-
 export type CollectionEntry = {
   normal: number;
   foil: number;
 };
 
 export type Collection = Record<string, CollectionEntry>;
-
-function readLocalCollection(): Collection {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeLocalCollection(collection: Collection) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
-  } catch {
-    // ignore storage errors
-  }
-}
 
 export function useCollection(targetUserId?: string) {
   const { user } = useAuth();
@@ -39,9 +20,10 @@ export function useCollection(targetUserId?: string) {
   const { data: collection = {}, isLoading, isError } = useQuery({
     queryKey,
     queryFn: async () => {
-      // If no target user and no logged in user, use local storage
+      // If no target user and no logged in user, return empty collection
+      // Guest localstorage support removed to encourage account creation
       if (!activeUserId) {
-        return readLocalCollection();
+        return {};
       }
 
       // Fetch from Supabase
@@ -58,12 +40,13 @@ export function useCollection(targetUserId?: string) {
       }
       return coll;
     },
+    enabled: !!activeUserId, // Only run query if we have a user to look up
   });
 
   const mutation = useMutation({
     mutationFn: async ({ cardId, entry }: { cardId: string; entry: CollectionEntry }) => {
       if (!user) {
-        return Promise.resolve();
+        return Promise.reject("Must be signed in to modify collection");
       }
 
       if (entry.normal === 0 && entry.foil === 0) {
@@ -95,10 +78,6 @@ export function useCollection(targetUserId?: string) {
       
       queryClient.setQueryData<Collection>(queryKey, next);
       
-      if (!user) {
-        writeLocalCollection(next);
-      }
-
       return { previous };
     },
     onError: (err, newEntry, context) => {
@@ -107,7 +86,6 @@ export function useCollection(targetUserId?: string) {
       }
     },
     onSettled: () => {
-      // Only invalidating if logged in to avoid constant localstorage re-reading
       if (user) {
         queryClient.invalidateQueries({ queryKey });
       }
@@ -116,7 +94,7 @@ export function useCollection(targetUserId?: string) {
 
   const clearMutation = useMutation({
     mutationFn: async () => {
-      if (!user) return Promise.resolve();
+      if (!user) return Promise.reject("Must be signed in to clear collection");
       const { error } = await supabase
         .from("collections")
         .delete()
@@ -127,7 +105,6 @@ export function useCollection(targetUserId?: string) {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<Collection>(queryKey) || {};
       queryClient.setQueryData<Collection>(queryKey, {});
-      if (!user) writeLocalCollection({});
       return { previous };
     },
     onError: (err, newEntry, context) => {
@@ -156,26 +133,29 @@ export function useCollection(targetUserId?: string) {
 
   const addCopy = useCallback(
     (cardId: string, variant: "normal" | "foil" = "normal") => {
+      if (!user) return;
       const entry = collection[cardId] ?? { normal: 0, foil: 0 };
       const current = entry[variant];
       if (current >= 4) return;
       mutation.mutate({ cardId, entry: { ...entry, [variant]: current + 1 } });
     },
-    [collection, mutation]
+    [collection, mutation, user]
   );
 
   const removeCopy = useCallback(
     (cardId: string, variant: "normal" | "foil" = "normal") => {
+      if (!user) return;
       const entry = collection[cardId] ?? { normal: 0, foil: 0 };
       const current = entry[variant];
       if (current <= 0) return;
       mutation.mutate({ cardId, entry: { ...entry, [variant]: current - 1 } });
     },
-    [collection, mutation]
+    [collection, mutation, user]
   );
 
   const toggleCollected = useCallback(
     (cardId: string, variant: "normal" | "foil" = "normal") => {
+      if (!user) return;
       const entry = collection[cardId];
       if (!entry || (entry.normal === 0 && entry.foil === 0)) {
         mutation.mutate({
@@ -186,7 +166,7 @@ export function useCollection(targetUserId?: string) {
         mutation.mutate({ cardId, entry: { normal: 0, foil: 0 } });
       }
     },
-    [collection, mutation]
+    [collection, mutation, user]
   );
 
   const isCollected = useCallback(
@@ -204,8 +184,9 @@ export function useCollection(targetUserId?: string) {
   );
 
   const clearCollection = useCallback(() => {
+    if (!user) return;
     clearMutation.mutate();
-  }, [clearMutation]);
+  }, [clearMutation, user]);
 
   return {
     collection,
@@ -218,5 +199,7 @@ export function useCollection(targetUserId?: string) {
     collectedCount,
     totalCopies,
     clearCollection,
+    isLoading: isLoading && !!activeUserId,
+    isError,
   };
 }

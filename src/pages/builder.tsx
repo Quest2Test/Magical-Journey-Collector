@@ -1025,21 +1025,38 @@ export default function DeckBuilder() {
                     <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                       <Sparkles className="w-3.5 h-3.5" /> Collection Coverage
                     </h4>
-                    <span className="text-xs font-bold px-2 py-0.5 bg-primary/10 rounded-full text-primary">
-                      {totalCards > 0 ? Math.round(((totalCards - collectionStats.totalMissing) / totalCards) * 100) : 0}%
-                    </span>
+                    {user && (
+                      <span className="text-xs font-bold px-2 py-0.5 bg-primary/10 rounded-full text-primary">
+                        {totalCards > 0 ? Math.round(((totalCards - collectionStats.totalMissing) / totalCards) * 100) : 0}%
+                      </span>
+                    )}
                   </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Missing Cards</span>
-                      <span className="font-bold">{collectionStats.totalMissing}</span>
+                  {user ? (
+                    <>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Missing Cards</span>
+                          <span className="font-bold">{collectionStats.totalMissing}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Cost to Finish</span>
+                          <span className="font-bold text-amber-500">{formatPrice(collectionStats.costToFinish)}</span>
+                        </div>
+                      </div>
+                      <Progress value={totalCards > 0 ? ((totalCards - collectionStats.totalMissing) / totalCards) * 100 : 0} className="h-1.5" />
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        Sign in to track which cards you own and calculate the cost to complete this deck.
+                      </p>
+                      <Link href="/login">
+                        <Button variant="outline" size="sm" className="w-full h-8 text-[10px] font-bold uppercase tracking-wider">
+                          Sign In to track
+                        </Button>
+                      </Link>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Cost to Finish</span>
-                      <span className="font-bold text-amber-500">{formatPrice(collectionStats.costToFinish)}</span>
-                    </div>
-                  </div>
-                  <Progress value={totalCards > 0 ? ((totalCards - collectionStats.totalMissing) / totalCards) * 100 : 0} className="h-1.5" />
+                  )}
                 </div>
 
                 {/* Inkable vs Uninkable Progress */}

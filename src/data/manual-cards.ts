@@ -10,7 +10,7 @@ import { Card } from "./cards";
  * 2. Manual Data (If not in API, but defined here, this wins)
  * 3. Placeholders (If in neither, a face-down placeholder is shown)
  */
-export const MANUAL_CARDS: Card[] = [
+/**export const MANUAL_CARDS: Card[] = [
   {
     id: "manual-wun-010",
     name: "Manual Test (Woody)",
@@ -37,3 +37,6 @@ export const MANUAL_CARDS: Card[] = [
     releasedAt: "2026-05-15",
   },
 ];
+ */
+
+export const MANUAL_CARDS: Card[] = [];
