@@ -1,7 +1,11 @@
 import { Link } from "wouter";
- import { ArrowRight, Loader2 } from "lucide-react";
- import { useSets } from "@/hooks/useCards";
- import { motion } from "framer-motion";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { useSets, useAllCards } from "@/hooks/useCards";
+import { motion } from "framer-motion";
+import { useMemo } from "react";
+import { useCollection } from "@/hooks/useCollection";
+import { useAuth } from "@/components/auth-provider";
+import { Progress } from "@/components/ui/progress";
  
  const SET_COLORS: Record<string, string> = {
    "1": "from-blue-500/20 to-purple-500/20",
@@ -14,7 +18,33 @@ import { Link } from "wouter";
  };
  
  export default function Sets() {
-   const { data: sets = [], isLoading, isError } = useSets();
+   const { data: sets = [], isLoading: setsLoading, isError } = useSets();
+   const { data: allCards = [], isLoading: cardsLoading } = useAllCards();
+   const { collection } = useCollection();
+   const { user } = useAuth();
+ 
+   const isLoading = setsLoading || cardsLoading;
+ 
+   const ownedPerSet = useMemo(() => {
+     const counts: Record<string, number> = {};
+     if (!user) return counts;
+     
+     const cardIdToSet: Record<string, string> = {};
+     for (const card of allCards) {
+       cardIdToSet[card.id] = card.expansion;
+     }
+     
+     for (const cardId in collection) {
+       const entry = collection[cardId];
+       if (entry.normal > 0 || entry.foil > 0) {
+         const setId = cardIdToSet[cardId];
+         if (setId) {
+           counts[setId] = (counts[setId] || 0) + 1;
+         }
+       }
+     }
+     return counts;
+   }, [collection, allCards, user]);
  
    const mainSets = sets.filter(set => !set.isPromo);
    const promoSets = sets.filter(set => set.isPromo);
@@ -53,7 +83,7 @@ import { Link } from "wouter";
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-20">
              {mainSets.map((set, i) => (
-               <SetCard key={set.id} set={set} i={i} />
+               <SetCard key={set.id} set={set} i={i} ownedCount={ownedPerSet[set.id] || 0} showProgress={!!user} />
              ))}
            </div>
  
@@ -67,7 +97,7 @@ import { Link } from "wouter";
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  {promoSets.map((set, i) => (
-                   <SetCard key={set.id} set={set} i={i} />
+                   <SetCard key={set.id} set={set} i={i} ownedCount={ownedPerSet[set.id] || 0} showProgress={!!user} />
                  ))}
                </div>
              </div>
@@ -78,7 +108,7 @@ import { Link } from "wouter";
    );
  }
  
- function SetCard({ set, i }: { set: { id: string; name: string; setNum: number; count: number; releasedAt?: string; isPromo?: boolean }, i: number }) {
+ function SetCard({ set, i, ownedCount, showProgress }: { set: { id: string; name: string; setNum: number; count: number; releasedAt?: string; isPromo?: boolean }, i: number, ownedCount: number, showProgress: boolean }) {
    const colorClass = SET_COLORS[set.id] ?? "from-slate-500/20 to-gray-500/20";
    return (
      <motion.div
@@ -107,10 +137,22 @@ import { Link } from "wouter";
                </span>
              </div>
  
-             <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/50">
-               <span className="text-sm font-medium">{set.count} Cards</span>
-               <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors group-hover:translate-x-1" />
-             </div>
+             <div className="mt-auto pt-4 border-t border-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{set.count} Cards</span>
+                  <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors group-hover:translate-x-1" />
+                </div>
+                {showProgress && set.count > 0 && (
+                  <div className="space-y-1.5 pt-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-muted-foreground">Collected</span>
+                      <span className="font-bold">{Math.round((ownedCount / set.count) * 100)}%</span>
+                    </div>
+                    <Progress value={(ownedCount / set.count) * 100} className="h-1.5" />
+                    <div className="text-[10px] text-muted-foreground text-right">{ownedCount} / {set.count}</div>
+                  </div>
+                )}
+              </div>
            </div>
          </div>
        </Link>

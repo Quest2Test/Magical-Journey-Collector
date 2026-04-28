@@ -688,7 +688,8 @@ export default function Profile() {
                         </Pie>
                         <Tooltip
                           formatter={(value: number) => [`${value} cards`, '']}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -721,7 +722,8 @@ export default function Profile() {
                         </Pie>
                         <Tooltip
                           formatter={(value: number) => [`${value} cards`, '']}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
