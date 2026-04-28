@@ -18,7 +18,7 @@ import { useCollection } from "@/hooks/useCollection";
 import { useAllCards, useSets, useCardLookup } from "@/hooks/useCards";
 import { CardDisplay, inkHexColors, rarityIcons } from "@/components/ui/card-display";
 import { Progress } from "@/components/ui/progress";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Label as RechartsLabel } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -199,6 +199,13 @@ export default function Profile() {
     };
 
     const rarityCounts: Record<string, number> = {};
+    const costCounts: Record<string, number> = {
+      "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7+": 0
+    };
+    const typeCounts: Record<string, number> = {
+      Character: 0, Action: 0, Item: 0, Location: 0, Song: 0
+    };
+    const franchiseCounts: Record<string, number> = {};
 
     const collectedCardsInfo: any[] = [];
     const setProgressStats: Record<string, { collected: number, total: number, name: string, isPromo: boolean, releasedAt?: string, image?: string }> = {};
@@ -238,6 +245,26 @@ export default function Profile() {
       const rarity = card.rarity || "Common";
       rarityCounts[rarity] = (rarityCounts[rarity] || 0) + 1;
 
+      if (card.cost !== undefined) {
+        const costKey = card.cost >= 7 ? "7+" : card.cost.toString();
+        if (costCounts[costKey] !== undefined) {
+            costCounts[costKey] += qty;
+        } else {
+            costCounts[costKey] = qty;
+        }
+      }
+
+      const cardType = card.type?.includes("Song") ? "Song" : (card.type || "Other");
+      if (typeCounts[cardType] !== undefined) {
+        typeCounts[cardType] += qty;
+      } else {
+        typeCounts[cardType] = qty;
+      }
+
+      if (card.franchise) {
+        franchiseCounts[card.franchise] = (franchiseCounts[card.franchise] || 0) + qty;
+      }
+
       collectedCardsInfo.push({
         card,
         totalOwnedVal: cardValNormal + cardValFoil,
@@ -275,6 +302,18 @@ export default function Profile() {
     const rarityChartData = Object.entries(rarityCounts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => rarityOrder.indexOf(a.name) - rarityOrder.indexOf(b.name));
+
+    const costChartData = Object.entries(costCounts)
+      .map(([name, value]) => ({ name, value }));
+
+    const typeChartData = Object.entries(typeCounts)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }));
+
+    const franchiseChartData = Object.entries(franchiseCounts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
 
     collectedCardsInfo.sort((a, b) => b.totalOwnedVal - a.totalOwnedVal);
     const topCards = collectedCardsInfo.slice(0, 10);
@@ -336,6 +375,9 @@ export default function Profile() {
       totalUniqueFoils,
       inkChartData,
       rarityChartData,
+      costChartData,
+      typeChartData,
+      franchiseChartData,
       topCards,
       setProgressStats,
       level,
@@ -666,70 +708,183 @@ export default function Profile() {
           <TabsContent value="analysis" className="mt-4 focus-visible:ring-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
               {/* Ink Pie */}
-              <div className="bg-card border rounded-xl p-6 shadow-sm shadow-indigo-500/5">
-                <h3 className="font-serif font-bold text-xl mb-6">Ink Affinity</h3>
+              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
+                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                  <span className="w-8 h-1 bg-primary rounded-full"></span> Ink Affinity
+                </h3>
                 {dashboardData?.inkChartData.length ? (
-                  <div className="h-[250px] w-full">
+                  <div className="h-[280px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={dashboardData.inkChartData}
                           cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={5}
+                          cy="45%"
+                          innerRadius={65}
+                          outerRadius={95}
+                          paddingAngle={6}
                           dataKey="value"
                           stroke="none"
+                          cornerRadius={4}
                         >
                           {dashboardData.inkChartData.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={inkHexColors[entry.name as keyof typeof inkHexColors] || '#000'} />
+                            <Cell key={`cell-${index}`} fill={inkHexColors[entry.name as keyof typeof inkHexColors] || '#000'} className="drop-shadow-sm hover:opacity-80 transition-opacity" />
                           ))}
                         </Pie>
                         <Tooltip
                           formatter={(value: number) => [`${value} cards`, '']}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
-                          itemStyle={{ color: 'hsl(var(--foreground))' }}
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
                         />
+                        <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-[250px] flex items-center justify-center text-muted-foreground">No data for analysis.</div>
+                  <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
                 )}
               </div>
 
               {/* Rarity Pie */}
-              <div className="bg-card border rounded-xl p-6 shadow-sm shadow-indigo-500/5">
-                <h3 className="font-serif font-bold text-xl mb-6">Rarity Spectrum</h3>
+              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
+                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                  <span className="w-8 h-1 bg-purple-500 rounded-full"></span> Rarity Spectrum
+                </h3>
                 {dashboardData?.rarityChartData.length ? (
-                  <div className="h-[250px] w-full">
+                  <div className="h-[280px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={dashboardData.rarityChartData}
                           cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={5}
+                          cy="45%"
+                          innerRadius={65}
+                          outerRadius={95}
+                          paddingAngle={6}
                           dataKey="value"
                           stroke="none"
+                          cornerRadius={4}
                         >
                           {dashboardData.rarityChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={rarityColors[entry.name] || '#9ca3af'} />
+                            <Cell key={`cell-${index}`} fill={rarityColors[entry.name] || '#9ca3af'} className="drop-shadow-sm hover:opacity-80 transition-opacity" />
                           ))}
                         </Pie>
                         <Tooltip
                           formatter={(value: number) => [`${value} cards`, '']}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
-                          itemStyle={{ color: 'hsl(var(--foreground))' }}
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
                         />
+                        <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-[250px] flex items-center justify-center text-muted-foreground">No data for analysis.</div>
+                  <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
+                )}
+              </div>
+
+              {/* Card Type Distribution */}
+              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
+                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                  <span className="w-8 h-1 bg-emerald-500 rounded-full"></span> Card Types
+                </h3>
+                {dashboardData?.typeChartData?.length ? (
+                  <div className="h-[280px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={dashboardData.typeChartData}
+                          cx="50%"
+                          cy="45%"
+                          innerRadius={65}
+                          outerRadius={95}
+                          paddingAngle={6}
+                          dataKey="value"
+                          stroke="none"
+                          cornerRadius={4}
+                        >
+                          {dashboardData.typeChartData.map((entry: any, index: number) => {
+                            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
+                            return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} className="drop-shadow-sm hover:opacity-80 transition-opacity" />;
+                          })}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number) => [`${value} cards`, '']}
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+                        />
+                        <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
+                )}
+              </div>
+
+              {/* Cost Curve */}
+              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow lg:col-span-2 xl:col-span-1">
+                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                  <span className="w-8 h-1 bg-blue-500 rounded-full"></span> Cost Curve
+                </h3>
+                {dashboardData?.costChartData?.some((d: any) => d.value > 0) ? (
+                  <div className="h-[280px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dashboardData.costChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                        <defs>
+                          <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={1}/>
+                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
+                        <XAxis dataKey="name" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} dy={10}>
+                          <RechartsLabel value="Ink Cost" offset={-15} position="insideBottom" fill="hsl(var(--muted-foreground))" fontSize={11} fontWeight={600} />
+                        </XAxis>
+                        <YAxis tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          cursor={{fill: 'hsl(var(--muted))', opacity: 0.2}}
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+                        />
+                        <Bar dataKey="value" name="Cards" fill="url(#costGradient)" radius={[6, 6, 0, 0]} barSize={32} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
+                )}
+              </div>
+
+              {/* Top Franchises */}
+              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow lg:col-span-2">
+                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                  <span className="w-8 h-1 bg-amber-500 rounded-full"></span> Top Franchises
+                </h3>
+                {dashboardData?.franchiseChartData?.length ? (
+                  <div className="h-[320px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dashboardData.franchiseChartData} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
+                        <defs>
+                          <linearGradient id="franchiseGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.9}/>
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.9}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.4} />
+                        <XAxis type="number" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} />
+                        <YAxis type="category" dataKey="name" tick={{fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500}} axisLine={false} tickLine={false} width={100} />
+                        <Tooltip
+                          cursor={{fill: 'hsl(var(--muted))', opacity: 0.2}}
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+                        />
+                        <Bar dataKey="value" name="Cards" fill="url(#franchiseGradient)" radius={[0, 6, 6, 0]} barSize={28} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[320px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
                 )}
               </div>
             </div>
