@@ -1,8 +1,8 @@
+import { lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Moon, Sun, Search, Menu } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
-import { SearchModal } from "./SearchModal";
 import { MetaTags } from "./MetaTags";
 import {
   Sheet,
@@ -22,9 +22,19 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useCurrency } from "@/components/currency-provider";
+
+const SearchModal = lazy(() => import("./SearchModal"));
+
+const routePrefetch = new Map<string, () => Promise<any>>([
+  ["/cards", () => import("@/pages/cards")],
+  ["/builder", () => import("@/pages/builder")],
+  ["/decks", () => import("@/pages/decks")],
+  ["/sets", () => import("@/pages/sets")],
+  ["/resources", () => import("@/pages/resources")],
+  ["/academy", () => import("@/pages/academy")],
+]);
 
 export function Header() {
   const [location] = useLocation();
@@ -33,6 +43,10 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, signOut } = useAuth();
   const { currency, setCurrency } = useCurrency();
+
+  const prefetchRoute = (href: string) => {
+    routePrefetch.get(href)?.();
+  };
 
   const links = [
     { href: "/cards", label: "Cards" },
@@ -47,7 +61,6 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <MetaTags />
-      <SearchModal open={isSearchOpen} onOpenChange={setIsSearchOpen} />
       <div className="container flex h-16 items-center justify-between mx-auto px-4 md:px-6">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 group transition-opacity hover:opacity-90">
@@ -64,6 +77,7 @@ export function Header() {
               <Link
                 key={link.href}
                 href={link.href}
+                onMouseEnter={() => prefetchRoute(link.href)}
                 className={`transition-colors hover:text-foreground/80 ${
                   location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
                 }`}
@@ -84,6 +98,12 @@ export function Header() {
           >
             <Search className="h-5 w-5" />
           </Button>
+          
+          <Suspense fallback={null}>
+            {isSearchOpen ? (
+              <SearchModal open={isSearchOpen} onOpenChange={setIsSearchOpen} />
+            ) : null}
+          </Suspense>
           
           <Button
             variant="ghost"
@@ -172,6 +192,7 @@ export function Header() {
                     key={link.href}
                     href={link.href}
                     onClick={() => setIsOpen(false)}
+                    onMouseEnter={() => prefetchRoute(link.href)}
                     className={`text-lg font-medium transition-colors hover:text-foreground/80 ${
                       location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
                     }`}
