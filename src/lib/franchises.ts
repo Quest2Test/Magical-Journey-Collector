@@ -322,6 +322,7 @@ const franchiseMap: Record<string, string> = {
   "Sheriff of Nottingham": "Robin Hood",
   "Friar Tuck": "Robin Hood",
   "Alan-a-Dale": "Robin Hood",
+  "Alan-a-dale": "Robin Hood",
 
   // 101 Dalmatians
   "Cruella De Vil": "101 Dalmatians",
@@ -445,6 +446,8 @@ const franchiseMap: Record<string, string> = {
   "Audrey": "Atlantis",
   "Commander Rourke": "Atlantis",
   "Audrey Ramirez": "Atlantis",
+  "Helga Sinclair": "Atlantis",
+  "The Leviathan": "Atlantis",
 
   // Pinocchio
   "Pinocchio": "Pinocchio",
@@ -510,6 +513,29 @@ const franchiseMap: Record<string, string> = {
   "Bullseye": "Toy Story",
   "Ducky": "Toy Story",
   "Bunny": "Toy Story",
+  "Rc": "Toy Story",
+  "Lenny": "Toy Story",
+  "Alien": "Toy Story",
+  "Wind-up Frog": "Toy Story",
+  "Jingle Joe": "Toy Story",
+  "Roller Bob": "Toy Story",
+  "Hand-in-the-box": "Toy Story",
+  "Babyhead": "Toy Story",
+  "Bouncing Ducky": "Toy Story",
+  "Sid Phillips": "Toy Story",
+  "Pterodactyl Janie Doll": "Toy Story",
+  "Like A Bird In The Sky": "Toy Story",
+
+  // Toy Story Other
+  "Pizza Planet": "Toy Story",
+  "Andy's Room": "Toy Story",
+  "Sid's Room": "Toy Story",
+  "Al's Toy Barn": "Toy Story",
+  "You've Got a Friend in Me": "Toy Story",
+  "Strange Things": "Toy Story",
+  "When She Loved Me": "Toy Story",
+  "Buzz's Arm": "Toy Story",
+  "The Claw": "Toy Story",
 
   // The Incredibles
   "Mr. Incredible": "The Incredibles",
@@ -530,18 +556,35 @@ const franchiseMap: Record<string, string> = {
   "Luisa": "Encanto",
   "Antonio's Jaguar": "Encanto",
 
+  // Encanto Other
+  "This Growing Pressure": "Encanto",
+  "Metamorphosis": "Encanto",
+  "What Else Can I Do?": "Encanto",
+  "The Family's Scattered": "Encanto",
+
   // Brave
   "Merida": "Brave",
   "Angus": "Brave",
   "Queen Elinor": "Brave",
   "King Fergus": "Brave",
   "Mor’du": "Brave",
+  "Will O' The Wisp": "Brave",
+  "Hamish, Hubert & Harris": "Brave",
+  "Elinor": "Brave",
+  "Young Macguffin": "Brave",
+
+  //Brave Other
+  "The Legend of the Bear": "Brave",
+  "Dunbroch Family Tapestry": "Brave",
+  "Ring of Stones": "Brave",
+  "Touch The Sky": "Brave",
 
   // DuckTales
   "Webby Vanderquack": "DuckTales",
   "Bentley Buzzard": "DuckTales",
   "Beagle Boys": "DuckTales",
   "Black Heron": "DuckTales",
+  "Gosalyn Mallard": "DuckTales",
 
   // TaleSpin
   "Kit Cloudkicker": "TaleSpin",

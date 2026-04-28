@@ -55,6 +55,7 @@ export default function CardsBrowse() {
   const [inkableOnly, setInkableOnly] = useState(false);
   const [showUnreleased, setShowUnreleased] = useState(false);
   const [selectedCosts, setSelectedCosts] = useState<string[]>([]);
+  const [selectedFranchise, setSelectedFranchise] = useState<string>("all");
   const [ownershipFilter, setOwnershipFilter] = useState<"all" | "owned" | "missing">("all");
   const [maxPrice, setMaxPrice] = useState<number>(100);
   const [groupBySet, setGroupBySet] = useState(false);
@@ -68,6 +69,14 @@ export default function CardsBrowse() {
   const toggleSection = (id: string) => {
     setOpenSections(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
+
+  const availableFranchises = useMemo(() => {
+    const set = new Set<string>();
+    allCards.forEach(c => {
+      if (c.franchise) set.add(c.franchise);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allCards]);
 
   useEffect(() => {
     setSelectedSet(urlSet);
@@ -111,6 +120,7 @@ export default function CardsBrowse() {
     setSelectedRarities([]);
     setSelectedKeywords([]);
     setSelectedSet("");
+    setSelectedFranchise("all");
     setInkableOnly(false);
     setShowUnreleased(false);
     setSelectedCosts([]);
@@ -153,6 +163,8 @@ export default function CardsBrowse() {
         if (!matchesCost) return false;
       }
 
+      if (selectedFranchise !== "all" && card.franchise !== selectedFranchise) return false;
+
       if (ownershipFilter === "owned") {
         if (getQty(card.id) === 0) return false;
       } else if (ownershipFilter === "missing") {
@@ -182,9 +194,9 @@ export default function CardsBrowse() {
     });
 
     return result;
-  }, [allCards, deferredSearch, selectedSet, selectedInks, selectedTypes, selectedRarities, inkableOnly, selectedCosts, sortBy, selectedKeywords, ownershipFilter, maxPrice]);
+  }, [allCards, deferredSearch, selectedSet, selectedInks, selectedTypes, selectedRarities, inkableOnly, selectedCosts, sortBy, selectedKeywords, ownershipFilter, maxPrice, selectedFranchise]);
 
-  const hasFilters = deferredSearch || selectedInks.length > 0 || selectedTypes.length > 0 || selectedRarities.length > 0 || selectedSet || inkableOnly || selectedCosts.length > 0;
+  const hasFilters = deferredSearch || selectedInks.length > 0 || selectedTypes.length > 0 || selectedRarities.length > 0 || selectedSet || selectedFranchise !== "all" || inkableOnly || selectedCosts.length > 0;
 
   const displayedCards = filteredCards.slice(0, page * PAGE_SIZE);
 
@@ -248,6 +260,21 @@ export default function CardsBrowse() {
                     onChange={e => { setSearch(e.target.value); setPage(1); }}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label className="text-[10px] font-bold uppercase mb-2 block opacity-60">Franchise</Label>
+                <Select value={selectedFranchise} onValueChange={(v) => { setSelectedFranchise(v); setPage(1); }}>
+                  <SelectTrigger className="w-full text-xs h-9">
+                    <SelectValue placeholder="All Franchises" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectItem value="all">All Franchises</SelectItem>
+                    {availableFranchises.map(f => (
+                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
