@@ -39,8 +39,9 @@ export const buildDeckExportImage = async ({
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
       
+      // Use a public CORS-friendly proxy for production stability
       const normalizedSrc = src.includes('cards.lorcast.io')
-        ? `/api/image-proxy?url=${encodeURIComponent(src)}`
+        ? `https://images.weserv.nl/?url=${encodeURIComponent(src)}`
         : src;
         
       const finalSrc = normalizedSrc.startsWith('http') || normalizedSrc.startsWith('data:')
