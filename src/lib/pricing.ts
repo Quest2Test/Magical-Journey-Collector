@@ -28,3 +28,10 @@ export function getBaseCardValue(card: Card) {
   const { normal, foil } = getCardPricing(card);
   return normal > 0 ? normal : foil;
 }
+
+/**
+ * Calculates the total base value of a deck.
+ */
+export function getDeckValue(entries: { card: Card; qty: number }[]) {
+  return entries.reduce((acc, entry) => acc + (getBaseCardValue(entry.card) * entry.qty), 0);
+}

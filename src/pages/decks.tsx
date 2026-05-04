@@ -16,6 +16,8 @@ const FORMAT_STYLES: Record<string, { label: string; bg: string; text: string }>
   Any: { label: "Open", bg: "bg-muted", text: "text-muted-foreground" },
 };
 
+import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
+
 export default function DecksBrowse() {
   const [search, setSearch] = useState("");
   const { decks, deleteDeck, isLoading: loadingDecks } = useDecks();
@@ -24,50 +26,8 @@ export default function DecksBrowse() {
 
   // Hydrate starter decks
   const hydratedStarters = useMemo(() => {
-    // Aggressive normalization: lowercase, strip diacritics, and remove all punctuation/spaces
-    const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
-
-    return STARTER_DECKS.map(def => {
-      const missing: typeof def.cards = [];
-      const entries = def.cards.map(entry => {
-        const targetName = normalize(entry.name);
-        const targetSub = entry.subtitle ? normalize(entry.subtitle) : "";
-
-        const card = allCards.find(c => {
-          const cName = normalize(c.name);
-          const cSub = c.subtitle ? normalize(c.subtitle) : "";
-
-          const nameMatch = cName === targetName;
-          const subMatch = !entry.subtitle || cSub === targetSub;
-          
-          return nameMatch && subMatch;
-        });
-
-        if (!card) {
-          missing.push(entry);
-          return null;
-        }
-        return { card, qty: entry.qty };
-      }).filter((e): e is { card: any, qty: number } => e !== null);
-
-      if (missing.length > 0 && !loadingCards) {
-        console.warn(`Deck "${def.name}" is missing ${missing.length} cards:`, missing);
-      }
-
-      const totalCards = entries.reduce((acc, e) => acc + e.qty, 0);
-      const totalValue = entries.reduce((acc, e) => acc + (e.card.priceUsd || 0) * e.qty, 0);
-
-      return {
-        ...def,
-        entries,
-        totalCards,
-        totalValue,
-        format: "Core",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isOfficial: true,
-      } as SavedDeck & { setName: string; isOfficial: boolean };
-    });
+    if (loadingCards || allCards.length === 0) return [];
+    return getHydratedStarterDecks(allCards);
   }, [allCards, loadingCards]);
 
   // Group starters by set

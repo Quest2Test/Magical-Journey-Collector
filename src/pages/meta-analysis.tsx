@@ -4,6 +4,7 @@ import { useAllCards } from "@/hooks/useCards";
 import { ARCHETYPES } from "@/data/archetypes";
 import { useCollection } from "@/hooks/useCollection";
 import { useCurrency } from "@/components/currency-provider";
+import { getBaseCardValue } from "@/lib/pricing";
 import { CardDisplay, inkHexColors, rarityIcons } from "@/components/ui/card-display";
 import { TOURNAMENTS } from "@/data/tournaments";
 import { Trophy, Download } from "lucide-react";
@@ -45,7 +46,7 @@ export default function MetaAnalysis({ params }: { params: { id: string } }) {
         card: cardData,
         ownedQty: Math.min(ad.qty, totalOwned),
         missingQty: Math.max(0, ad.qty - totalOwned),
-        price: cardData ? (cardData.priceUsd ?? cardData.priceUsdFoil ?? 0) : 0
+        price: cardData ? getBaseCardValue(cardData) : 0
       };
     });
 

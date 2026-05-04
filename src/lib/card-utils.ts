@@ -34,3 +34,11 @@ export function getDisplayType(card: Card): string {
   if (card.type === 'Song') return 'Action';
   return card.type;
 }
+
+/**
+ * Returns true if the card is only available in a foil treatment.
+ */
+export function isFoilOnly(card: Card): boolean {
+  const FOIL_ONLY_RARITIES = ["Enchanted", "Iconic", "Epic"];
+  return FOIL_ONLY_RARITIES.includes(card.rarity);
+}

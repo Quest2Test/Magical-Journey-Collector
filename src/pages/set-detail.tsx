@@ -16,11 +16,8 @@ import { cn } from "@/lib/utils";
 import { SET_GRADIENTS, SET_ACCENT, SET_ACRONYMS } from "@/lib/sets";
 import { getCardPricing, getBaseCardValue } from "@/lib/pricing";
 import { BinderView } from "@/components/profile/BinderView";
-import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
+import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-utils";
 
-
-
-const FOIL_ONLY_RARITIES: Card["rarity"][] = ["Enchanted"];
 const RARITIES = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Enchanted", "Iconic", "Promo"];
 const INK_COLORS = ["Amber", "Amethyst", "Emerald", "Ruby", "Sapphire", "Steel"];
 const CARD_TYPES = ["Character", "Action", "Item", "Location", "Song"];
@@ -754,7 +751,7 @@ export default function SetDetail() {
                 >
                   {displayed.map((card: Card, i: number) => {
                     const entry = getEntry(card.id);
-                    const foilOnly = FOIL_ONLY_RARITIES.includes(card.rarity);
+                    const foilOnly = isFoilOnly(card);
                     return (
                       <motion.div
                         key={card.id}
@@ -804,7 +801,7 @@ export default function SetDetail() {
                 >
                   {displayed.map((card: Card) => {
                     const entry = getEntry(card.id);
-                    const foilOnly = FOIL_ONLY_RARITIES.includes(card.rarity);
+                    const foilOnly = isFoilOnly(card);
                     const collected = isCollected(card.id);
 
                     return (

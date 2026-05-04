@@ -36,6 +36,7 @@ import { DeckShareModal } from "@/components/builder/DeckShareModal";
 import { DeckAuthGuardModal } from "@/components/builder/DeckAuthGuardModal";
 import { DeckPrintProxiesModal } from "@/components/builder/DeckPrintProxiesModal";
 import { DeckRegistrationSheetModal } from "@/components/builder/DeckRegistrationSheetModal";
+import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
 
 export default function DeckBuilder() {
   const { data: allCards = [], isLoading } = useAllCards();
@@ -88,19 +89,31 @@ export default function DeckBuilder() {
   // Handle loading deck for editing
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const editId = params.get("edit");
+    const editId = params.get('edit');
+    if (editId && allCards.length > 0) {
+      // 1. Check user decks
+      let target = decks.find(d => d.id === editId);
 
-    if (editId && decks.length > 0) {
-      const existingDeck = decks.find(d => d.id === editId);
-      if (existingDeck) {
-        setDeckName(existingDeck.name);
-        setDeckCards(existingDeck.entries);
-        setFormat(existingDeck.format);
-        setDeckId(existingDeck.id);
-        setSavedAt(existingDeck.createdAt);
+      // 2. Check starter decks if not found and ID looks like a starter
+      if (!target && editId.startsWith('starter-')) {
+        const starters = getHydratedStarterDecks(allCards);
+        target = starters.find(s => s.id === editId);
+      }
+
+      if (target) {
+        setDeckName(target.name);
+        setFormat(target.format as any);
+        setDeckCards(target.entries);
+        setDeckId(target.id);
+        setSavedAt(target.createdAt);
+        
+        // If there's a sideboard, handle it if it exists in the data
+        if ((target as any).sideboard) {
+          setSideboardCards((target as any).sideboard);
+        }
       }
     }
-  }, [decks]);
+  }, [decks, allCards]);
 
   // Handle template import from Meta page
   useEffect(() => {
@@ -171,7 +184,7 @@ export default function DeckBuilder() {
       byType[card.type].push({ card, qty });
 
       if (!card.inkable) uninkable += qty;
-      val += (Math.max(card.priceUsd || 0, card.priceUsdFoil || 0) * qty);
+      val += (getBaseCardValue(card) * qty);
     });
 
     const active = Object.keys(inkDist);
@@ -918,7 +931,7 @@ export default function DeckBuilder() {
                       }}
                       className="p-2"
                     >
-                      {rowVirtualizer.getVirtualItems().map((virtualRow: any) =>  {
+                      {rowVirtualizer.getVirtualItems().map((virtualRow: any) => {
                         const card = filteredCards[virtualRow.index];
                         const inDeckQty = deckCards.find(e => e.card.id === card.id)?.qty || 0;
                         // Check total copies of this card identity (name+subtitle) across all variants

@@ -60,7 +60,7 @@ export function DeckShareModal({
               {isGeneratingPreview ? (
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                  <div className="text-sm font-medium text-muted-foreground">Generating premium preview…</div>
+                  <div className="text-sm font-medium text-muted-foreground">Generating preview…</div>
                 </div>
               ) : previewError ? (
                 <div className="text-center text-sm text-destructive bg-destructive/10 p-4 rounded-xl border border-destructive/20 max-w-xs">{previewError}</div>
@@ -77,21 +77,21 @@ export function DeckShareModal({
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-background/50 border border-border/50">
                   <span className="text-sm font-medium">Columns</span>
                   <div className="flex items-center gap-3">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors" 
-                      onClick={() => onShareColumnsChange(Math.max(4, shareColumns - 1))} 
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                      onClick={() => onShareColumnsChange(Math.max(4, shareColumns - 1))}
                       disabled={shareColumns <= 4}
                     >
                       <Minus className="w-4 h-4" />
                     </Button>
                     <span className="text-base font-bold w-4 text-center tabular-nums">{shareColumns}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors" 
-                      onClick={() => onShareColumnsChange(Math.min(12, shareColumns + 1))} 
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                      onClick={() => onShareColumnsChange(Math.min(12, shareColumns + 1))}
                       disabled={shareColumns >= 12}
                     >
                       <Plus className="w-4 h-4" />

@@ -16,12 +16,8 @@ import {
   DialogTrigger,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const FOIL_ONLY_RARITIES: string[] = ["Enchanted", "Iconic"];
-
 import { highlightRulesText, SYMBOL_ICONS } from "@/components/ui/card-text";
-import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
-
+import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-utils";
 
 export default function CardDetail() {
   const { id } = useParams();
@@ -33,7 +29,7 @@ export default function CardDetail() {
   const decodedId = id ? decodeURIComponent(id) : "";
   const card = allCards.find(c => c.id === decodedId);
   const collectionEntry = card ? getEntry(card.id) : { normal: 0, foil: 0 };
-  const foilOnly = card ? FOIL_ONLY_RARITIES.includes(card.rarity) : false;
+  const foilOnly = card ? isFoilOnly(card) : false;
   const legality = card ? getCardLegality(card, allCards) : null;
 
   const searchStr = useSearch();

@@ -8,14 +8,30 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/currency-provider";
 import { useMemo } from "react";
 
+import { useAllCards } from "@/hooks/useCards";
+import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
+
 export default function DeckDetail() {
   const { id } = useParams();
-  const { decks, isLoading } = useDecks();
+  const { decks, isLoading: loadingDecks } = useDecks();
+  const { data: allCards = [], isLoading: loadingCards } = useAllCards();
   const { formatPrice } = useCurrency();
 
   const deck = useMemo(() => {
-    return decks.find(d => d.id === id);
-  }, [decks, id]);
+    // 1. Check user decks
+    const userDeck = decks.find(d => d.id === id);
+    if (userDeck) return userDeck;
+
+    // 2. Check starter decks if ID starts with 'starter-'
+    if (id?.startsWith('starter-') && allCards.length > 0) {
+      const starters = getHydratedStarterDecks(allCards);
+      return starters.find(s => s.id === id);
+    }
+
+    return null;
+  }, [decks, id, allCards]);
+
+  const isLoading = loadingDecks || (id?.startsWith('starter-') && loadingCards);
 
   if (isLoading) {
     return (
