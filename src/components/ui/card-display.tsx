@@ -145,11 +145,11 @@ export const CardDisplay = memo(function CardDisplay({
       {!hideInfo && (
         <div className="mt-1.5 px-0.5">
           <p className="text-sm font-semibold truncate leading-tight">{card.name}</p>
-          <p className="text-[10px] text-muted-foreground truncate leading-tight">
+          <p className="text-[10px] text-foreground/70 truncate leading-tight">
             {getFormattedSubtitle(card) || getDisplayType(card)}
           </p>
           {card.franchise && (
-            <p className="text-[9px] font-bold uppercase tracking-wider text-primary/70 truncate mt-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-text truncate mt-0.5">
               {card.franchise}
             </p>
           )}

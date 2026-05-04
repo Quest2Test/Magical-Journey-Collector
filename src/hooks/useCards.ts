@@ -95,17 +95,40 @@ export function apiCardToCard(apiCard: LorcastCard): Card {
   };
 }
 
+let memoryCardCache: { cards: any[]; timestamp: number } | null = null;
+
 const CACHE_KEY = "lorcast_cards_cache_v2";
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 const LORCAST_CARDS_QUERY_KEY = ["lorcast-cards"];
 
 async function fetchRawCards(): Promise<Card[]> {
-  const cached = localStorage.getItem(CACHE_KEY);
-  if (cached) {
+  if (memoryCardCache && Date.now() - memoryCardCache.timestamp < CACHE_TTL) {
+    return memoryCardCache.cards as Card[];
+  }
+
+  const legacyCache = localStorage.getItem(CACHE_KEY);
+  if (legacyCache) {
+    localStorage.removeItem(CACHE_KEY);
+  }
+
+  const meta = localStorage.getItem(`${CACHE_KEY}_meta`);
+  if (meta) {
     try {
-      const { data, timestamp } = JSON.parse(cached);
-      if (data && timestamp && Date.now() - timestamp < CACHE_TTL) {
-        return data as Card[];
+      const { chunkCount, timestamp } = JSON.parse(meta);
+      if (chunkCount && timestamp && Date.now() - timestamp < CACHE_TTL) {
+        let serialized = '';
+        for (let i = 0; i < chunkCount; i++) {
+          const chunk = localStorage.getItem(`${CACHE_KEY}_chunk_${i}`);
+          if (!chunk) {
+            serialized = '';
+            break;
+          }
+          serialized += chunk;
+        }
+
+        if (serialized) {
+          return JSON.parse(serialized) as Card[];
+        }
       }
     } catch (e) {
       console.warn("Failed to parse cached cards", e);
@@ -115,12 +138,42 @@ async function fetchRawCards(): Promise<Card[]> {
   console.info("Fetching fresh card data from API");
   const apiCards = await fetchAllCards();
   const cards = apiCards.map(apiCardToCard);
+  memoryCardCache = { cards, timestamp: Date.now() };
 
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      data: cards,
-      timestamp: Date.now()
-    }));
+    const CHUNK_SIZE = 150_000;
+    const serialized = JSON.stringify(cards);
+    const chunkCount = Math.ceil(serialized.length / CHUNK_SIZE);
+    const keysToRemove: string[] = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith("lorcast_cards_cache") || key.startsWith("lorcast_cards_cache_v2"))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+
+    let writeSuccess = true;
+    for (let i = 0; i < chunkCount; i++) {
+      try {
+        localStorage.setItem(
+          `${CACHE_KEY}_chunk_${i}`,
+          serialized.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE)
+        );
+      } catch (chunkError) {
+        console.warn(`Failed to write chunk ${i}, aborting cache write`, chunkError);
+        for (let j = 0; j <= i; j++) {
+          localStorage.removeItem(`${CACHE_KEY}_chunk_${j}`);
+        }
+        writeSuccess = false;
+        break;
+      }
+    }
+
+    if (writeSuccess) {
+      localStorage.setItem(`${CACHE_KEY}_meta`, JSON.stringify({ chunkCount, timestamp: Date.now() }));
+    }
   } catch (e) {
     console.warn("Failed to cache cards", e);
   }

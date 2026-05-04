@@ -26,6 +26,8 @@
 
     --accent: 45 68% 47%;
     --accent-foreground: 223 47% 11%;
+    --primary-text: 45 68% 18%;
+    --accent-text: 45 68% 18%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -71,6 +73,8 @@
     --muted-foreground: 215 20% 65%;
     --accent: 45 68% 33%;
     --accent-foreground: 0 0% 100%;
+    --primary-text: 45 68% 18%;
+    --accent-text: 45 68% 18%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
     --border: 223 40% 25%;
@@ -114,4 +118,12 @@
 }
 .dark .active-elevate-2:active {
   @apply brightness-125;
+}
+
+.text-primary-text {
+  color: hsl(var(--primary-text));
+}
+
+.text-accent-text {
+  color: hsl(var(--accent-text));
 }

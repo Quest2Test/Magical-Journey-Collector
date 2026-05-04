@@ -280,7 +280,7 @@ export default function SetDetail() {
           onClick={() => toggleSection("basic")}
           className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
         >
-          <span className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+          <span className="text-sm font-bold uppercase tracking-widest text-primary-text flex items-center gap-2">
             <Search className="w-4 h-4" /> Essential
           </span>
           <ChevronDown className={cn("w-4 h-4 transition-transform", openSections.includes("basic") && "rotate-180")} />
@@ -351,7 +351,7 @@ export default function SetDetail() {
           onClick={() => toggleSection("tactical")}
           className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
         >
-          <span className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+          <span className="text-sm font-bold uppercase tracking-widest text-primary-text flex items-center gap-2">
             <Trophy className="w-4 h-4" /> Strategic
           </span>
           <ChevronDown className={cn("w-4 h-4 transition-transform", openSections.includes("tactical") && "rotate-180")} />
@@ -374,7 +374,7 @@ export default function SetDetail() {
                       onClick={() => { setCollectedFilter(mode); setPage(1); }}
                       className={cn(
                         "py-1.5 rounded-md text-[10px] font-bold capitalize transition-all",
-                        collectedFilter === mode ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:bg-muted/50"
+                        collectedFilter === mode ? "bg-card shadow-sm text-primary-text" : "text-muted-foreground hover:bg-muted/50"
                       )}
                     >
                       {mode}
@@ -539,7 +539,7 @@ export default function SetDetail() {
                       {!user && (
                         <>
                           <span>•</span>
-                          <Link href="/login" className="text-primary hover:underline font-bold">Sign in to track your collection</Link>
+                          <Link href="/login" className="text-primary-text hover:underline font-bold">Sign in to track your collection</Link>
                         </>
                       )}
                       {user && (
@@ -707,7 +707,7 @@ export default function SetDetail() {
                 </button>
                 <button
                   onClick={() => setViewMode("binder")}
-                  className={cn("p-1.5 rounded-sm transition-colors", viewMode === "binder" ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("p-1.5 rounded-sm transition-colors", viewMode === "binder" ? "bg-background shadow-sm text-primary-text" : "text-muted-foreground hover:text-foreground")}
                   title="Binder View"
                 >
                   <BookOpen className="w-4 h-4" />
@@ -786,7 +786,7 @@ export default function SetDetail() {
                             <span>{isCollected(card.id) ? "Collected" : "Add to Collection"}</span>
                           </button>
                         ) : (
-                          <Link href="/login" className="w-full text-center py-2 text-[10px] font-bold text-primary hover:underline opacity-80 hover:opacity-100 transition-opacity">
+                          <Link href="/login" className="w-full text-center py-2 text-[10px] font-bold text-primary-text hover:underline opacity-80 hover:opacity-100 transition-opacity">
                             Login to add to collection
                           </Link>
                         )}
@@ -824,12 +824,12 @@ export default function SetDetail() {
                                 )}
                               </button>
 
-                              <div className="text-[10px] text-muted-foreground text-center leading-tight">
+                              <div className="text-[10px] text-foreground/70 text-center leading-tight">
                                 {!foilOnly ? `${entry.normal} normal · ${entry.foil} foil` : `${entry.foil} foil only`}
                               </div>
                             </>
                           ) : (
-                            <Link href="/login" className="text-primary hover:underline text-[9px] font-bold text-center leading-tight">
+                            <Link href="/login" className="text-primary-text hover:underline text-[9px] font-bold text-center leading-tight">
                               Login to track
                             </Link>
                           )}
@@ -851,11 +851,11 @@ export default function SetDetail() {
                             <p className="text-sm font-semibold truncate hover:text-primary transition-colors cursor-pointer">
                               {card.cardNum ? `#${String(card.cardNum).padStart(3, "0")} ` : ""}{card.name}
                               {getFormattedSubtitle(card) && (
-                                <span className="font-normal text-muted-foreground"> — {getFormattedSubtitle(card)}</span>
+                                <span className="font-normal text-foreground/70"> — {getFormattedSubtitle(card)}</span>
                               )}
                             </p>
                           </Link>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          <div className="flex items-center gap-2 text-xs text-foreground/70 mt-0.5">
                             <div
                               className="w-2.5 h-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: inkHexColors[card.inkColor] }}
