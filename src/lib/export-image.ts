@@ -10,6 +10,9 @@ export interface ExportImageParams {
   shareColumns: number;
   inkDistribution: Record<string, number>;
   formatPrice: (val: number) => string;
+  showFormat?: boolean;
+  showCount?: boolean;
+  showValue?: boolean;
 }
 
 const INK_HEX_COLORS: Record<string, string> = {
@@ -29,7 +32,10 @@ export const buildDeckExportImage = async ({
   totalValue,
   shareColumns,
   inkDistribution,
-  formatPrice
+  formatPrice,
+  showFormat = true,
+  showCount = true,
+  showValue = true
 }: ExportImageParams): Promise<Blob | null> => {
   const loadImage = (src: string) =>
     new Promise<HTMLImageElement | null>((resolve) => {
@@ -119,7 +125,16 @@ export const buildDeckExportImage = async ({
 
   ctx.font = '24px Inter, system-ui, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.fillText(`${format} Format · ${totalCards} cards · ${formatPrice(totalValue)}`, padding, 125);
+  
+  const headerParts = [];
+  if (showFormat) headerParts.push(`${format} Format`);
+  if (showCount) headerParts.push(`${totalCards} cards`);
+  if (showValue) headerParts.push(`${formatPrice(totalValue)}`);
+  
+  const headerSubText = headerParts.join(' · ');
+  if (headerSubText) {
+    ctx.fillText(headerSubText, padding, 125);
+  }
 
   // Draw Logo (Top Right)
   const logo = await loadImage('/LorBound_Logo.webp');
