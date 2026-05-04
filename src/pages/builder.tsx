@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
+import { useState, useMemo, useEffect, useRef, useDeferredValue, useCallback } from "react";
 import { Link } from "wouter";
 import { useAllCards } from "@/hooks/useCards";
 import { Card } from "@/data/cards";
@@ -38,8 +38,31 @@ export default function DeckBuilder() {
   const { data: sets = [] } = useSets();
   const [deckName, setDeckName] = useState("New Deck");
   const [deckCards, setDeckCards] = useState<{ card: Card; qty: number }[]>([]);
+  // Performance: Debounced search to reduce filtering frequency
   const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 150); // 150ms debounce
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [search]);
+
+  const deferredSearch = useDeferredValue(debouncedSearch);
+
+  // Performance: Add pagination to limit rendered cards
+  const [currentPage, setCurrentPage] = useState(1);
+  const CARDS_PER_PAGE = 200;
 
   // Advanced filters
   const [filterInk, setFilterInk] = useState<string[]>([]);
@@ -139,8 +162,8 @@ export default function DeckBuilder() {
 
   const totalCards = deckCards.reduce((acc, curr) => acc + curr.qty, 0);
 
-  // Deck Statistics Processing
-  const { inkDistribution, costCurve, cardsByType, uninkableCount, totalValue, activeInks, isLegalInkCount, isLegalSize, maxInksReached, pieData, avgCost, typeBreakdown } = useMemo(() => {
+  // Deck Statistics Processing (optimized)
+  const deckStats = useMemo(() => {
     const inkDist: Record<string, number> = {};
     const curve: { cost: string; count: number; [ink: string]: string | number }[] = Array.from({ length: 7 }, (_, i) => ({
       cost: i < 6 ? String(i + 1) : "7+",
@@ -152,22 +175,34 @@ export default function DeckBuilder() {
 
     let uninkable = 0;
     let val = 0;
+    let totalCost = 0;
 
+    // Single pass through deck cards
     deckCards.forEach(({ card, qty }) => {
+      // Ink distribution
       inkDist[card.inkColor] = (inkDist[card.inkColor] || 0) + qty;
+
+      // Cost curve
       const costIndex = Math.min(card.cost - 1, 6);
       if (costIndex >= 0) {
         curve[costIndex].count += qty;
         curve[costIndex][card.inkColor] = ((curve[costIndex][card.inkColor] as number) || 0) + qty;
       }
+
+      // Type grouping
       if (!byType[card.type]) byType[card.type] = [];
       byType[card.type].push({ card, qty });
 
+      // Other stats
       if (!card.inkable) uninkable += qty;
-      val += (Math.max(card.priceUsd || 0, card.priceUsdFoil || 0) * qty);
+      const cardValue = Math.max(card.priceUsd || 0, card.priceUsdFoil || 0);
+      val += cardValue * qty;
+      totalCost += card.cost * qty;
     });
 
     const active = Object.keys(inkDist);
+    const avgCost = totalCards > 0 ? totalCost / totalCards : 0;
+
     return {
       inkDistribution: inkDist,
       costCurve: curve,
@@ -179,17 +214,32 @@ export default function DeckBuilder() {
       isLegalSize: totalCards === 60,
       maxInksReached: active.length >= 2,
       pieData: Object.entries(inkDist).map(([name, value]) => ({ name, value })),
-      avgCost: totalCards > 0 ? deckCards.reduce((sum, e) => sum + e.card.cost * e.qty, 0) / totalCards : 0,
+      avgCost,
       typeBreakdown: Object.entries(byType)
         .map(([type, cards]) => ({ type, count: cards.reduce((a, c) => a + c.qty, 0) }))
         .filter(t => t.count > 0)
     };
   }, [deckCards, totalCards]);
 
+  // Destructure for easier access
+  const { inkDistribution, costCurve, cardsByType, uninkableCount, totalValue, activeInks, isLegalInkCount, isLegalSize, maxInksReached, pieData, avgCost, typeBreakdown } = deckStats;
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearch, filterInk, filterCost, filterType, filterSet, inkableOnly, showUnreleased, smartFilter, format]);
+
   const illegalCardsCount = useMemo(() => {
     if (format === "Any") return 0;
+
+    // Cache legality results to avoid repeated expensive calls
+    const legalityCache = new Map<string, ReturnType<typeof getCardLegality>>();
+
     return deckCards.filter(({ card }) => {
-      const legality = getCardLegality(card, allCards);
+      if (!legalityCache.has(card.id)) {
+        legalityCache.set(card.id, getCardLegality(card, allCards));
+      }
+      const legality = legalityCache.get(card.id)!;
       return format === "Core" ? legality.core !== "Legal" : legality.infinity !== "Legal";
     }).length;
   }, [deckCards, format, allCards]);
@@ -290,21 +340,29 @@ export default function DeckBuilder() {
     });
   };
   const filteredCards = useMemo(() => {
-    return allCards.filter(c => {
+    let filtered = allCards.filter(c => {
+      // Fast pre-filters first
+      if (c.name.startsWith("Unrevealed Card #") || c.name.startsWith("Unreleased Card #")) return false;
+      if (!showUnreleased && c.releasedAt && new Date(c.releasedAt) > new Date()) return false;
+      if (inkableOnly && !c.inkable) return false;
+      if (filterSet !== "All" && c.set !== filterSet) return false;
+
+      // Search filter (deferred)
       if (deferredSearch) {
         const s = deferredSearch.toLowerCase();
         if (!c.name.toLowerCase().includes(s) && !c.subtitle?.toLowerCase().includes(s)) return false;
       }
-      // Permanently exclude unrevealed placeholders from the builder
-      if (c.name.startsWith("Unrevealed Card #") || c.name.startsWith("Unreleased Card #")) return false;
 
-      if (!showUnreleased && c.releasedAt && new Date(c.releasedAt) > new Date()) return false;
-      if (inkableOnly && !c.inkable) return false;
-      if (filterSet !== "All" && c.set !== filterSet) return false;
+      // Cost filter
       if (filterCost.length > 0) {
-        if (!filterCost.includes(c.cost >= 7 ? "7+" : c.cost.toString())) return false;
+        const costStr = c.cost >= 7 ? "7+" : c.cost.toString();
+        if (!filterCost.includes(costStr)) return false;
       }
+
+      // Ink filter
       if (filterInk.length > 0 && !filterInk.includes(c.inkColor)) return false;
+
+      // Type filter
       if (filterType.length > 0) {
         const matchesType = filterType.some(t => {
           if (t === "Action") return c.type === "Action" || c.type === "Song";
@@ -313,11 +371,10 @@ export default function DeckBuilder() {
         if (!matchesType) return false;
       }
 
-      // Smart Filter logic: locks browser to current deck inks if deck is saturated
-      if (smartFilter && maxInksReached) {
-        if (!activeInks.includes(c.inkColor)) return false;
-      }
+      // Smart Filter logic
+      if (smartFilter && maxInksReached && !activeInks.includes(c.inkColor)) return false;
 
+      // Format legality (expensive, do last)
       if (format !== "Any") {
         const legality = getCardLegality(c, allCards);
         if (format === "Core" && legality.core !== "Legal") return false;
@@ -325,30 +382,86 @@ export default function DeckBuilder() {
       }
 
       return true;
-    }).sort((a, b) => {
-      // 1. Sort by Ink Color (Alphabetically)
-      if (a.inkColor !== b.inkColor) {
-        return a.inkColor.localeCompare(b.inkColor);
-      }
+    });
 
-      // 2. Sort by Set Latest First (Descending using setNum)
-      const aSetNum = typeof a.setNum === 'number' && !isNaN(a.setNum) ? a.setNum : 0;
-      const bSetNum = typeof b.setNum === 'number' && !isNaN(b.setNum) ? b.setNum : 0;
-      if (aSetNum !== bSetNum) {
-        return bSetNum - aSetNum;
-      }
+    // Sort (optimized)
+    filtered.sort((a, b) => {
+      // Primary: Ink Color
+      if (a.inkColor !== b.inkColor) return a.inkColor.localeCompare(b.inkColor);
 
-      // 3. Fallback: Sort by Cost (Ascending)
-      if (a.cost !== b.cost) {
-        return a.cost - b.cost;
-      }
+      // Secondary: Set (newest first)
+      const aSetNum = a.setNum || 0;
+      const bSetNum = b.setNum || 0;
+      if (aSetNum !== bSetNum) return bSetNum - aSetNum;
 
-      // 4. Fallback: Sort by Name
+      // Tertiary: Cost then Name
+      if (a.cost !== b.cost) return a.cost - b.cost;
       return a.name.localeCompare(b.name);
     });
-  }, [allCards, deferredSearch, inkableOnly, filterSet, filterCost, filterInk, filterType, smartFilter, maxInksReached, activeInks, format]);
+
+    return filtered;
+  }, [allCards, deferredSearch, showUnreleased, inkableOnly, filterSet, filterCost, filterInk, filterType, smartFilter, maxInksReached, activeInks, format]);
+
+  // Paginated cards for rendering
+  const paginatedCards = useMemo(() => {
+    const startIndex = (currentPage - 1) * CARDS_PER_PAGE;
+    return filteredCards.slice(startIndex, startIndex + CARDS_PER_PAGE);
+  }, [filteredCards, currentPage]);
+
+  const totalPages = Math.ceil(filteredCards.length / CARDS_PER_PAGE);
 
   const parentRef = useRef<HTMLDivElement>(null);
+
+  // Memoized card renderer for performance
+  const renderCard = useCallback((card: Card, index: number) => {
+    const inDeckQty = deckCards.find(e => e.card.id === card.id)?.qty || 0;
+    const totalIdentityCopies = deckCards.reduce((sum, e) => {
+      if (e.card.name === card.name && e.card.subtitle === card.subtitle) return sum + e.qty;
+      return sum;
+    }, 0);
+    const isMaxedOut = totalIdentityCopies >= 4;
+    const isDeckFull = totalCards >= 60;
+
+    return (
+      <div key={`${card.id}-${index}`}>
+        <HoverCard openDelay={200} closeDelay={50}>
+          <HoverCardTrigger asChild>
+            <button
+              onClick={() => addCard(card)}
+              disabled={isMaxedOut || isDeckFull}
+              className={`w-full flex items-center gap-2 p-2 rounded-md transition-colors text-left group ${inDeckQty > 0 ? 'bg-primary/5 border-l-2 border-l-primary' : ''} ${isMaxedOut || isDeckFull ? 'opacity-35 cursor-not-allowed' : 'hover:bg-secondary/70'}`}
+            >
+              <img
+                src={getInkLogo(card.inkColor)}
+                alt={card.inkColor}
+                className="w-5 h-5 object-contain shrink-0"
+                loading="lazy"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate leading-tight flex items-center gap-1.5">
+                  {card.name}
+                  {!card.inkable && <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" title="Uninkable" />}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest mt-0.5">
+                  Cost {card.cost} · {getDisplayType(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}
+                </p>
+              </div>
+              {inDeckQty > 0 ? (
+                <span className="text-[10px] font-bold bg-primary/15 text-primary px-1.5 py-0.5 rounded shrink-0">
+                  ×{inDeckQty}
+                </span>
+              ) : (
+                <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              )}
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent side="right" className="w-[300px] p-0 border-0 shadow-2xl bg-transparent" align="start">
+            <CardDisplay card={card} className="w-full" />
+          </HoverCardContent>
+        </HoverCard>
+      </div>
+    );
+  }, [deckCards, totalCards, setCountMap]);
 
   // Grouping Right Canvas
   const groupedDeck = useMemo(() => {
@@ -900,56 +1013,39 @@ export default function DeckBuilder() {
                     </div>
                   ) : (
                     <div className="p-2 space-y-1">
-                      {filteredCards.map((card, index) => {
-                        const inDeckQty = deckCards.find(e => e.card.id === card.id)?.qty || 0;
-                        // Check total copies of this card identity (name+subtitle) across all variants
-                        const totalIdentityCopies = deckCards.reduce((sum, e) => {
-                          if (e.card.name === card.name && e.card.subtitle === card.subtitle) return sum + e.qty;
-                          return sum;
-                        }, 0);
-                        const isMaxedOut = totalIdentityCopies >= 4;
-                        const isDeckFull = totalCards >= 60;
-                        return (
-                          <div key={index}>
-                            <HoverCard openDelay={200} closeDelay={50}>
-                            <HoverCardTrigger asChild>
-                              <button
-                                onClick={() => addCard(card)}
-                                disabled={isMaxedOut || isDeckFull}
-                                className={`w-full flex items-center gap-2 p-2 rounded-md transition-colors text-left group ${inDeckQty > 0 ? 'bg-primary/5 border-l-2 border-l-primary' : ''} ${isMaxedOut || isDeckFull ? 'opacity-35 cursor-not-allowed' : 'hover:bg-secondary/70'}`}
-                              >
-                                <img
-                                  src={getInkLogo(card.inkColor)}
-                                  alt={card.inkColor}
-                                  className="w-5 h-5 object-contain shrink-0"
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium truncate leading-tight flex items-center gap-1.5">
-                                    {card.name}
-                                    {!card.inkable && <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" title="Uninkable" />}
-                                  </p>
-                                  <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest mt-0.5">
-                                    Cost {card.cost} · {getDisplayType(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}
-                                  </p>
-                                </div>
-                                {inDeckQty > 0 ? (
-                                  <span className="text-[10px] font-bold bg-primary/15 text-primary px-1.5 py-0.5 rounded shrink-0">
-                                    ×{inDeckQty}
-                                  </span>
-                                ) : (
-                                  <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                                )}
-                              </button>
-                            </HoverCardTrigger>
-                            <HoverCardContent side="right" className="w-[300px] p-0 border-0 shadow-2xl bg-transparent" align="start">
-                              <CardDisplay card={card} className="w-full" />
-                            </HoverCardContent>
-                          </HoverCard>
-                          </div>
-                        );
-                      })}
+                      {paginatedCards.map(renderCard)}
                       {filteredCards.length === 0 && (
                         <p className="text-sm text-muted-foreground text-center py-8">No cards matching filters</p>
+                      )}
+
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-2 py-3 border-t">
+                          <div className="text-sm text-muted-foreground">
+                            Showing {((currentPage - 1) * CARDS_PER_PAGE) + 1}-{Math.min(currentPage * CARDS_PER_PAGE, filteredCards.length)} of {filteredCards.length} cards
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                              disabled={currentPage === 1}
+                            >
+                              Previous
+                            </Button>
+                            <span className="text-sm">
+                              Page {currentPage} of {totalPages}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                              disabled={currentPage === totalPages}
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
