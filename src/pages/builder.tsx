@@ -32,6 +32,7 @@ import { DeckShareModal } from "@/components/builder/DeckShareModal";
 import { DeckAuthGuardModal } from "@/components/builder/DeckAuthGuardModal";
 import { DeckPrintProxiesModal } from "@/components/builder/DeckPrintProxiesModal";
 import { DeckRegistrationSheetModal } from "@/components/builder/DeckRegistrationSheetModal";
+import { buildDeckExportImage } from "@/lib/export-image";
 
 export default function DeckBuilder() {
   const { data: allCards = [], isLoading } = useAllCards();
@@ -298,47 +299,6 @@ export default function DeckBuilder() {
   }, [shareModalOpen, deckCards, format, deckName, shareColumns]);
 
   // Image export helper for share modal
-  const buildDeckExportImage = async (options: {
-    deckCards: typeof deckCards;
-    deckName: string;
-    format: string;
-    totalCards: number;
-    totalValue: number;
-    shareColumns?: number;
-    inkDistribution?: Record<string, number>;
-    formatPrice?: (price: number) => string;
-  }): Promise<Blob> => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not get canvas context');
-
-    const width = 1200;
-    const height = 630;
-    canvas.width = width;
-    canvas.height = height;
-
-    // Draw background
-    ctx.fillStyle = '#0f0f0f';
-    ctx.fillRect(0, 0, width, height);
-
-    // Draw title
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 48px sans-serif';
-    ctx.fillText(options.deckName || 'Lorcana Deck', 40, 80);
-
-    // Draw deck stats
-    ctx.font = '24px sans-serif';
-    ctx.fillStyle = '#888888';
-    const stats = `${options.totalCards} Cards | Format: ${options.format}`;
-    ctx.fillText(stats, 40, 130);
-
-    // Convert to blob
-    return new Promise(resolve => {
-      canvas.toBlob(blob => {
-        resolve(blob || new Blob());
-      }, 'image/png');
-    });
-  };
   const filteredCards = useMemo(() => {
     let filtered = allCards.filter(c => {
       // Fast pre-filters first
