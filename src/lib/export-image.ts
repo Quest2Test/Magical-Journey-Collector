@@ -12,6 +12,15 @@ export interface ExportImageParams {
   formatPrice: (val: number) => string;
 }
 
+const INK_HEX_COLORS: Record<string, string> = {
+  Amber: "#f59e0b",
+  Amethyst: "#9333ea",
+  Emerald: "#10b981",
+  Ruby: "#ef4444",
+  Sapphire: "#3b82f6",
+  Steel: "#6b7280",
+};
+
 export const buildDeckExportImage = async ({
   deckCards,
   deckName,
@@ -26,11 +35,14 @@ export const buildDeckExportImage = async ({
     new Promise<HTMLImageElement | null>((resolve) => {
       if (!src) return resolve(null);
       const img = new Image();
+      img.crossOrigin = "anonymous"; // Essential for canvas exports
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
+      
       const normalizedSrc = src.includes('cards.lorcast.io')
         ? `/api/image-proxy?url=${encodeURIComponent(src)}`
         : src;
+        
       const finalSrc = normalizedSrc.startsWith('http') || normalizedSrc.startsWith('data:')
         ? normalizedSrc
         : `${window.location.origin}${normalizedSrc.startsWith('/') ? '' : '/'}${normalizedSrc}`;
@@ -40,15 +52,18 @@ export const buildDeckExportImage = async ({
   // Determine Background Gradient based on active inks
   const activeInksList = Object.keys(inkDistribution);
   let color1 = '#7c3aed';
-  let color2 = '#0ea5e9';
+  let color2 = '#0f172a';
 
-  if (activeInksList.length === 1 && inkHexColors[activeInksList[0] as keyof typeof inkHexColors]) {
-    const inkColor = inkHexColors[activeInksList[0] as keyof typeof inkHexColors] as string;
-    color1 = inkColor;
-    color2 = '#0f172a'; // Fade to dark
-  } else if (activeInksList.length >= 2) {
-    color1 = inkHexColors[activeInksList[0] as keyof typeof inkHexColors] as string || color1;
-    color2 = inkHexColors[activeInksList[1] as keyof typeof inkHexColors] as string || color2;
+  if (activeInksList.length > 0) {
+    const firstInk = activeInksList[0];
+    color1 = INK_HEX_COLORS[firstInk] || color1;
+    
+    if (activeInksList.length >= 2) {
+      const secondInk = activeInksList[1];
+      color2 = INK_HEX_COLORS[secondInk] || '#0ea5e9';
+    } else {
+      color2 = '#0f172a';
+    }
   }
 
   const gridCards = deckCards;
@@ -78,14 +93,21 @@ export const buildDeckExportImage = async ({
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(0, 0, width, height);
   
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, color1);
-  gradient.addColorStop(1, color2);
-  
-  ctx.fillStyle = gradient;
-  ctx.globalAlpha = 0.65;
-  ctx.fillRect(0, 0, width, height);
-  ctx.globalAlpha = 1;
+  try {
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, color1);
+    gradient.addColorStop(1, color2);
+    
+    ctx.fillStyle = gradient;
+    ctx.globalAlpha = 0.65;
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = 1;
+  } catch (e) {
+    console.error("Gradient failed", e);
+    // Fallback to a solid color if gradient fails
+    ctx.fillStyle = color1;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   // Draw Header
   ctx.fillStyle = '#ffffff';
@@ -145,7 +167,7 @@ export const buildDeckExportImage = async ({
     ctx.closePath();
 
     // Card Background (fills the rounded rect)
-    ctx.fillStyle = inkHexColors[entry.card.inkColor as keyof typeof inkHexColors] ?? '#888';
+    ctx.fillStyle = INK_HEX_COLORS[entry.card.inkColor] ?? '#888';
     ctx.fill();
 
     // Card Image
