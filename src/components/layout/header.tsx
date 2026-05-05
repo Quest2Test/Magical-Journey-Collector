@@ -73,18 +73,39 @@ export function Header() {
             />
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onMouseEnter={() => prefetchRoute(link.href)}
-                className={`transition-colors hover:text-foreground/80 ${
-                  location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {links.map((link) => {
+              if (link.label === "Decks") {
+                return (
+                  <DropdownMenu key={link.label}>
+                    <DropdownMenuTrigger className={`flex items-center gap-1 transition-colors hover:text-foreground/80 ${
+                      location.startsWith("/decks") || location.startsWith("/public-decks") ? "text-foreground" : "text-foreground/60"
+                    }`}>
+                      Decks
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem asChild>
+                        <Link href="/decks" className="cursor-pointer w-full">My Decks</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/public-decks" className="cursor-pointer w-full">Public Decks</Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              }
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onMouseEnter={() => prefetchRoute(link.href)}
+                  className={`transition-colors hover:text-foreground/80 ${
+                    location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -187,19 +208,36 @@ export function Header() {
                 />
               </div>
               <nav className="flex flex-col gap-4">
-                {links.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsOpen(false)}
-                    onMouseEnter={() => prefetchRoute(link.href)}
-                    className={`text-lg font-medium transition-colors hover:text-foreground/80 ${
-                      location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {links.map((link) => {
+                  if (link.label === "Decks") {
+                    return (
+                      <div key="Decks" className="flex flex-col gap-2">
+                        <span className="text-lg font-bold text-foreground/80">Decks</span>
+                        <div className="flex flex-col gap-2 pl-4 border-l-2 border-border/50 ml-1">
+                          <Link href="/decks" onClick={() => setIsOpen(false)} className={`text-base font-medium transition-colors hover:text-foreground/80 ${location.startsWith("/decks") ? "text-foreground" : "text-foreground/60"}`}>
+                            My Decks
+                          </Link>
+                          <Link href="/public-decks" onClick={() => setIsOpen(false)} className={`text-base font-medium transition-colors hover:text-foreground/80 ${location.startsWith("/public-decks") ? "text-foreground" : "text-foreground/60"}`}>
+                            Public Decks
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setIsOpen(false)}
+                      onMouseEnter={() => prefetchRoute(link.href)}
+                      className={`text-lg font-medium transition-colors hover:text-foreground/80 ${
+                        location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
               </nav>
               <div className="mt-auto">
                 {user ? (

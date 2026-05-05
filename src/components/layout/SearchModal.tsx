@@ -19,7 +19,7 @@ interface SearchModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function SearchModal({ open, onOpenChange }: SearchModalProps) {
+export default function SearchModal({ open, onOpenChange }: SearchModalProps) {
   const [, setLocation] = useLocation();
   const { data: allCards = [] } = useAllCards();
   const { data: sets = [] } = useSets();

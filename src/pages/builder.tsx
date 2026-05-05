@@ -115,12 +115,33 @@ export default function DeckBuilder() {
     }
   }, [decks, allCards]);
 
-  // Handle template import from Meta page
+  // Handle template import from Meta page or Public Decks
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const isImportReq = params.get("import") === "latest";
+    const importParam = params.get("import");
+    const isImportReq = importParam === "latest";
+    const isPublicImport = params.get("source") === "public" && importParam;
 
-    if (isImportReq && allCards.length > 0) {
+    const performImport = (entries: { card: Card; qty: number }[], name: string, deckFormat?: string) => {
+      setDeckCards(entries);
+      setDeckName(name);
+      if (deckFormat) setFormat(deckFormat as any);
+      setDeckId(`deck_${Date.now()}`); // Generate new ID for clone
+      setSavedAt(null); // Clear saved state
+      window.history.replaceState({}, '', '/builder');
+    };
+
+    if (isPublicImport && allCards.length > 0) {
+      // We need to fetch the public deck from Supabase manually here since we are in a useEffect
+      import('@/lib/supabase').then(({ supabase }) => {
+        supabase.from("public_decks").select("*").eq("id", importParam).single().then(({ data }) => {
+          if (data) {
+            performImport(data.cards, `${data.name} (Clone)`, data.format);
+            toast({ title: "Deck Cloned", description: `Cloned ${data.name} to your builder.` });
+          }
+        });
+      });
+    } else if (isImportReq && allCards.length > 0) {
       const raw = localStorage.getItem("lorcana_import_temp");
       if (raw) {
         try {
@@ -138,8 +159,7 @@ export default function DeckBuilder() {
           });
 
           if (entries.length > 0) {
-            setDeckName(name);
-            setDeckCards(entries);
+            performImport(entries, name);
             toast({
               title: "Template Imported",
               description: `Loaded ${entries.length} cards from the ${name.replace("Template: ", "")} meta archetype.`

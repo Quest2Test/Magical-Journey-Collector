@@ -38,6 +38,7 @@ const CardsBrowse = lazyWithRetry(() => import("@/pages/cards"));
 const CardDetail = lazyWithRetry(() => import("@/pages/card-detail"));
 const DeckBuilder = lazyWithRetry(() => import("@/pages/builder"));
 const DecksBrowse = lazyWithRetry(() => import("@/pages/decks"));
+const PublicDecks = lazyWithRetry(() => import("@/pages/public-decks"));
 const DeckDetail = lazyWithRetry(() => import("@/pages/deck-detail"));
 const DeckPrint  = lazyWithRetry(() => import("@/pages/deck-print"));
 const Meta       = lazyWithRetry(() => import("@/pages/meta"));
@@ -56,20 +57,7 @@ const Resources   = lazyWithRetry(() => import("@/pages/resources"));
 const Academy    = lazyWithRetry(() => import("@/pages/academy"));
 const NotFound   = lazyWithRetry(() => import("@/pages/not-found"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
-      retry: 1,
-      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-    },
-    mutations: {
-      retry: 1,
-      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-    }
-  }
-});
+const queryClient = new QueryClient();
 
 export const LORCANA_API_BASE_URL =
   import.meta.env.VITE_LORCANA_API_BASE_URL?.replace(/\/$/, "") ??
@@ -99,6 +87,8 @@ function Router() {
             <Route path="/cards/:id/*" component={CardDetail} />
             <Route path="/builder" component={DeckBuilder} />
             <Route path="/decks" component={DecksBrowse} />
+            <Route path="/public-decks" component={PublicDecks} />
+            <Route path="/decks/public/:id" component={DeckDetail} />
             <Route path="/decks/:id" component={DeckDetail} />
             <Route path="/deck/:id/print" component={DeckPrint} />
             <Route path="/meta" component={Meta} />
