@@ -144,6 +144,31 @@ export function usePublicDecks(sortBy: 'recent' | 'popular' = 'recent') {
     }
   });
 
+  const unpublishDeckMutation = useMutation({
+    mutationFn: async (deckId: string) => {
+      if (!user) throw new Error("Must be logged in to unpublish a deck");
+      const { error } = await supabase
+        .from("public_decks")
+        .delete()
+        .match({ id: deckId, user_id: user.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["public_decks"] });
+      toast({
+        title: "Deck Unshared",
+        description: "Your deck has been removed from the public hub."
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to unshare",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const toggleLike = useCallback(
     (deckId: string) => toggleLikeMutation.mutateAsync(deckId),
     [toggleLikeMutation]
@@ -156,6 +181,8 @@ export function usePublicDecks(sortBy: 'recent' | 'popular' = 'recent') {
     isPublishing: publishDeckMutation.isPending,
     likedDeckIds,
     toggleLike,
-    isTogglingLike: toggleLikeMutation.isPending
+    isTogglingLike: toggleLikeMutation.isPending,
+    unpublishDeck: useCallback((id: string) => unpublishDeckMutation.mutateAsync(id), [unpublishDeckMutation]),
+    isUnpublishing: unpublishDeckMutation.isPending
   };
 }

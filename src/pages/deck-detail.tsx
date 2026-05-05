@@ -72,7 +72,7 @@ export default function DeckDetail() {
   const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const { collection, getEntry } = useCollection();
-  const { publicDecks, publishDeck, isLoading: loadingPublic, isPublishing } = usePublicDecks();
+  const { publicDecks, publishDeck, unpublishDeck, isUnpublishing, isLoading: loadingPublic, isPublishing } = usePublicDecks();
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [groupMode, setGroupMode] = useState<"type" | "cost">("type");
@@ -289,11 +289,12 @@ export default function DeckDetail() {
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="gap-2 shadow-sm text-green-500 border-green-500/20 bg-green-500/5 hover:text-green-500 hover:bg-green-500/5 cursor-default"
-                  tabIndex={-1}
+                  className="gap-2 shadow-sm text-amber-500 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors"
+                  onClick={() => unpublishDeck(deck.id)}
+                  disabled={isUnpublishing}
                 >
-                  <Globe className="w-4 h-4" />
-                  Shared
+                  {isUnpublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                  Unshare
                 </Button>
               ) : (
                 <Button 
@@ -309,11 +310,25 @@ export default function DeckDetail() {
               )
             )}
             {isPublicRoute ? (
-              <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20" asChild>
-                 <Link href={`/builder?import=${deck.id}&source=public`}>
-                   <Layers className="w-4 h-4" /> Clone to My Decks
-                 </Link>
-              </Button>
+              <div className="flex gap-2">
+                {user && (deck as any).userId === user.id && (
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="gap-2 shadow-sm text-amber-500 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10"
+                    onClick={() => unpublishDeck(deck.id)}
+                    disabled={isUnpublishing}
+                  >
+                    {isUnpublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                    Unshare
+                  </Button>
+                )}
+                <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20" asChild>
+                   <Link href={`/builder?import=${deck.id}&source=public`}>
+                     <Layers className="w-4 h-4" /> Clone to My Decks
+                   </Link>
+                </Button>
+              </div>
             ) : (
               <Link href={`/builder?edit=${deck.id}`}>
                 <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20">

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, PlaySquare, Filter, Heart, ArrowUpRight } from "lucide-react";
+import { Search, Loader2, PlaySquare, Filter, Heart, ArrowUpRight, X } from "lucide-react";
 import { usePublicDecks } from "@/hooks/usePublicDecks";
+import { useAuth } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
 import { inkHexColors, getInkLogo } from "@/components/ui/card-display";
 import { getBaseCardValue } from "@/lib/pricing";
@@ -12,13 +13,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function PublicDecks() {
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
-  const { publicDecks, isLoading, likedDeckIds, toggleLike, isTogglingLike } = usePublicDecks(sortBy);
+  const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'my'>('recent');
+  const { publicDecks, isLoading, likedDeckIds, toggleLike, isTogglingLike, unpublishDeck, isUnpublishing } = usePublicDecks(sortBy === 'my' ? 'recent' : sortBy);
+  const { user } = useAuth();
 
-  const filteredDecks = publicDecks.filter(deck => 
-    deck.name.toLowerCase().includes(search.toLowerCase()) || 
-    deck.authorName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredDecks = publicDecks.filter(deck => {
+    const matchesSearch = deck.name.toLowerCase().includes(search.toLowerCase()) || 
+                         deck.authorName.toLowerCase().includes(search.toLowerCase());
+    if (sortBy === 'my') {
+      return matchesSearch && user && deck.userId === user.id;
+    }
+    return matchesSearch;
+  });
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-8 animate-in fade-in duration-500">
@@ -46,6 +52,7 @@ export default function PublicDecks() {
             <SelectContent>
               <SelectItem value="recent">Most Recent</SelectItem>
               <SelectItem value="popular">Most Popular</SelectItem>
+              {user && <SelectItem value="my">My Shared Decks</SelectItem>}
             </SelectContent>
           </Select>
         </div>
@@ -133,27 +140,43 @@ export default function PublicDecks() {
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className={cn("h-8 gap-1.5 rounded-full px-3", isLiked ? "text-red-500 bg-red-500/10" : "text-muted-foreground hover:text-red-500")}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        toggleLike(deck.id);
-                      }}
-                      disabled={isTogglingLike}
-                    >
-                      <Heart className={cn("w-3.5 h-3.5", isLiked ? "fill-current" : "")} />
-                      <span className="text-xs font-bold">{isLiked ? "Liked" : "Like"}</span>
-                    </Button>
+                    <div className="flex gap-2">
+                      {user && deck.userId === user.id && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            unpublishDeck(deck.id);
+                          }}
+                          disabled={isUnpublishing}
+                          title="Unshare Deck"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-8 gap-1.5 rounded-full px-3", isLiked ? "text-red-500 bg-red-500/10" : "text-muted-foreground hover:text-red-500")}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleLike(deck.id);
+                        }}
+                        disabled={isTogglingLike}
+                      >
+                        <Heart className={cn("w-3.5 h-3.5", isLiked ? "fill-current" : "")} />
+                        <span className="text-xs font-bold">{isLiked ? "Liked" : "Like"}</span>
+                      </Button>
+                    </div>
                     
                     <Link href={`/decks/public/${deck.id}`}>
                       <Button size="sm" variant="secondary" className="h-8 gap-1 w-full text-xs font-bold">
                         View <ArrowUpRight className="w-3 h-3" />
                       </Button>
                     </Link>
-                  </div>
                 </div>
               </div>
             </div>

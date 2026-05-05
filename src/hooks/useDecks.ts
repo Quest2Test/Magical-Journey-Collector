@@ -199,6 +199,7 @@ export function useDecks(targetUserId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ["public_decks"] });
     },
   });
 
