@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Search, Menu } from "lucide-react";
+import { Moon, Sun, Search, Menu, Heart, Sparkles } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { MetaTags } from "./MetaTags";
@@ -34,6 +34,7 @@ const routePrefetch = new Map<string, () => Promise<any>>([
   ["/sets", () => import("@/pages/sets")],
   ["/resources", () => import("@/pages/resources")],
   ["/academy", () => import("@/pages/academy")],
+  ["/wishlist", () => import("@/pages/wishlist")],
 ]);
 
 export function Header() {
@@ -54,7 +55,6 @@ export function Header() {
     { href: "/decks", label: "Decks" },
     { href: "/sets", label: "Sets" },
     { href: "/resources", label: "Resources" },
-    // { href: "/news", label: "News" },
     { href: "/academy", label: "Academy" },
   ];
 
@@ -110,6 +110,12 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link href="/wishlist">
+            <Button variant="ghost" size="icon" className="hidden sm:flex relative text-pink-500 hover:text-pink-600 hover:bg-pink-500/10">
+              <Heart className="h-5 w-5 fill-current" />
+            </Button>
+          </Link>
+
           <Button 
             variant="ghost" 
             size="icon" 

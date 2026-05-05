@@ -3,13 +3,15 @@ import { useAllCards } from "@/hooks/useCards";
 import { useCollection } from "@/hooks/useCollection";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Maximize2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { CardDisplay, inkHexColors, inkGradients, rarityIcons, isDisney100, getInkLogo } from "@/components/ui/card-display";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCurrency } from "@/components/currency-provider";
 import { getCardLegality } from "@/lib/legality";
 import { detectRegion, buildTCGPlayerUrl, buildCardMarketUrl } from "@/lib/affiliates";
+import { useWishlist } from "@/hooks/useWishlist";
+import { Heart, Palette, Quote, Sparkles, Share2, BookmarkPlus, BookmarkCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,9 +24,11 @@ import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-uti
 export default function CardDetail() {
   const { id } = useParams();
   const { data: allCards = [], isLoading } = useAllCards();
-  const { getEntry, addCopy, removeCopy, toggleCollected, isCollected } = useCollection();
-  const { formatPrice } = useCurrency();
-  const [imgError, setImgError] = useState(false);
+   const { getEntry, addCopy, removeCopy, toggleCollected, isCollected } = useCollection();
+   const { formatPrice } = useCurrency();
+   const { toggleWishlist, isInWishlist } = useWishlist();
+   const [imgError, setImgError] = useState(false);
+   const [copying, setCopying] = useState(false);
 
   const decodedId = id ? decodeURIComponent(id) : "";
   const card = allCards.find(c => c.id === decodedId);
@@ -197,6 +201,19 @@ export default function CardDetail() {
                     );
                   })()}
                 </div>
+
+                  <Button 
+                    variant="outline" 
+                    className="h-10 w-full rounded-xl border-border bg-card/50 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all active:scale-95"
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      setCopying(true);
+                      setTimeout(() => setCopying(false), 2000);
+                    }}
+                  >
+                    {copying ? <Sparkles className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
+                    {copying ? "Link Copied!" : "Share this Card"}
+                  </Button>
               </div>
             )}
 
@@ -237,6 +254,16 @@ export default function CardDetail() {
                         >
                           +
                         </button>
+                        <button
+                          onClick={() => toggleWishlist(card.id, "normal")}
+                          className={cn(
+                            "w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ml-1",
+                            isInWishlist(card.id, "normal") ? "bg-pink-500 border-pink-400 text-white" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
+                          )}
+                          title="Add to Wishlist"
+                        >
+                          <Heart className={cn("w-4 h-4", isInWishlist(card.id, "normal") && "fill-current")} />
+                        </button>
                       </div>
                     </div>
                   )}
@@ -263,6 +290,16 @@ export default function CardDetail() {
                         style={collectionEntry.foil > 0 ? { borderColor: hexColor, color: hexColor } : {}}
                       >
                         +
+                      </button>
+                      <button
+                        onClick={() => toggleWishlist(card.id, "foil")}
+                        className={cn(
+                          "w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ml-1",
+                          isInWishlist(card.id, "foil") ? "bg-amber-500 border-amber-400 text-white" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
+                        )}
+                        title="Add to Foil Wishlist"
+                      >
+                        <Sparkles className={cn("w-4 h-4", isInWishlist(card.id, "foil") && "fill-current")} />
                       </button>
                     </div>
                   </div>
@@ -404,8 +441,9 @@ export default function CardDetail() {
 
 
             {card.flavorText && (
-              <div className="pt-4 border-t border-border/40">
-                <p className="text-sm md:text-base font-serif italic leading-relaxed text-muted-foreground/90">
+              <div className="pt-6 border-t border-border/40 relative">
+                <Quote className="absolute top-4 left-0 w-8 h-8 text-primary/10 -scale-x-100" />
+                <p className="text-sm md:text-lg font-serif italic leading-relaxed text-muted-foreground/90 pl-8 relative z-10">
                   {card.flavorText}
                 </p>
               </div>
@@ -429,7 +467,10 @@ export default function CardDetail() {
             </div>
             <div>
               <span className="text-muted-foreground uppercase tracking-widest block mb-1">Artist</span>
-              <span className="font-bold">{card.artist || "Unknown"}</span>
+              <Link href={`/cards?search=${encodeURIComponent(card.artist || "")}`} className="flex items-center gap-2 hover:text-primary transition-colors group/artist">
+                <Palette className="w-3.5 h-3.5 text-primary/60 group-hover/artist:text-primary transition-colors" />
+                <span className="font-bold">{card.artist || "Unknown"}</span>
+              </Link>
             </div>
             <div>
               <span className="text-muted-foreground uppercase tracking-widest block mb-1">Language</span>

@@ -28,7 +28,7 @@ const lazyWithRetry = (componentImport: () => Promise<any>) =>
         window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
         window.location.reload();
         // Return a promise that never resolves so React Suspense keeps showing fallback until reload happens
-        return new Promise<any>(() => {});
+        return new Promise<any>(() => { });
       }
       throw error;
     }
@@ -40,22 +40,23 @@ const DeckBuilder = lazyWithRetry(() => import("@/pages/builder"));
 const DecksBrowse = lazyWithRetry(() => import("@/pages/decks"));
 const PublicDecks = lazyWithRetry(() => import("@/pages/public-decks"));
 const DeckDetail = lazyWithRetry(() => import("@/pages/deck-detail"));
-const DeckPrint  = lazyWithRetry(() => import("@/pages/deck-print"));
-const Meta       = lazyWithRetry(() => import("@/pages/meta"));
+const DeckPrint = lazyWithRetry(() => import("@/pages/deck-print"));
+const Meta = lazyWithRetry(() => import("@/pages/meta"));
 const MetaAnalysis = lazyWithRetry(() => import("@/pages/meta-analysis"));
-const Sets       = lazyWithRetry(() => import("@/pages/sets"));
-const SetDetail  = lazyWithRetry(() => import("@/pages/set-detail"));
-const Profile    = lazyWithRetry(() => import("@/pages/profile"));
-const AuthPage   = lazyWithRetry(() => import("@/pages/auth"));
+const Sets = lazyWithRetry(() => import("@/pages/sets"));
+const SetDetail = lazyWithRetry(() => import("@/pages/set-detail"));
+const Profile = lazyWithRetry(() => import("@/pages/profile"));
+const AuthPage = lazyWithRetry(() => import("@/pages/auth"));
 const AuthCallback = lazyWithRetry(() => import("@/pages/auth-callback"));
-const About      = lazyWithRetry(() => import("@/pages/about"));
-const Privacy    = lazyWithRetry(() => import("@/pages/privacy"));
+const About = lazyWithRetry(() => import("@/pages/about"));
+const Privacy = lazyWithRetry(() => import("@/pages/privacy"));
 // const NewsPage   = lazyWithRetry(() => import("@/pages/news"));
 // const ArticlePage = lazyWithRetry(() => import("@/pages/article"));
 // const AdminNews   = lazyWithRetry(() => import("@/pages/admin-news"));
-const Resources   = lazyWithRetry(() => import("@/pages/resources"));
-const Academy    = lazyWithRetry(() => import("@/pages/academy"));
-const NotFound   = lazyWithRetry(() => import("@/pages/not-found"));
+const Resources = lazyWithRetry(() => import("@/pages/resources"));
+const Academy = lazyWithRetry(() => import("@/pages/academy"));
+const Wishlist = lazyWithRetry(() => import("@/pages/wishlist"));
+const NotFound = lazyWithRetry(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient();
 
@@ -90,11 +91,12 @@ function Router() {
             <Route path="/public-decks" component={PublicDecks} />
             <Route path="/decks/public/:id" component={DeckDetail} />
             <Route path="/decks/:id" component={DeckDetail} />
-            <Route path="/deck/:id/print" component={DeckPrint} />
+            {/* <Route path="/deck/:id/print" component={DeckPrint} /> */}
             <Route path="/meta" component={Meta} />
             <Route path="/meta/:id" component={MetaAnalysis} />
             <Route path="/sets" component={Sets} />
             <Route path="/sets/:id" component={SetDetail} />
+            <Route path="/wishlist" component={Wishlist} />
             <Route path="/profile/:username" component={Profile} />
             {/* <Route path="/news" component={NewsPage} />
             <Route path="/news/:slug" component={ArticlePage} />

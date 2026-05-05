@@ -27,6 +27,7 @@ import { SetProgressCard } from "@/components/profile/SetProgressCard";
 import { SET_ACRONYMS } from "@/lib/sets";
 import { getCardPricing } from "@/lib/pricing";
 import { CHALLENGES } from "@/data/challenges";
+import { useWishlist } from "@/hooks/useWishlist";
 
 export default function Profile() {
   const [match, params] = useRoute("/profile/:username");
@@ -38,8 +39,26 @@ export default function Profile() {
   const { data: dbChallenges = [] } = useQuery({
     queryKey: ["challenges"],
     queryFn: async () => {
-      const { data } = await supabase.from("challenges").select("*").eq("isActive", true);
-      return data || [];
+      // Try both isActive and is_active column names
+      let { data, error } = await supabase.from("challenges").select("*").or("isActive.eq.true,is_active.eq.true");
+      
+      // Fallback: if the above fails (e.g. columns don't exist), try selecting all
+      if (error) {
+        const { data: allData } = await supabase.from("challenges").select("*");
+        data = allData;
+      }
+
+      // Merge with local static challenges
+      const localChallenges = (await import("@/data/challenges")).CHALLENGES;
+      const combined = [...localChallenges, ...(data || [])];
+      
+      // Deduplicate by ID
+      const seen = new Set();
+      return combined.filter(c => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
     }
   });
 
@@ -139,6 +158,7 @@ export default function Profile() {
   });
 
   const activeUserId = isOwnProfile ? user?.id : targetProfile?.id;
+  const { wishlist } = useWishlist(activeUserId);
   const { collection, collectedCount, totalCopies, clearCollection } = useCollection(activeUserId);
 
   const isPublicView = isOwnProfile || (targetProfile?.is_public);
@@ -324,7 +344,19 @@ export default function Profile() {
     // Evaluation Engine for Dynamic Badges
     const achievements = dbChallenges.map((challenge) => {
       let earned = false;
-      const condition = challenge.condition;
+      let condition = challenge.condition;
+      
+      // Safety: Parse condition if it's a JSON string from the DB
+      if (typeof condition === 'string') {
+        try {
+          condition = JSON.parse(condition);
+        } catch (e) {
+          console.error("Failed to parse challenge condition", e);
+          return null;
+        }
+      }
+
+      if (!condition) return null;
 
       switch (condition.metric) {
         case 'total_cards':
@@ -355,7 +387,7 @@ export default function Profile() {
       }
 
       return { ...challenge, earned };
-    });
+    }).filter(a => a !== null);
 
     const rarityTierColors: Record<string, string> = {
       Common: "text-slate-400 bg-slate-400/10 border-slate-400/20",
@@ -523,6 +555,7 @@ export default function Profile() {
             <TabsTrigger value="overview" className="bg-transparent border-none shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-0 py-2 font-serif text-lg">Overview</TabsTrigger>
             <TabsTrigger value="collections" className="bg-transparent border-none shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-0 py-2 font-serif text-lg">Collections</TabsTrigger>
             <TabsTrigger value="analysis" className="bg-transparent border-none shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-0 py-2 font-serif text-lg">Analysis</TabsTrigger>
+            <TabsTrigger value="wishlist" className="bg-transparent border-none shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-0 py-2 font-serif text-lg">Wishlist</TabsTrigger>
             <TabsTrigger value="challenges" className="bg-transparent border-none shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-0 py-2 font-serif text-lg">Challenges</TabsTrigger>
           </TabsList>
 
@@ -888,6 +921,43 @@ export default function Profile() {
                 )}
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="wishlist" className="space-y-8 mt-4 focus-visible:ring-0">
+            {isPublicView ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                {wishlist.length === 0 ? (
+                  <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-3xl">
+                    No items in wishlist yet.
+                  </div>
+                ) : (
+                  wishlist.map(item => {
+                    const card = (lookup as Record<string, any>)[item.cardId];
+                    if (!card) return null;
+                    return (
+                      <div key={`${card.id}-${item.variant}`} className="space-y-2 relative">
+                        <CardDisplay card={card} />
+                        <div className={cn(
+                          "absolute top-2 left-2 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shadow-lg z-20",
+                          item.variant === "foil" ? "bg-amber-500 text-white" : "bg-primary text-white"
+                        )}>
+                          {item.variant}
+                        </div>
+                        <div className="flex justify-between items-center px-1">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">{card.rarity}</span>
+                          <span className="text-[10px] font-bold text-emerald-500">{card.priceUsd ? formatPrice(card.priceUsd) : "N/A"}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            ) : (
+               <div className="py-20 text-center bg-card border rounded-3xl">
+                 <Icons.Lock className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                 <h2 className="text-xl font-bold">This wishlist is private</h2>
+               </div>
+            )}
           </TabsContent>
 
           <TabsContent value="challenges" className="mt-4 focus-visible:ring-0">

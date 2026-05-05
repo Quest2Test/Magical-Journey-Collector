@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Search, LayoutGrid, List as ListIcon, CheckCircle2, Circle, Loader2, SlidersHorizontal, X, Download, ChevronDown, Trophy, BookOpen } from "lucide-react";
+import { ArrowLeft, Search, LayoutGrid, List as ListIcon, CheckCircle2, Circle, Loader2, SlidersHorizontal, X, Download, ChevronDown, Trophy, BookOpen, Heart, Sparkles, BookmarkPlus, BookmarkCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ import { SET_GRADIENTS, SET_ACCENT, SET_ACRONYMS } from "@/lib/sets";
 import { getCardPricing, getBaseCardValue } from "@/lib/pricing";
 import { BinderView } from "@/components/profile/BinderView";
 import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-utils";
+import { useWishlist } from "@/hooks/useWishlist";
 
 const RARITIES = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Enchanted", "Iconic", "Promo"];
 const INK_COLORS = ["Amber", "Amethyst", "Emerald", "Ruby", "Sapphire", "Steel"];
@@ -53,7 +54,8 @@ export default function SetDetail() {
   const { data: allCards = [], isLoading } = useAllCards();
   const { data: setCardsData = [], isLoading: isSetLoading } = useCardsBySet(setId);
   const { user } = useAuth();
-  const { collection, getEntry, addCopy, removeCopy, toggleCollected, isCollected, collectedCount } = useCollection();
+   const { collection, getEntry, addCopy, removeCopy, toggleCollected, isCollected, collectedCount } = useCollection();
+   const { wishlist, toggleWishlist, isInWishlist } = useWishlist();
 
   // Derive set metadata from card data
   const setInfo = useMemo(() => {
@@ -770,18 +772,42 @@ export default function SetDetail() {
                           )}
                         </div>
                         {user ? (
-                          <button
-                            onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
-                            className="w-full rounded-md border border-border bg-card py-2 text-xs transition-colors hover:bg-secondary/50 flex items-center justify-center gap-2"
-                            title={isCollected(card.id) ? "Remove from collection" : "Add to collection"}
-                          >
-                            {isCollected(card.id) ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-400" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-muted-foreground" />
-                            )}
-                            <span>{isCollected(card.id) ? "Collected" : "Add to Collection"}</span>
-                          </button>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
+                              className="flex-1 rounded-md border border-border bg-card py-2 text-xs transition-colors hover:bg-secondary/50 flex items-center justify-center gap-2"
+                              title={isCollected(card.id) ? "Remove from collection" : "Add to collection"}
+                            >
+                              {isCollected(card.id) ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                              ) : (
+                                <Circle className="w-4 h-4 text-muted-foreground" />
+                              )}
+                              <span>{isCollected(card.id) ? "Collected" : "Add"}</span>
+                            </button>
+                            <div className="flex flex-col gap-1 shrink-0">
+                                <button
+                                  onClick={() => toggleWishlist(card.id, "normal")}
+                                  className={cn(
+                                    "w-9 h-[18px] rounded border flex items-center justify-center transition-all",
+                                    isInWishlist(card.id, "normal") ? "bg-pink-500/10 border-pink-500/40 text-pink-500" : "bg-card border-border text-muted-foreground hover:text-foreground"
+                                  )}
+                                  title="Normal Wishlist"
+                                >
+                                  <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} />
+                                </button>
+                                <button
+                                  onClick={() => toggleWishlist(card.id, "foil")}
+                                  className={cn(
+                                    "w-9 h-[18px] rounded border flex items-center justify-center transition-all",
+                                    isInWishlist(card.id, "foil") ? "bg-amber-500/10 border-amber-500/40 text-amber-500" : "bg-card border-border text-muted-foreground hover:text-foreground"
+                                  )}
+                                  title="Foil Wishlist"
+                                >
+                                  <Sparkles className={cn("w-3 h-3", isInWishlist(card.id, "foil") && "fill-current")} />
+                                </button>
+                            </div>
+                          </div>
                         ) : (
                           <Link href="/login" className="w-full text-center py-2 text-[10px] font-bold text-primary-text hover:underline opacity-80 hover:opacity-100 transition-opacity">
                             Login to add to collection
@@ -806,7 +832,7 @@ export default function SetDetail() {
 
                     return (
                       <div key={card.id} className="flex items-center gap-3 p-2.5 rounded-lg border bg-card hover:bg-secondary/40 transition-colors">
-                        <div className="flex flex-col items-center gap-2 shrink-0 w-12">
+                        <div className="flex flex-col items-center gap-1.5 shrink-0 w-12">
                           {user ? (
                             <>
                               <button
@@ -821,8 +847,29 @@ export default function SetDetail() {
                                 )}
                               </button>
 
-                              <div className="text-[10px] text-foreground/70 text-center leading-tight">
-                                {!foilOnly ? `${entry.normal} normal · ${entry.foil} foil` : `${entry.foil} foil only`}
+                              <div className="flex gap-1">
+                                <button 
+                                  onClick={() => toggleWishlist(card.id, "normal")}
+                                  className={cn(
+                                    "transition-colors",
+                                    isInWishlist(card.id, "normal") ? "text-pink-500" : "text-muted-foreground/40 hover:text-pink-400"
+                                  )}
+                                >
+                                  <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} />
+                                </button>
+                                <button 
+                                  onClick={() => toggleWishlist(card.id, "foil")}
+                                  className={cn(
+                                    "transition-colors",
+                                    isInWishlist(card.id, "foil") ? "text-amber-500" : "text-muted-foreground/40 hover:text-amber-400"
+                                  )}
+                                >
+                                  <Sparkles className={cn("w-3 h-3", isInWishlist(card.id, "foil") && "fill-current")} />
+                                </button>
+                              </div>
+
+                              <div className="text-[9px] text-foreground/50 text-center leading-none opacity-60">
+                                {!foilOnly ? `${entry.normal}/${entry.foil}` : `${entry.foil}f`}
                               </div>
                             </>
                           ) : (

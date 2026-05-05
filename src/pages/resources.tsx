@@ -110,7 +110,7 @@ export default function Resources() {
         },
         {
           title: "Official Discord",
-          description: "The fastest way to get rules questions answered and find online matches via webcam.",
+          description: "The fastest way to get rules questions answered and find out anything new about the world of Lorcana.",
           icon: <Users className="w-5 h-5" />,
           href: "https://discord.gg/disneylorcana",
           category: "Social",
@@ -223,7 +223,7 @@ export default function Resources() {
             We are always looking to expand our toolkit with the best community-driven tools and creators.
           </p>
           <Button variant="outline" className="rounded-full px-8 h-12 gap-2" asChild>
-            <a href="mailto:hello@lorbound.com">
+            <a href="mailto:lorbound@proton.me">
               Contact Us <ExternalLink className="w-4 h-4" />
             </a>
           </Button>

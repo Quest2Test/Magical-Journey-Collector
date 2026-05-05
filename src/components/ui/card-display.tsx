@@ -2,7 +2,8 @@ import { Card } from "@/data/cards";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Music, MapPin, Plus } from "lucide-react";
+import { Music, MapPin, Plus, Heart, Sparkles } from "lucide-react";
+import { useWishlist } from "@/hooks/useWishlist";
 import { Button } from "./button";
 import { useState, memo } from "react";
 import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
@@ -92,8 +93,9 @@ export const CardDisplay = memo(function CardDisplay({
   const isCharacter = card.type === "Character";
   const isSong = card.type === "Song";
   const isLocation = card.type === "Location";
-  const [imgError, setImgError] = useState(false);
-  const hasRealImage = !!card.image && !imgError;
+   const [imgError, setImgError] = useState(false);
+   const hasRealImage = !!card.image && !imgError;
+   const { toggleWishlist, isInWishlist } = useWishlist();
 
   return (
     <motion.div
@@ -128,17 +130,48 @@ export const CardDisplay = memo(function CardDisplay({
         {/* Text overlay removed as per user request for a clean card-back look */}
 
         {showQuickAdd && (
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl pointer-events-none group-hover:pointer-events-auto">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 rounded-xl pointer-events-none group-hover:pointer-events-auto p-4 text-center">
             <Button
               onClick={(e) => {
                 e.preventDefault();
                 onQuickAdd?.(card);
               }}
               size="sm"
-              className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              className="w-full gap-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg h-9 shadow-lg"
             >
-              <Plus className="w-4 h-4" /> Quick Add
+              <Plus className="w-4 h-4" /> Collection
             </Button>
+            
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleWishlist(card.id, "normal");
+                }}
+                className={cn(
+                  "flex-1 h-9 rounded-lg border flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase transition-all shadow-lg",
+                  isInWishlist(card.id, "normal") 
+                    ? "bg-pink-500 border-pink-400 text-white" 
+                    : "bg-white/10 border-white/20 text-white hover:bg-white/20"
+                )}
+              >
+                <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} /> Normal
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleWishlist(card.id, "foil");
+                }}
+                className={cn(
+                  "flex-1 h-9 rounded-lg border flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase transition-all shadow-lg",
+                  isInWishlist(card.id, "foil") 
+                    ? "bg-amber-500 border-amber-400 text-white" 
+                    : "bg-white/10 border-white/20 text-white hover:bg-white/20"
+                )}
+              >
+                <Sparkles className={cn("w-3 h-3", isInWishlist(card.id, "foil") && "fill-current")} /> Foil
+              </button>
+            </div>
           </div>
         )}
       </Link>
