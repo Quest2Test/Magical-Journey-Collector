@@ -104,7 +104,7 @@ export function useDecks(targetUserId?: string) {
         if (toUpload.length > 0) {
           const { error } = await supabase.from("decks").insert(
             toUpload.map(d => ({
-              id: d.id,
+              id: crypto.randomUUID(), // Generate valid UUID for Supabase
               user_id: user.id,
               name: d.name,
               format: d.format,

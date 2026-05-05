@@ -591,6 +591,18 @@ export default function DeckDetail() {
             <Button 
               className="gap-2"
               onClick={() => {
+                const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+                
+                if (!isUUID(deck.id)) {
+                  toast({
+                    title: "Legacy Deck ID",
+                    description: "This deck uses an older ID format. Please open it in the Builder and hit 'Save' to update it before sharing.",
+                    variant: "destructive"
+                  });
+                  setShowShareDialog(false);
+                  return;
+                }
+
                 const authorName = isAnonymous 
                   ? "Anonymous" 
                   : (user?.user_metadata?.username || user?.email?.split('@')[0] || "Unknown");

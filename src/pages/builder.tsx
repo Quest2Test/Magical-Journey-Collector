@@ -57,7 +57,7 @@ export default function DeckBuilder() {
   const [groupingMode, setGroupingMode] = useState<"type" | "cost">("cost");
   const [format, setFormat] = useState<"Any" | "Core" | "Infinity">("Any");
   const [savedAt, setSavedAt] = useState<string | null>(null);
-  const [deckId, setDeckId] = useState(() => `deck_${Date.now()}`);
+  const [deckId, setDeckId] = useState<string>(() => crypto.randomUUID());
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
@@ -78,7 +78,7 @@ export default function DeckBuilder() {
 
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
-  const { decks, saveDeck } = useDecks();
+  const { decks, saveDeck, deleteDeck } = useDecks();
   const { getEntry } = useCollection();
   const { user } = useAuth();
 
@@ -126,7 +126,7 @@ export default function DeckBuilder() {
       setDeckCards(entries);
       setDeckName(name);
       if (deckFormat) setFormat(deckFormat as any);
-      setDeckId(`deck_${Date.now()}`); // Generate new ID for clone
+      setDeckId(crypto.randomUUID()); // Generate new ID for clone
       setSavedAt(null); // Clear saved state
       window.history.replaceState({}, '', '/builder');
     };
@@ -561,9 +561,21 @@ export default function DeckBuilder() {
       return;
     }
 
+    const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+    let currentId = deckId;
+    if (!isUUID(currentId)) {
+      const oldId = currentId;
+      currentId = crypto.randomUUID();
+      if (user && oldId.startsWith('deck_')) {
+        // Silently try to delete the old legacy record
+        deleteDeck(oldId);
+      }
+      setDeckId(currentId);
+    }
+
     const inkColors = [...new Set(deckCards.map(e => e.card.inkColor))];
     const deck = {
-      id: deckId,
+      id: currentId,
       name: deckName,
       format,
       inkColors,
