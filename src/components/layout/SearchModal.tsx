@@ -9,7 +9,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useAllCards, useSets } from "@/hooks/useCards";
-import { MOCK_DECKS } from "@/data/decks";
+import { usePublicDecks } from "@/hooks/usePublicDecks";
 import { Search, Layers, Trophy, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { inkHexColors } from "@/components/ui/card-display";
@@ -23,6 +23,7 @@ export default function SearchModal({ open, onOpenChange }: SearchModalProps) {
   const [, setLocation] = useLocation();
   const { data: allCards = [] } = useAllCards();
   const { data: sets = [] } = useSets();
+  const { publicDecks } = usePublicDecks("popular");
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -67,23 +68,23 @@ export default function SearchModal({ open, onOpenChange }: SearchModalProps) {
 
         {/* Decks Group */}
         <CommandGroup heading="Community Decks">
-          {MOCK_DECKS.slice(0, 10).map((deck) => (
+          {publicDecks.slice(0, 10).map((deck) => (
             <CommandItem
               key={deck.id}
-              onSelect={() => onSelect(`/decks/${deck.id}`)}
+              onSelect={() => onSelect(`/decks/public/${deck.id}`)}
               className="cursor-pointer"
             >
               <Trophy className="mr-2 h-4 w-4 text-amber-500" />
               <div className="flex flex-col">
                 <span className="font-medium">{deck.name}</span>
-                <span className="text-xs text-muted-foreground">by {deck.author}</span>
+                <span className="text-xs text-muted-foreground">by {deck.authorName}</span>
               </div>
               <div className="ml-auto flex gap-1">
                 {deck.inkColors.map(color => (
                   <div
                     key={color}
                     className="w-2 h-2 rounded-full border border-white/10"
-                    style={{ backgroundColor: inkHexColors[color] }}
+                    style={{ backgroundColor: (inkHexColors as Record<string, string>)[color] || '#888' }}
                   />
                 ))}
               </div>

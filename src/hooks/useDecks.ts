@@ -163,6 +163,15 @@ export function useDecks(targetUserId?: string) {
       });
 
       if (error) throw error;
+
+      // Attempt to silently update the public deck if it exists
+      await supabase.from("public_decks").update({
+        name: deck.name,
+        format: deck.format,
+        ink_colors: deck.inkColors,
+        cards: deck.entries,
+      }).eq('id', deck.id);
+
       return deck;
     },
     onSuccess: () => {
@@ -184,6 +193,9 @@ export function useDecks(targetUserId?: string) {
         .match({ id: deckId, user_id: user.id });
 
       if (error) throw error;
+
+      // Attempt to silently delete the public deck
+      await supabase.from("public_decks").delete().match({ id: deckId, user_id: user.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });

@@ -23,7 +23,7 @@ function mapDbToPublicDeck(row: any): PublicDeck {
     name: row.name,
     format: row.format as SavedDeck['format'],
     inkColors: row.ink_colors || [],
-    totalCards: row.entries?.reduce((acc: number, e: any) => acc + e.qty, 0) || 0,
+    totalCards: row.cards?.reduce((acc: number, e: any) => acc + e.qty, 0) || 0,
     totalValue: 0, // Computed dynamically based on current prices, or just keep what was passed
     entries: row.cards,
     views: row.views || 0,
@@ -33,20 +33,25 @@ function mapDbToPublicDeck(row: any): PublicDeck {
   };
 }
 
-export function usePublicDecks() {
+export function usePublicDecks(sortBy: 'recent' | 'popular' = 'recent') {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const queryKey = ["public_decks"];
+  const queryKey = ["public_decks", sortBy];
 
   const { data: publicDecks = [], isLoading } = useQuery<PublicDeck[]>({
     queryKey,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("public_decks")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let query = supabase.from("public_decks").select("*");
+      
+      if (sortBy === 'popular') {
+        query = query.order("upvotes", { ascending: false });
+      } else {
+        query = query.order("created_at", { ascending: false });
+      }
+      
+      const { data, error } = await query.limit(50);
 
       if (error) {
         console.error("Error fetching public decks:", error);
@@ -61,7 +66,8 @@ export function usePublicDecks() {
     mutationFn: async ({ deck, authorName }: { deck: SavedDeck, authorName: string }) => {
       if (!user) throw new Error("Must be logged in to publish a deck");
 
-      const { data, error } = await supabase.from("public_decks").insert({
+      const { data, error } = await supabase.from("public_decks").upsert({
+        id: deck.id,
         user_id: user.id,
         author_name: authorName,
         name: deck.name,
@@ -101,5 +107,55 @@ export function usePublicDecks() {
     [publishDeckMutation]
   );
 
-  return { publicDecks, publishDeck, isLoading, isPublishing: publishDeckMutation.isPending };
+  const { data: likedDeckIds = [] } = useQuery<string[]>({
+    queryKey: ["liked_decks", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deck_likes")
+        .select("deck_id")
+        .eq("user_id", user?.id);
+      
+      if (error) {
+        console.error("Error fetching liked decks:", error);
+        return [];
+      }
+      return data.map(d => d.deck_id);
+    }
+  });
+
+  const toggleLikeMutation = useMutation({
+    mutationFn: async (deckId: string) => {
+      if (!user) throw new Error("Must be logged in to like a deck");
+      const { data, error } = await supabase.rpc("toggle_deck_like", { target_deck_id: deckId });
+      if (error) throw error;
+      return { deckId, liked: data as boolean };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["liked_decks", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["public_decks"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Action failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const toggleLike = useCallback(
+    (deckId: string) => toggleLikeMutation.mutateAsync(deckId),
+    [toggleLikeMutation]
+  );
+
+  return { 
+    publicDecks, 
+    publishDeck, 
+    isLoading, 
+    isPublishing: publishDeckMutation.isPending,
+    likedDeckIds,
+    toggleLike,
+    isTogglingLike: toggleLikeMutation.isPending
+  };
 }

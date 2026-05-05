@@ -4,10 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, PlaySquare, Filter, Heart, ArrowUpRight } from "lucide-react";
 import { usePublicDecks } from "@/hooks/usePublicDecks";
+import { cn } from "@/lib/utils";
+import { inkHexColors, getInkLogo } from "@/components/ui/card-display";
+import { getBaseCardValue } from "@/lib/pricing";
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function PublicDecks() {
   const [search, setSearch] = useState("");
-  const { publicDecks, isLoading } = usePublicDecks();
+  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
+  const { publicDecks, isLoading, likedDeckIds, toggleLike, isTogglingLike } = usePublicDecks(sortBy);
 
   const filteredDecks = publicDecks.filter(deck => 
     deck.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -23,8 +29,8 @@ export default function PublicDecks() {
             Discover, upvote, and clone decks shared by the Lorbound community.
           </p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full sm:w-64 shrink-0">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search public decks..."
@@ -33,51 +39,126 @@ export default function PublicDecks() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="icon" className="shrink-0 bg-card">
-            <Filter className="w-4 h-4" />
-          </Button>
+          <Select value={sortBy} onValueChange={(val: 'recent' | 'popular') => setSortBy(val)}>
+            <SelectTrigger className="w-full sm:w-[140px] bg-card shrink-0">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Most Recent</SelectItem>
+              <SelectItem value="popular">Most Popular</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDecks.map(deck => (
-          <Link key={deck.id} href={`/decks/public/${deck.id}`}>
-            <div className="group rounded-2xl border bg-card p-5 hover:border-primary/40 hover:shadow-lg transition-all flex flex-col h-full relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
-                <PlaySquare className="w-24 h-24 rotate-12" />
-              </div>
-              
-              <div className="flex items-start justify-between mb-4 relative z-10">
-                <div className="flex gap-1.5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 xl:gap-4">
+        {filteredDecks.map(deck => {
+          // Identify the cover card (most expensive character, or just first card)
+          const coverCardEntry = [...deck.entries].sort((a, b) => {
+            const valA = getBaseCardValue(a.card);
+            const valB = getBaseCardValue(b.card);
+            if (valA !== valB) return valB - valA;
+            if (a.card.type === "Character" && b.card.type !== "Character") return -1;
+            if (b.card.type === "Character" && a.card.type !== "Character") return 1;
+            return b.card.cost - a.card.cost;
+          })[0];
+          
+          const coverUrl = coverCardEntry?.card.thumbnail || coverCardEntry?.card.image;
+          const isLiked = likedDeckIds.includes(deck.id);
+
+          // Build gradient background
+          const inkHex1 = deck.inkColors[0] ? (inkHexColors as Record<string, string>)[deck.inkColors[0]] : "#888";
+          const inkHex2 = deck.inkColors[1] ? (inkHexColors as Record<string, string>)[deck.inkColors[1]] : inkHex1;
+          const bgGradient = `linear-gradient(to right, ${inkHex1}15, ${inkHex2}05)`;
+
+          return (
+            <div 
+              key={deck.id} 
+              className="group relative rounded-xl border bg-card p-4 hover:border-primary/40 hover:shadow-md transition-all overflow-hidden flex flex-col gap-4"
+            >
+              {/* Background Gradient */}
+              <div className="absolute inset-0 z-0 pointer-events-none" style={{ background: bgGradient }} />
+
+              {/* Top Row: Name and Inks (Header) */}
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div className="flex flex-col min-w-0">
+                  <Link href={`/decks/public/${deck.id}`}>
+                    <h3 className="text-xl font-bold font-serif leading-tight group-hover:text-primary transition-colors truncate cursor-pointer">
+                      {deck.name}
+                    </h3>
+                  </Link>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span>by <span className="font-semibold text-foreground/80">{deck.authorName}</span></span>
+                    <span className="opacity-50">•</span>
+                    <span className="uppercase tracking-wider font-bold">{deck.format}</span>
+                  </div>
+                </div>
+
+                {/* Ink Logos - Top Right */}
+                <div className="flex gap-1 shrink-0">
                   {deck.inkColors.map(ink => (
-                    <div key={ink} className="w-4 h-4 rounded-full shadow-sm border border-white/20" 
-                         style={{ backgroundColor: ink === 'Sapphire' ? '#3b82f6' : ink === 'Steel' ? '#6b7280' : ink === 'Amethyst' ? '#9333ea' : '#ef4444' }} 
-                    />
+                    <div 
+                      key={ink} 
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-black/20 border border-white/10 shadow-inner"
+                      title={ink}
+                    >
+                      <img src={getInkLogo(ink)} alt={ink} className="w-5 h-5 object-contain drop-shadow-md" />
+                    </div>
                   ))}
                 </div>
-                <div className="flex items-center gap-1.5 bg-secondary/80 px-2 py-0.5 rounded-full text-xs font-bold text-muted-foreground group-hover:text-primary transition-colors">
-                  <Heart className="w-3 h-3" /> {deck.upvotes}
+              </div>
+
+              {/* Bottom Row: Info and Card (Pushed Right) */}
+              <div className="relative z-10 flex items-center justify-end gap-6 mt-auto">
+                {/* Deck Stats */}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground border-r pr-6 border-border/50">
+                  <div className="flex flex-col items-center">
+                    <span className="text-foreground font-bold text-sm">{deck.totalCards}</span>
+                    <span className="text-[10px] uppercase tracking-tighter opacity-70 font-bold">Cards</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-foreground font-bold text-sm flex items-center gap-1">
+                       <Heart className={cn("w-3 h-3", isLiked ? "fill-current text-red-500" : "")} />
+                       {deck.upvotes}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-tighter opacity-70 font-bold">Likes</span>
+                  </div>
+                </div>
+
+                {/* Cover Card & Actions */}
+                <div className="flex items-center gap-4">
+                  {coverUrl && (
+                    <div className="w-12 aspect-[2.5/3.5] rounded-md overflow-hidden border-2 border-white/10 shadow-lg shrink-0 transform group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300">
+                      <div className="w-full h-full" style={{ background: `url(${coverUrl}) center 20%/cover no-repeat` }} />
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className={cn("h-8 gap-1.5 rounded-full px-3", isLiked ? "text-red-500 bg-red-500/10" : "text-muted-foreground hover:text-red-500")}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleLike(deck.id);
+                      }}
+                      disabled={isTogglingLike}
+                    >
+                      <Heart className={cn("w-3.5 h-3.5", isLiked ? "fill-current" : "")} />
+                      <span className="text-xs font-bold">{isLiked ? "Liked" : "Like"}</span>
+                    </Button>
+                    
+                    <Link href={`/decks/public/${deck.id}`}>
+                      <Button size="sm" variant="secondary" className="h-8 gap-1 w-full text-xs font-bold">
+                        View <ArrowUpRight className="w-3 h-3" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
-
-              <div className="mb-6 relative z-10">
-                <h3 className="text-xl font-bold font-serif leading-tight mb-1 group-hover:text-primary transition-colors">{deck.name}</h3>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  by <span className="font-semibold text-foreground/80">{deck.authorName}</span>
-                </p>
-              </div>
-
-              <div className="mt-auto flex items-center justify-between border-t pt-4 relative z-10">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/50 px-2 py-1 rounded">
-                  {deck.format}
-                </span>
-                <span className="text-xs font-bold text-primary flex items-center gap-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
-                  View Deck <ArrowUpRight className="w-3 h-3" />
-                </span>
-              </div>
             </div>
-          </Link>
-        ))}
+          );
+        })}
       </div>
 
       {filteredDecks.length === 0 && (
