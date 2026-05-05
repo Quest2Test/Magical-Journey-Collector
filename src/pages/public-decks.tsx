@@ -73,18 +73,19 @@ export default function PublicDecks() {
           const coverUrl = coverCardEntry?.card.thumbnail || coverCardEntry?.card.image;
           const isLiked = likedDeckIds.includes(deck.id);
 
-          // Build gradient background
+          // Build gradient background - Increased vibrancy
           const inkHex1 = deck.inkColors[0] ? (inkHexColors as Record<string, string>)[deck.inkColors[0]] : "#888";
           const inkHex2 = deck.inkColors[1] ? (inkHexColors as Record<string, string>)[deck.inkColors[1]] : inkHex1;
-          const bgGradient = `linear-gradient(to right, ${inkHex1}15, ${inkHex2}05)`;
+          const bgGradient = `linear-gradient(135deg, ${inkHex1}25 0%, ${inkHex2}10 100%)`;
 
           return (
             <div 
               key={deck.id} 
-              className="group relative rounded-xl border bg-card p-4 hover:border-primary/40 hover:shadow-md transition-all overflow-hidden flex flex-col gap-4"
+              className="group relative rounded-xl border bg-card p-4 hover:border-primary/40 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col gap-4"
             >
               {/* Background Gradient */}
               <div className="absolute inset-0 z-0 pointer-events-none" style={{ background: bgGradient }} />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
 
               {/* Top Row: Name and Inks (Header) */}
               <div className="relative z-10 flex items-start justify-between gap-4">
@@ -101,17 +102,27 @@ export default function PublicDecks() {
                   </div>
                 </div>
 
-                {/* Ink Logos - Top Right */}
-                <div className="flex gap-1 shrink-0">
-                  {deck.inkColors.map(ink => (
-                    <div 
-                      key={ink} 
-                      className="w-8 h-8 rounded-full flex items-center justify-center bg-black/20 border border-white/10 shadow-inner"
-                      title={ink}
-                    >
-                      <img src={getInkLogo(ink)} alt={ink} className="w-5 h-5 object-contain drop-shadow-md" />
-                    </div>
-                  ))}
+                {/* Ink Logos - Top Right (Vibrant) */}
+                <div className="flex gap-1.5 shrink-0">
+                  {deck.inkColors.map(ink => {
+                    const inkColor = (inkHexColors as Record<string, string>)[ink] || "#888";
+                    return (
+                      <div 
+                        key={ink} 
+                        className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 border border-white/20 shadow-lg relative group/ink"
+                        title={ink}
+                        style={{ boxShadow: `0 0 15px ${inkColor}30` }}
+                      >
+                        {/* Inner Glow */}
+                        <div className="absolute inset-0 rounded-full opacity-20" style={{ backgroundColor: inkColor }} />
+                        <img 
+                          src={getInkLogo(ink)} 
+                          alt={ink} 
+                          className="w-6 h-6 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] relative z-10 transform group-hover/ink:scale-110 transition-transform" 
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

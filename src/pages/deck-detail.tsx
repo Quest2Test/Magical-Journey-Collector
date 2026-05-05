@@ -262,16 +262,31 @@ export default function DeckDetail() {
         <div className="absolute inset-0 opacity-10" style={{ background: bannerGradient }} />
         <div className="relative p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-3">
-            <div className="flex gap-2">
-              {deck.inkColors.map(ink => (
-                <div
-                  key={ink}
-                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 shadow-sm"
-                  style={{ backgroundColor: inkHexColors[ink] ?? "#888", color: "white" }}
-                >
-                  {ink}
-                </div>
-              ))}
+            <div className="flex gap-2.5">
+              {deck.inkColors.map(ink => {
+                const inkColor = (inkHexColors as Record<string, string>)[ink] || "#888";
+                return (
+                  <div
+                    key={ink}
+                    className="w-12 h-12 rounded-full flex items-center justify-center bg-black/40 border border-white/20 shadow-xl relative group/ink overflow-hidden"
+                    title={ink}
+                    style={{ boxShadow: `0 0 20px ${inkColor}40` }}
+                  >
+                    {/* Inner Gradient/Glow */}
+                    <div 
+                      className="absolute inset-0 opacity-40 group-hover/ink:opacity-60 transition-opacity" 
+                      style={{ background: `radial-gradient(circle at center, ${inkColor}, transparent)` }} 
+                    />
+                    <img 
+                      src={getInkLogo(ink)} 
+                      alt={ink} 
+                      className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] relative z-10 transform group-hover/ink:scale-110 transition-transform duration-300" 
+                    />
+                    {/* Gloss effect */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
+                  </div>
+                );
+              })}
             </div>
             <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight">{deck.name}</h1>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
