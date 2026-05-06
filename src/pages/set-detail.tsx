@@ -476,22 +476,23 @@ export default function SetDetail() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Set Hero Header - Redesigned for Premium Look */}
-      <div className="relative pt-12 pb-16 overflow-hidden min-h-[400px] flex items-center">
-        {/* Background Image Layer */}
-        {SET_BACKGROUNDS[setId] && (
-          <div 
-            className="absolute inset-0 z-0"
-            style={{ 
-              backgroundImage: `url(${SET_BACKGROUNDS[setId]})`,
-              backgroundPosition: 'center 20%',
-              backgroundSize: 'cover',
-              backgroundRepeat: 'no-repeat'
-            }}
-          >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
-            <div className={`absolute inset-0 bg-gradient-to-b ${gradient} opacity-90`} />
-          </div>
-        )}
+      <div className="relative pt-12 pb-16 overflow-hidden min-h-[400px] flex items-center bg-slate-950">
+        {/* Background Image & Gradient Layers */}
+        <div className="absolute inset-0 z-0">
+          {SET_BACKGROUNDS[setId] && (
+            <div 
+              className="absolute inset-0"
+              style={{ 
+                backgroundImage: `url(${SET_BACKGROUNDS[setId]})`,
+                backgroundPosition: 'center 20%',
+                backgroundSize: 'cover',
+                backgroundRepeat: 'no-repeat'
+              }}
+            />
+          )}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+          <div className={`absolute inset-0 bg-gradient-to-b ${gradient} opacity-90`} />
+        </div>
         
         {/* Pattern Overlay */}
         <div 
