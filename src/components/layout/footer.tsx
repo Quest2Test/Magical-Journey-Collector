@@ -42,10 +42,10 @@ export function Footer() {
         </div>
         <div className="mt-12 pt-8 border-t border-border/50 text-xs text-muted-foreground">
           <p className="mb-2">
-            Lorbound is an unofficial fan site and is not affiliated with, endorsed by, or connected to Disney or Ravensburger.
+            This website uses trademarks and/or copyrights associated with Disney Lorcana TCG, used under Ravensburger’s Community Code Policy (https://cdn.ravensburger.com/lorcana/community-code-en). 
           </p>
           <p>
-            Disney Lorcana and all related trademarks are property of their respective owners. This site is created by fans, for fans.
+            We are expressly prohibited from charging you to use or access this content. This website is not published, endorsed, or specifically approved by Disney or Ravensburger. For more information about Disney Lorcana TCG, visit https://www.disneylorcana.com/en-US/.
           </p>
           <p className="mt-2 italic opacity-80">
             This site contains affiliate links. We may receive a commission for purchases made through these links.
