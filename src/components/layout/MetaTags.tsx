@@ -28,34 +28,49 @@ export function MetaTags() {
         if (card.image) ogImage = card.image;
       }
     } else if (location === "/builder") {
-      title = `Lorcana Deck Builder | ${siteName}`;
-      description = "Create and optimize your Lorcana decks with the ultimate Lorcana Deck Builder.";
+      title = `Lorcana Deck Builder | Create & Export Decks | ${siteName}`;
+      description = "The ultimate Lorcana Deck Builder. Create, test, and export your decks.";
     } else if (location === "/decks") {
-      title = `Community Decks | ${siteName}`;
-      description = "Discover the latest top-performing Lorcana decks from the community.";
+      title = `My Decks | ${siteName}`;
+      description = "Manage your personal library of Disney Lorcana decks.";
+    } else if (location === "/public-decks") {
+      title = `Community Decks | Top Lorcana Deck Lists | ${siteName}`;
+      description = "Discover the latest top-performing Lorcana decks and tournament winning lists from the community.";
+    } else if (location === "/wishlist") {
+      title = `My Wishlist | Lorcana Collection Goals | ${siteName}`;
+      description = "Track the cards you need to complete your collection and monitor their market value.";
     } else if (location === "/meta") {
-      title = `Meta Analysis | ${siteName}`;
-      description = "Stay ahead of the game with our deep-dive analysis of the competitive Lorcana meta.";
+      title = `Meta Analysis | Competitive Lorcana TCG | ${siteName}`;
+      description = "Stay ahead of the game with our deep-dive analysis of the competitive Lorcana meta and trending cards.";
     } else if (location === "/sets") {
-      title = `Lorcana Collection Tracker | ${siteName}`;
-      description = "Track your collection completion across every Lorcana set with our Lorcana Collection Tracker.";
+      title = `Lorcana Collection Tracker | Set Completion | ${siteName}`;
+      description = "Track your collection completion across every Lorcana set. See your progress and missing cards.";
     } else if (location.startsWith("/sets/")) {
       const setId = location.split("/")[2]?.split("?")[0];
       const set = sets.find(s => s.id === setId);
       if (set) {
-        title = `${set.name} Complete Set List | ${siteName}`;
-        description = `Browse all cards in the ${set.name} expansion and track your set completion percentage.`;
+        title = `${set.name} Checklist | Lorcana Collection Tracker | ${siteName}`;
+        description = `Browse the full ${set.name} card list. Track your pulls and monitor set completion percentage.`;
       }
     } else if (location === "/resources") {
-      title = `Expert Resources & Tools | ${siteName}`;
-      description = "Essential links, official rules, and community tools for every Lorcana Illumineer.";
+      title = `Lorcana Resources & Tools | ${siteName}`;
+      description = "Official rules, community tools, and essential links for every Lorcana Illumineer.";
     } else if (location === "/academy") {
-      title = `Inkbound Academy | Learn Lorcana`;
+      title = `Inkbound Academy | Learn Disney Lorcana | ${siteName}`;
       description = "Master the Great Illuminary with our comprehensive guide to rules, ink theory, and competitive play.";
     } else if (location.startsWith("/profile/")) {
       const username = location.split("/")[2]?.split("?")[0];
-      title = `${username}'s Profile | ${siteName}`;
-      description = `View ${username}'s Lorcana collection, stats, and achievements on Lorbound.`;
+      title = `${username}'s Illumineer Profile | ${siteName}`;
+      description = `View ${username}'s Lorcana collection stats, achievements, and public decks on Lorbound.`;
+    } else if (location === "/login") {
+      title = `Sign In | ${siteName}`;
+      description = "Sign in to Lorbound to manage your Lorcana collection and decks.";
+    } else if (location === "/about") {
+      title = `About Lorbound | The Ultimate Lorcana Toolkit`;
+      description = "Learn more about the team behind Lorbound and our mission to provide the best tools for the Lorcana community.";
+    } else if (location === "/privacy") {
+      title = `Privacy Policy | ${siteName}`;
+      description = "Your privacy matters. Read about how we handle your data on Lorbound.";
     }
 
     // Update Main Title

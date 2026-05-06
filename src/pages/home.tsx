@@ -74,12 +74,14 @@ export default function Home() {
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight mb-6 text-foreground leading-[1.1]">
                 The Ultimate<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-amber-600">
-                  Lorcana Archive
+                  Lorcana Deck Builder
                 </span>
+                <br />
+                <span className="text-3xl md:text-4xl lg:text-5xl opacity-90">& Collection Tracker</span>
               </h1>
 
               <p className="text-lg md:text-xl text-muted-foreground max-w-xl mb-10 font-sans font-light leading-relaxed">
-                Lorbound is the ultimate Lorcana Deck Builder and Lorcana Collection Tracker. Master the inklands, discover every glimmer, build legendary decks, and track your growing collection in a professional toolkit designed for true Illumineers.
+                Lorbound is the premier professional toolkit for Illumineers. Master the inklands with our advanced <strong>Lorcana Deck Builder</strong> and comprehensive <strong>Lorcana Collection Tracker</strong>. Discover every glimmer, build tournament-winning lists, and track your growing collection with real-time market data.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">

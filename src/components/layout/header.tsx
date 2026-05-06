@@ -244,6 +244,15 @@ export function Header() {
                     </Link>
                   );
                 })}
+                <Link
+                  href="/wishlist"
+                  onClick={() => setIsOpen(false)}
+                  className={`text-lg font-medium transition-colors hover:text-pink-500 ${
+                    location === "/wishlist" ? "text-pink-500" : "text-foreground/60"
+                  } flex items-center gap-2`}
+                >
+                  <Heart className="h-5 w-5 fill-current" /> Wishlist
+                </Link>
               </nav>
               <div className="mt-auto">
                 {user ? (

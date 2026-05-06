@@ -1,4 +1,31 @@
+# Lorbound Robots.txt - Maximizing Search Exposure
 User-agent: *
 Allow: /
+Allow: /cards
+Allow: /builder
+Allow: /decks
+Allow: /sets
+Allow: /meta
+Allow: /resources
+Allow: /academy
+Allow: /public-decks
 
+# Disallow sensitive or redundant paths
+Disallow: /login
+Disallow: /auth
+Disallow: /profile/me
+Disallow: /api/
+
+# Specify crawl delay for general bots to prevent heavy load
+Crawl-delay: 1
+
+# Specific instructions for Googlebot
+User-agent: Googlebot
+Allow: /
+
+# Specific instructions for Bingbot
+User-agent: Bingbot
+Allow: /
+
+# Sitemap Location
 Sitemap: https://lorbound.com/sitemap.xml

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Shield, Zap, Sparkles, Droplet, Star, Swords, Target, Scroll, CircleDot, Layers, ChevronDown, ChevronUp, Trophy, Ban, HelpCircle, Gem, Palette } from "lucide-react";
+import { BookOpen, Shield, Zap, Sparkles, Droplet, Star, Swords, Target, Scroll, CircleDot, Layers, ChevronDown, ChevronUp, Trophy, Ban, HelpCircle, Gem, Palette, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getInkLogo, inkHexColors, rarityIcons } from "@/components/ui/card-display";
 import { Link } from "wouter";
 
@@ -110,7 +111,7 @@ export default function Academy() {
             <Collapsible title="Starting the Game & Mulligan" icon={<CircleDot className="w-5 h-5" />} defaultOpen>
               <div className="space-y-3">
                 <StepCard step={1} title="Determine Who Goes First">
-                  Both players flip a coin or use any random method. The winner chooses whether to go first or second. Going first gives tempo; going second gives an extra card draw.
+                  Both players flip a coin or use any random method. The winner chooses whether to go first or second.
                 </StepCard>
                 <StepCard step={2} title="Draw Your Opening Hand">
                   Each player draws <strong className="text-foreground">7 cards</strong> from the top of their shuffled deck.
@@ -122,10 +123,17 @@ export default function Academy() {
                   The first player takes their turn but <strong className="text-foreground">skips their draw step</strong> on the very first turn. After that, play alternates normally.
                 </StepCard>
               </div>
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mt-4">
-                <p className="text-sm text-muted-foreground">
-                  <strong className="text-foreground">💡 Tip:</strong> A good opening hand has 2-3 low-cost characters, at least 2 inkable cards, and ideally a card you want to play on turns 1—3.
-                </p>
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mt-4 flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">💡 Practice Makes Perfect:</strong> You can practice your opening hands using our <Link href="/builder" className="text-primary font-bold hover:underline">Mulligan Simulator</Link>. It's the best way to test the consistency of your deck before taking it to a tournament.
+                  </p>
+                </div>
+                <Link href="/builder">
+                  <Button size="sm" variant="outline" className="gap-2 shrink-0">
+                    <Play className="w-4 h-4" /> Try Simulator
+                  </Button>
+                </Link>
               </div>
             </Collapsible>
 
@@ -270,7 +278,7 @@ export default function Academy() {
                     The primary competitive format used at official Disney Lorcana Challenge events. Core uses a <strong className="text-foreground">Block System</strong>, sets are grouped into blocks of 4, and only the <strong className="text-foreground">two most recent blocks</strong> are legal. When a new block begins, the oldest block rotates out.
                   </p>
                   <div className="mb-3">
-                    <p className="text-xs uppercase font-bold text-muted-foreground tracking-wider mb-2">Currently Legal — Bloc 2 & Bloc 3 (Sets 5–12)</p>
+                    <p className="text-xs uppercase font-bold text-muted-foreground tracking-wider mb-2">Currently Legal - Bloc 2 & Bloc 3 (Sets 5–12)</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {CORE_LEGAL_SETS.map(s => (
                         <div key={s.num} className="flex items-center gap-2 p-2 rounded-lg bg-background border text-sm">
@@ -295,7 +303,7 @@ export default function Academy() {
                     <Sparkles className="w-5 h-5 text-violet-500" /> Infinity Constructed
                   </h4>
                   <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                    The "eternal" format — <strong className="text-foreground">every set ever released is legal</strong>. This format allows the most powerful and creative deck combinations, drawing from the full card pool. Ideal for veteran players.
+                    The "eternal" format - <strong className="text-foreground">every set ever released is legal</strong>. This format allows the most powerful and creative deck combinations, drawing from the full card pool.
                   </p>
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                     <Ban className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
@@ -351,7 +359,7 @@ export default function Academy() {
                   All official Lorcana tournaments are managed through Melee.gg. Create a free account and search for events near you.
                 </StepCard>
                 <StepCard step={2} title="Build a Core-Legal Deck">
-                  Most official events use the Core Constructed format. Use the <Link href="/builder" className="text-primary underline underline-offset-2 font-medium">Lorbound Deck Builder</Link> to construct and validate your deck — it will flag any cards outside rotation.
+                  Most official events use the Core Constructed format. Use the <Link href="/builder" className="text-primary underline underline-offset-2 font-medium">Lorbound Deck Builder</Link> to construct and validate your deck - it will flag any cards outside rotation.
                 </StepCard>
                 <StepCard step={3} title="Submit Your Decklist">
                   Submit your deck through Melee.gg before the deadline. You can export your Lorbound deck in Melee-compatible format with one click from the Export menu.
@@ -387,7 +395,7 @@ export default function Academy() {
                 </div>
                 <div className="p-4 rounded-xl bg-muted/30 border">
                   <h4 className="font-bold text-sm text-destructive">❌ "I played a card and immediately quested with it."</h4>
-                  <p className="text-xs text-muted-foreground mt-1">Characters enter play in a "drying" state — they cannot exert (quest or challenge) until your <strong className="text-foreground">next turn</strong>. The exception is characters with <strong className="text-foreground">Rush</strong>, which can challenge immediately (but still can't quest).</p>
+                  <p className="text-xs text-muted-foreground mt-1">Characters enter play in a "drying" state - they cannot exert (quest or challenge) until your <strong className="text-foreground">next turn</strong>. The exception is characters with <strong className="text-foreground">Rush</strong>, which can challenge immediately (but still can't quest).</p>
                 </div>
                 <div className="p-4 rounded-xl bg-muted/30 border">
                   <h4 className="font-bold text-sm text-destructive">❌ "Rush lets me quest the turn I play a character."</h4>
@@ -399,7 +407,7 @@ export default function Academy() {
                 </div>
                 <div className="p-4 rounded-xl bg-muted/30 border">
                   <h4 className="font-bold text-sm text-amber-500">💡 "Can I use Shift on a character that just entered play?"</h4>
-                  <p className="text-xs text-muted-foreground mt-1">No. Shift requires an existing character of the same name <strong className="text-foreground">already in play</strong>. You play the Shift character on top of it — it doesn't need to be ready, it just has to be on the board.</p>
+                  <p className="text-xs text-muted-foreground mt-1">No. Shift requires an existing character of the same name <strong className="text-foreground">already in play</strong>. You play the Shift character on top of it - it doesn't need to be ready, it just has to be on the board.</p>
                 </div>
                 <div className="p-4 rounded-xl bg-muted/30 border">
                   <h4 className="font-bold text-sm text-amber-500">💡 "Does a Shifted character have summoning sickness?"</h4>
