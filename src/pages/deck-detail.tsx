@@ -1,63 +1,221 @@
-import { useParams, Link, useSearch } from "wouter";
-import { useAllCards } from "@/hooks/useCards";
-import { useCollection } from "@/hooks/useCollection";
+import { useParams, Link, useLocation } from "wouter";
+import { useDecks } from "@/hooks/useDecks";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Maximize2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { CardDisplay, inkHexColors, inkGradients, rarityIcons, isDisney100, getInkLogo } from "@/components/ui/card-display";
-import { cn } from "@/lib/utils";
-import { useState, useMemo } from "react";
-import { useCurrency } from "@/components/currency-provider";
+import { ArrowLeft, Loader2, Edit, ExternalLink, PlaySquare, TrendingUp, Info, LayoutGrid, List as ListIcon, Library, Sparkles, Download, Layers, Globe, Link as LinkIcon } from "lucide-react";
 import { getCardLegality } from "@/lib/legality";
-import { detectRegion, buildTCGPlayerUrl, buildCardMarketUrl } from "@/lib/affiliates";
-import { useWishlist } from "@/hooks/useWishlist";
-import { Heart, Palette, Quote, Sparkles, Share2, BookmarkPlus, BookmarkCheck, Twitter, Facebook, ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogTitle,
-  DialogHeader,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { motion } from "framer-motion";
+import { CardDisplay, inkHexColors, inkGradients, getInkLogo } from "@/components/ui/card-display";
+import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/currency-provider";
+import { useState, useMemo } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { useCollection } from "@/hooks/useCollection";
+import { getBaseCardValue } from "@/lib/pricing";
+import { getDisplayType } from "@/lib/card-utils";
+import { Progress } from "@/components/ui/progress";
+import { Card as CardContainer, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { highlightRulesText, SYMBOL_ICONS } from "@/components/ui/card-text";
-import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-utils";
 
-export default function CardDetail() {
+import { useAllCards } from "@/hooks/useCards";
+import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
+import { usePublicDecks } from "@/hooks/usePublicDecks";
+import { DeckAnalysisPanel } from "@/components/builder/DeckAnalysisPanel";
+import { useToast } from "@/hooks/use-toast";
+import { Twitter, Facebook, Share2 } from "lucide-react";
+
+export default function DeckDetail() {
   const { id } = useParams();
-  const { data: allCards = [], isLoading } = useAllCards();
-   const { getEntry, addCopy, removeCopy, toggleCollected, isCollected } = useCollection();
-   const { formatPrice } = useCurrency();
-   const { toggleWishlist, isInWishlist } = useWishlist();
-   const [imgError, setImgError] = useState(false);
-   const [copying, setCopying] = useState(false);
-   const [showSocialShare, setShowSocialShare] = useState(false);
+  const [location] = useLocation();
+  const { toast } = useToast();
+  const isPublicRoute = location.includes("/decks/public/");
 
-  const decodedId = id ? decodeURIComponent(id) : "";
-  const card = allCards.find(c => c.id === decodedId);
-  const collectionEntry = card ? getEntry(card.id) : { normal: 0, foil: 0 };
-  const foilOnly = card ? isFoilOnly(card) : false;
-  const legality = card ? getCardLegality(card, allCards) : null;
-
-  const searchStr = useSearch();
-  const urlParams = new URLSearchParams(searchStr);
-  const fromUrl = urlParams.get("from");
-
-  const { prevCard, nextCard } = useMemo(() => {
-    if (!card || !allCards.length) return { prevCard: null, nextCard: null };
-    const setCards = allCards
-      .filter(c => c.expansion === card.expansion)
-      .sort((a, b) => (a.cardNum ?? 9999) - (b.cardNum ?? 9999));
-    
-    const currentIndex = setCards.findIndex(c => c.id === card.id);
-    return {
-      prevCard: currentIndex > 0 ? setCards[currentIndex - 1] : null,
-      nextCard: currentIndex < setCards.length - 1 ? setCards[currentIndex + 1] : null
+  const copyToClipboard = async () => {
+    const shareData = {
+      title: `${deck?.name} | Lorcana Deck on Lorbound`,
+      text: `Check out this ${deck?.format} deck "${deck?.name}" by ${isPublicRoute ? (deck as any).authorName : (user?.user_metadata?.username || "a Lorbound user")}.`,
+      url: window.location.href,
     };
-  }, [allCards, card]);
 
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        } else {
+          return; // User cancelled
+        }
+      }
+    }
+
+    // Fallback to clipboard
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link Copied!",
+        description: "Deck URL has been copied to your clipboard.",
+      });
+    } catch (err) {
+      toast({
+        title: "Share Failed",
+        description: "Could not copy link to clipboard.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const { decks, isLoading: loadingDecks } = useDecks();
+  const { data: allCards = [], isLoading: loadingCards } = useAllCards();
+  const { formatPrice } = useCurrency();
+  const { user } = useAuth();
+  const { collection, getEntry } = useCollection();
+  const { publicDecks, publishDeck, unpublishDeck, isUnpublishing, isLoading: loadingPublic, isPublishing } = usePublicDecks();
+
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [groupMode, setGroupMode] = useState<"type" | "cost">("type");
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showSocialShare, setShowSocialShare] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+
+  const deck = useMemo(() => {
+    if (isPublicRoute) {
+      return publicDecks.find(d => d.id === id);
+    }
+
+    // 1. Check user decks
+    const userDeck = decks.find(d => d.id === id);
+    if (userDeck) return userDeck;
+
+    // 2. Check starter decks if ID starts with 'starter-'
+    if (id?.startsWith('starter-') && allCards.length > 0) {
+      const starters = getHydratedStarterDecks(allCards);
+      return starters.find(s => s.id === id);
+    }
+
+    return null;
+  }, [decks, publicDecks, id, allCards, isPublicRoute]);
+
+  const analysis = useMemo(() => {
+    if (!deck) return null;
+
+    let totalOwned = 0;
+    let totalRequired = 0;
+    let missingValue = 0;
+    let uninkableCount = 0;
+    let totalInkCost = 0;
+    const inkDist: Record<string, number> = {};
+    const curve: { cost: string; count: number; [ink: string]: string | number }[] = Array.from({ length: 7 }, (_, i) => ({
+      cost: i < 6 ? String(i + 1) : "7+",
+      count: 0,
+    }));
+    const byType: Record<string, number> = {
+      Character: 0, Action: 0, Item: 0, Location: 0, Song: 0,
+    };
+
+    const cardsInDeck = deck.entries.map(entry => {
+      const owned = getEntry(entry.card.id);
+      const totalOwnedCount = owned.normal + owned.foil;
+      const missingQty = Math.max(0, entry.qty - totalOwnedCount);
+      const price = getBaseCardValue(entry.card);
+
+      totalOwned += Math.min(entry.qty, totalOwnedCount);
+      totalRequired += entry.qty;
+      missingValue += missingQty * price;
+
+      // Stats
+      inkDist[entry.card.inkColor] = (inkDist[entry.card.inkColor] || 0) + entry.qty;
+      const costIndex = Math.min(entry.card.cost - 1, 6);
+      if (costIndex >= 0) {
+        curve[costIndex].count += entry.qty;
+        curve[costIndex][entry.card.inkColor] = ((curve[costIndex][entry.card.inkColor] as number) || 0) + entry.qty;
+      }
+      byType[entry.card.type] = (byType[entry.card.type] || 0) + entry.qty;
+      if (!entry.card.inkable) uninkableCount += entry.qty;
+      totalInkCost += entry.card.cost * entry.qty;
+
+      return {
+        ...entry,
+        ownedQty: Math.min(entry.qty, totalOwnedCount),
+        missingQty,
+        price
+      };
+    });
+
+    const completionPct = totalRequired > 0 ? (totalOwned / totalRequired) * 100 : 0;
+    const activeInks = Object.keys(inkDist);
+    const avgCost = totalRequired > 0 ? totalInkCost / totalRequired : 0;
+
+    // Legality
+    const illegalCardsCount = deck.entries.filter(({ card }) => {
+      if (deck.format === "Any") return false;
+      const legality = getCardLegality(card, allCards);
+      const formatKey = (deck.format === "Core" ? "core" : "infinity") as keyof typeof legality;
+      return legality[formatKey] !== "Legal";
+    }).length;
+
+    // Grouping
+    const grouped = cardsInDeck.reduce((acc, entry) => {
+      let key = "Other";
+      if (groupMode === "type") {
+        key = getDisplayType(entry.card) + "s";
+      } else {
+        key = `Cost ${entry.card.cost}`;
+      }
+      if (!acc[key]) acc[key] = { cards: [], count: 0 };
+      acc[key].cards.push(entry);
+      acc[key].count += entry.qty;
+      return acc;
+    }, {} as Record<string, { cards: typeof cardsInDeck, count: number }>);
+
+    // Sorting groups
+    let sortedKeys = Object.keys(grouped);
+    if (groupMode === "type") {
+      const order = ["Characters", "Actions", "Items", "Locations"];
+      sortedKeys = sortedKeys.sort((a, b) => {
+        const ia = order.indexOf(a);
+        const ib = order.indexOf(b);
+        if (ia === -1 && ib === -1) return a.localeCompare(b);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+    } else {
+      sortedKeys = sortedKeys.sort((a, b) => parseInt(a.replace("Cost ", "")) - parseInt(b.replace("Cost ", "")));
+    }
+
+    // Sort cards within groups by cost
+    sortedKeys.forEach(key => {
+      grouped[key].cards.sort((a, b) => a.card.cost - b.card.cost || a.card.name.localeCompare(b.card.name));
+    });
+
+    return {
+      cardsInDeck,
+      totalOwned,
+      totalRequired,
+      missingValue,
+      completionPct,
+      grouped,
+      sortedKeys,
+      // New stats for infographics
+      inkDistribution: inkDist,
+      costCurve: curve,
+      activeInks,
+      uninkableCount,
+      avgCost,
+      pieData: Object.entries(inkDist).map(([name, value]) => ({ name, value })),
+      typeBreakdown: Object.entries(byType).map(([type, count]) => ({ type, count })).filter(t => t.count > 0),
+      isLegalSize: totalRequired === 60,
+      isLegalInkCount: activeInks.length <= 2,
+      illegalCardsCount
+    };
+  }, [deck, collection, getEntry, groupMode]);
+
+  const isLoading = loadingDecks || (id?.startsWith('starter-') && loadingCards) || (isPublicRoute && loadingPublic);
 
   if (isLoading) {
     return (
@@ -67,506 +225,424 @@ export default function CardDetail() {
     );
   }
 
-  if (!card) {
+  if (!deck || !analysis) {
     return (
       <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-3xl font-serif font-bold mb-4">Card Not Found</h1>
-        <p className="text-muted-foreground mb-8">Could not find card with ID: {id}</p>
-        <Link href={fromUrl ? fromUrl : "/cards"}>
-          <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> {fromUrl ? "Back to Set" : "Back to Cards"}</Button>
+        <h1 className="text-3xl font-serif font-bold mb-4">Deck Not Found</h1>
+        <p className="text-muted-foreground mb-8 text-lg">This deck might have been moved or deleted.</p>
+        <Link href="/decks">
+          <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> Back to My Decks</Button>
         </Link>
       </div>
     );
   }
 
-  const relatedCards = allCards
-    .filter(c => c.id !== card.id && (c.type === card.type || c.inkColor === card.inkColor))
-    .slice(0, 5);
+  const inkHexes = deck.inkColors.map(ink => inkHexColors[ink] ?? "#888");
+  const bannerGradient = inkHexes.length >= 2
+    ? `linear-gradient(135deg, ${inkHexes[0]}22 0%, ${inkHexes[1]}22 100%)`
+    : `linear-gradient(135deg, ${inkHexes[0] ?? "#88888822"} 0%, transparent 100%)`;
 
-  const artistCards = card.artist
-    ? allCards
-        .filter(c => c.id !== card.id && c.artist === card.artist && !!c.image)
-        .slice(0, 8)
-    : [];
-
-  const hexColor = inkHexColors[card.inkColor] ?? "#f59e0b";
-  const gradient = inkGradients[card.inkColor] ?? inkGradients.Amber;
-  const hasImage = !!card.image && !imgError;
+  const handleBuyMissing = () => {
+    const affiliateId = import.meta.env.VITE_TCGPLAYER_AFFILIATE_ID || "";
+    const missingLines = analysis.cardsInDeck
+      .filter(c => c.missingQty > 0)
+      .map(entry => `${entry.missingQty} ${entry.card.name}${entry.card.subtitle ? ` - ${entry.card.subtitle}` : ""}`)
+      .join("||");
+    if (missingLines) {
+      window.open(`https://tcgplayer.pxf.io/c/${affiliateId}/1830156/21018?u=https://www.tcgplayer.com/massentry?productline=Lorcana TCG&c=${encodeURIComponent(missingLines)}`, '_blank');
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <Link href={fromUrl ? fromUrl : "/cards"} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4 mr-1" /> {fromUrl ? "Back to Set" : "Back to Browse"}
-        </Link>
+      {/* Breadcrumbs */}
+      <Link href="/decks" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors group">
+        <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Back to My Decks
+      </Link>
 
-        {/* Set Navigation */}
-        {(prevCard || nextCard) && (
-          <div className="flex items-center gap-1">
-            {prevCard && (
-              <Link href={`/cards/${encodeURIComponent(prevCard.id)}?from=${fromUrl ? encodeURIComponent(fromUrl) : ""}`}>
-                <Button variant="ghost" size="sm" className="h-8 gap-1 pl-1 pr-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all group">
-                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Prev <span className="opacity-40 font-mono">#{prevCard.cardNum}</span>
-                </Button>
-              </Link>
-            )}
-            
-            <div className="px-3 py-1 rounded-full bg-muted/30 border border-border/40 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
-               <span className="text-primary-text font-black">{card.cardNum}</span> / {allCards.filter(c => c.expansion === card.expansion).length}
+      {/* Header Section */}
+      <div className="relative rounded-3xl border bg-card overflow-hidden shadow-sm mb-8">
+        <div className="absolute inset-0 opacity-10" style={{ background: bannerGradient }} />
+        <div className="relative p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-3">
+            <div className="flex gap-2.5">
+              {deck.inkColors.map(ink => {
+                const inkColor = (inkHexColors as Record<string, string>)[ink] || "#888";
+                return (
+                  <div
+                    key={ink}
+                    className="w-12 h-12 rounded-full flex items-center justify-center bg-black/40 border border-white/20 shadow-xl relative group/ink overflow-hidden"
+                    title={ink}
+                    style={{ boxShadow: `0 0 20px ${inkColor}40` }}
+                  >
+                    {/* Inner Gradient/Glow */}
+                    <div 
+                      className="absolute inset-0 opacity-40 group-hover/ink:opacity-60 transition-opacity" 
+                      style={{ background: `radial-gradient(circle at center, ${inkColor}, transparent)` }} 
+                    />
+                    <img 
+                      src={getInkLogo(ink)} 
+                      alt={ink} 
+                      className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] relative z-10 transform group-hover/ink:scale-110 transition-transform duration-300" 
+                    />
+                    {/* Gloss effect */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
+                  </div>
+                );
+              })}
             </div>
-
-            {nextCard && (
-              <Link href={`/cards/${encodeURIComponent(nextCard.id)}?from=${fromUrl ? encodeURIComponent(fromUrl) : ""}`}>
-                <Button variant="ghost" size="sm" className="h-8 gap-1 pl-3 pr-1 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all group">
-                  Next <span className="opacity-40 font-mono">#{nextCard.cardNum}</span> <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight">{deck.name}</h1>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5"><PlaySquare className="w-4 h-4" /> {deck.totalCards} Cards</span>
+              <span className="flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> {formatPrice(deck.totalValue)} Value</span>
+              <span className="flex items-center gap-1.5"><Info className="w-4 h-4" /> {deck.format} Format</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" size="lg" className="gap-2 shadow-sm" onClick={() => setShowSocialShare(true)}>
+              <Share2 className="w-4 h-4" /> Share
+            </Button>
+            {user && decks.some(d => d.id === deck.id) && !isPublicRoute && (
+              publicDecks.some(p => p.id === deck.id) ? (
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="gap-2 shadow-sm text-amber-500 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors"
+                  onClick={() => unpublishDeck(deck.id)}
+                  disabled={isUnpublishing}
+                >
+                  {isUnpublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                  Unshare
+                </Button>
+              ) : (
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="gap-2 shadow-lg"
+                  onClick={() => setShowShareDialog(true)}
+                  disabled={isPublishing}
+                >
+                  {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4 text-primary" />}
+                  Share Publicly
+                </Button>
+              )
+            )}
+            {isPublicRoute ? (
+              <div className="flex gap-2">
+                {user && (deck as any).userId === user.id && (
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="gap-2 shadow-sm text-amber-500 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10"
+                    onClick={() => unpublishDeck(deck.id)}
+                    disabled={isUnpublishing}
+                  >
+                    {isUnpublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                    Unshare
+                  </Button>
+                )}
+                <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20" asChild>
+                   <Link href={`/builder?import=${deck.id}&source=public`}>
+                     <Layers className="w-4 h-4" /> Clone to My Decks
+                   </Link>
+                </Button>
+              </div>
+            ) : (
+              <Link href={`/builder?edit=${deck.id}`}>
+                <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20">
+                  <Edit className="w-4 h-4" /> Modify in Builder
                 </Button>
               </Link>
             )}
           </div>
-        )}
+        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 mb-16">
-        {/* Left: Card Art */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="w-full lg:w-[360px] shrink-0"
-        >
-          <div className="sticky top-24">
-            <Dialog>
-              {hasImage ? (
-                <div className="relative group overflow-hidden rounded-2xl shadow-2xl border border-border/50 aspect-[2.5/3.5]">
-                  <img
-                    src={card.image}
-                    alt={card.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    onError={() => setImgError(true)}
-                  />
-                  
-                  {/* Hover Overlay with Enlarge Icon */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
-                    <DialogTrigger asChild>
-                      <button className="p-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 pointer-events-auto hover:bg-white/30">
-                        <Maximize2 className="w-8 h-8" />
-                      </button>
-                    </DialogTrigger>
-                  </div>
-                </div>
-              ) : (
-                <div className="aspect-[2.5/3.5] rounded-2xl overflow-hidden shadow-2xl relative">
-                  <img src="/LCardBack.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
-                  <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40", gradient)} />
-                  <div className="absolute inset-0 bg-black/20" />
-                </div>
-              )}
-
-              {/* Enlarged Card Dialog Content */}
-              {hasImage && (
-                <DialogContent className="max-w-[98vw] md:max-w-fit w-auto h-auto p-0 overflow-hidden bg-transparent border-none shadow-none focus:outline-none flex items-center justify-center">
-                  <DialogTitle className="sr-only">Enlarged card view of {card.name}</DialogTitle>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex justify-center p-2 sm:p-6 w-full h-full"
-                  >
-                    <div className="relative h-[85vh] max-h-[900px] aspect-[2.5/3.5] rounded-2xl md:rounded-[2rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.7)] border border-white/20 ring-1 ring-white/10 m-auto">
-                      <img
-                        src={card.image}
-                        alt={card.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </motion.div>
-                </DialogContent>
-              )}
-            </Dialog>
-
-            {/* Regional Marketplace CTA */}
-            {(card.priceUsd != null || card.priceUsdFoil != null) && (
-              <div className="rounded-2xl border bg-card/80 backdrop-blur overflow-hidden mt-4 group">
-                <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Market Availability
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/60">Real-time Pricing</span>
-                </div>
-                
-                <div className="p-4 space-y-4">
-                  {/* Primary CTA (Regional) */}
-                  {(() => {
-                    const region = detectRegion();
-                    const isUS = region === "US" || region === "Other";
-                    const primaryLink = isUS ? buildTCGPlayerUrl(card) : buildCardMarketUrl(card);
-                    const primaryName = isUS ? "TCGPlayer" : "CardMarket";
-                    const secondaryName = isUS ? "CardMarket" : "TCGPlayer";
-                    const secondaryLink = isUS ? buildCardMarketUrl(card) : buildTCGPlayerUrl(card);
-
-                    return (
-                      <>
-                        <a
-                          href={primaryLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
-                        >
-                          Buy on {primaryName}
-                          <ArrowLeft className="w-4 h-4 rotate-180" />
-                        </a>
-                        <div className="grid grid-cols-2 gap-2">
-                           {/* Normal Price - Hidden for Foil-Only rarities */}
-                           {!foilOnly && (
-                             <div className="flex flex-col p-2.5 rounded-lg bg-muted/30 border border-border/40">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight mb-1">Normal</span>
-                                <span className="text-sm font-black" style={{ color: hexColor }}>
-                                   {card.priceUsd ? formatPrice(card.priceUsd) : "N/A"}
-                                </span>
-                             </div>
-                           )}
- 
-                           {/* Foil Price - Expand if Normal is hidden */}
-                           <div className={cn("flex flex-col p-2.5 rounded-lg bg-muted/30 border border-border/40", foilOnly ? "col-span-2" : "col-span-1")}>
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight mb-1">Cold Foil</span>
-                              <span className="text-sm font-black" style={{ color: hexColor }}>
-                                 {card.priceUsdFoil ? formatPrice(card.priceUsdFoil) : "N/A"}
-                              </span>
-                           </div>
-                        </div>
-
-                        <a
-                          href={secondaryLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full text-center text-xs font-bold py-2 rounded-lg border border-border bg-muted/50 hover:bg-muted text-muted-foreground transition-all"
-                        >
-                          View on {secondaryName} ↗
-                        </a>
-                      </>
-                    );
-                  })()}
-                </div>
-
-                  <Button 
-                    variant="outline" 
-                    className="h-10 w-full rounded-xl border-border bg-card/50 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all active:scale-95"
-                    onClick={() => setShowSocialShare(true)}
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Share this Card
-                  </Button>
+      <div className="grid lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2">
+          {/* Deck Display Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4 mb-6">
+            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
+               <Library className="w-6 h-6 text-primary" /> Decklist
+            </h2>
+            <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
+              <div className="flex items-center gap-1.5 border rounded-md p-0.5 bg-muted/50">
+                <button
+                  onClick={() => setGroupMode("type")}
+                  className={cn("px-2.5 py-1 text-xs font-bold rounded-sm transition-colors", groupMode === "type" ? "bg-background shadow-sm text-foreground" : "hover:text-foreground")}
+                >
+                  By Type
+                </button>
+                <button
+                  onClick={() => setGroupMode("cost")}
+                  className={cn("px-2.5 py-1 text-xs font-bold rounded-sm transition-colors", groupMode === "cost" ? "bg-background shadow-sm text-foreground" : "hover:text-foreground")}
+                >
+                  By Cost
+                </button>
               </div>
-            )}
-
-              {/* Collection Tracker */}
-              <div className="rounded-2xl border bg-card/80 backdrop-blur overflow-hidden mt-4">
-                <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">My Collection</span>
-                  <span
-                    className="text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: `${hexColor}22`, color: hexColor }}
-                  >
-                    {collectionEntry.normal + collectionEntry.foil} total
-                  </span>
-                </div>
-
-                <div className="divide-y divide-border/40">
-                  {!foilOnly && (
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <div>
-                        <p className="text-sm font-semibold">Normal</p>
-                        <p className="text-xs text-muted-foreground">Standard print</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => removeCopy(card.id, "normal")}
-                          disabled={collectionEntry.normal === 0}
-                          className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 text-center text-lg font-bold tabular-nums" style={{ color: collectionEntry.normal > 0 ? hexColor : undefined }}>
-                          {collectionEntry.normal}
-                        </span>
-                        <button
-                          onClick={() => addCopy(card.id, "normal")}
-                          className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors"
-                          style={collectionEntry.normal > 0 ? { borderColor: hexColor, color: hexColor } : {}}
-                        >
-                          +
-                        </button>
-                        <button
-                          onClick={() => toggleWishlist(card.id, "normal")}
-                          className={cn(
-                            "w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ml-1",
-                            isInWishlist(card.id, "normal") ? "bg-pink-500 border-pink-400 text-white" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
-                          )}
-                          title="Add to Wishlist"
-                        >
-                          <Heart className={cn("w-4 h-4", isInWishlist(card.id, "normal") && "fill-current")} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold">Cold Foil</p>
-                      <p className="text-xs text-muted-foreground">Foil treatment</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => removeCopy(card.id, "foil")}
-                        disabled={collectionEntry.foil === 0}
-                        className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        −
-                      </button>
-                      <span className="w-8 text-center text-lg font-bold tabular-nums" style={{ color: collectionEntry.foil > 0 ? hexColor : undefined }}>
-                        {collectionEntry.foil}
-                      </span>
-                      <button
-                        onClick={() => addCopy(card.id, "foil")}
-                        className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors"
-                        style={collectionEntry.foil > 0 ? { borderColor: hexColor, color: hexColor } : {}}
-                      >
-                        +
-                      </button>
-                      <button
-                        onClick={() => toggleWishlist(card.id, "foil")}
-                        className={cn(
-                          "w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ml-1",
-                          isInWishlist(card.id, "foil") ? "bg-amber-500 border-amber-400 text-white" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
-                        )}
-                        title="Add to Foil Wishlist"
-                      >
-                        <Sparkles className={cn("w-4 h-4", isInWishlist(card.id, "foil") && "fill-current")} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={cn("p-1.5 rounded-sm transition-colors", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "hover:text-foreground")}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={cn("p-1.5 rounded-sm transition-colors", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "hover:text-foreground")}
+                  title="List View"
+                >
+                  <ListIcon className="w-4 h-4" />
+                </button>
               </div>
-
-            {/* Tournament Legality */}
-            {legality && (
-              <div className="rounded-2xl border bg-card/80 backdrop-blur overflow-hidden mt-4 text-sm">
-                <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Format Legality</span>
-                </div>
-                <div className="divide-y divide-border/40">
-                  <div className="flex items-center justify-between px-4 py-2.5">
-                    <span className="font-medium">Core Constructed</span>
-                    <span className={cn("font-bold", legality.core === 'Legal' ? 'text-emerald-500' : 'text-destructive')}>
-                      {legality.core}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between px-4 py-2.5">
-                    <span className="font-medium">Infinity Constructed</span>
-                    <span className={cn("font-bold", legality.infinity === 'Legal' ? 'text-emerald-500' : 'text-destructive')}>
-                      {legality.infinity}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
-        </motion.div>
 
-        {/* Right: Card Details */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="flex-1 space-y-6"
-        >
-          {/* BUREAU: Identity */}
-          <section className="space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  {(card.allInkColors || [card.inkColor]).map(c => (
-                    <div
-                      key={c}
-                      className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm"
-                      style={{ backgroundColor: inkHexColors[c] ?? "#888" }}
-                    />
-                  ))}
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  {(card.allInkColors || [card.inkColor]).join(" / ")} • {getDisplayType(card)}
-                </span>
-              </div>
-              {card.franchise && (
-                <span className="text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 rounded bg-primary/5 text-primary border border-primary/10">
-                  {card.franchise}
-                </span>
-              )}
-            </div>
-            
-            <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-foreground">{card.name}</h1>
-            {getFormattedSubtitle(card) && (
-              <h2 className="text-xl md:text-2xl font-serif text-muted-foreground/80 italic">{getFormattedSubtitle(card)}</h2>
-            )}
+          {/* Deck Content */}
+          <div className={cn("gap-8", viewMode === "list" ? "grid md:grid-cols-1" : "flex flex-col")}>
+            {analysis.sortedKeys.map((groupKey) => {
+              const group = analysis.grouped[groupKey];
+              const returnPath = isPublicRoute ? `/decks/public/${deck.id}` : `/decks/${deck.id}`;
+              if (!group || group.cards.length === 0) return null;
 
-            {isDisney100(card) && (
-              <div className="mt-3 flex items-center gap-2 px-3 py-1 rounded bg-amber-500/5 border border-amber-500/20 w-fit">
-                <img src="/rarities/Disney_100_logo.png" alt="D100" className="w-5 h-5 object-contain" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-amber-600/80">Disney 100 Edition</span>
-              </div>
-            )}
-          </section>
-
-          {/* BUREAU: Combat Stats */}
-          <section className="grid grid-cols-4 gap-3">
-            {[
-              { label: "Cost", value: card.cost, color: "bg-slate-100 dark:bg-slate-800", icon: "{I}" },
-              { label: "Strength", value: card.strength, color: "bg-red-50 dark:bg-red-950/30", icon: "{S}", hide: card.type !== "Character" },
-              { label: "Willpower", value: card.willpower, color: "bg-blue-50 dark:bg-blue-950/30", icon: "{W}", hide: card.type !== "Character" && card.type !== "Location" },
-              { label: "Lore", value: card.lore, color: "bg-amber-50 dark:bg-amber-950/30", icon: "{L}", hide: card.type !== "Character" && card.type !== "Location" },
-              { label: "Inkable", value: card.inkable ? "Yes" : "No", color: "bg-secondary/40", hide: card.type === "Character" || card.type === "Location" }
-            ].filter(s => !s.hide).map(stat => (
-              <div key={stat.label} className={cn("flex flex-col items-center justify-center p-3 rounded-2xl border border-border/40 shadow-sm", stat.color)}>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{stat.label}</span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold tabular-nums">{stat.value ?? 0}</span>
-                  {stat.icon && (
-                    <span className={cn("w-3 h-3 rounded-full flex items-center justify-center", SYMBOL_ICONS[stat.icon].bg)}>
-                      <svg viewBox="0 0 24 24" className={cn("w-2 h-2", SYMBOL_ICONS[stat.icon].color)}>{SYMBOL_ICONS[stat.icon].symbol}</svg>
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </section>
-
-          {/* BUREAU: Abilities & Text */}
-          <section className="space-y-5 p-6 rounded-3xl bg-card border shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
-              <img src={getInkLogo(card.inkColor)} alt="" className="w-32 h-32 rotate-12" />
-            </div>
-
-            {/* Classifications */}
-            {card.classifications && card.classifications.length > 0 && (() => {
-              const ORIGINS = ["Storyborn", "Dreamborn", "Floodborn", "Inkborn"];
-              const ORIGIN_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-                Storyborn:  { bg: "bg-amber-500/10",   text: "text-amber-600 dark:text-amber-400",   border: "border-amber-500/20",   dot: "#f59e0b" },
-                Dreamborn:  { bg: "bg-violet-500/10",  text: "text-violet-600 dark:text-violet-400",  border: "border-violet-500/20",  dot: "#8b5cf6" },
-                Floodborn:  { bg: "bg-sky-500/10",     text: "text-sky-600 dark:text-sky-400",     border: "border-sky-500/20",     dot: "#38bdf8" },
-                Inkborn:    { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/20", dot: "#10b981" },
-              };
-              const origins = card.classifications.filter(c => ORIGINS.includes(c));
-              const roles = card.classifications.filter(c => !ORIGINS.includes(c));
               return (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-4 border-b border-border/40">
-                  {origins.map(origin => {
-                    const style = ORIGIN_STYLES[origin] ?? { bg: "bg-secondary", text: "text-foreground", border: "border-border", dot: hexColor };
-                    return (
-                      <span key={origin} className={cn("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border tracking-widest uppercase", style.bg, style.text, style.border)}>
-                        <span className="w-1 h-1 rounded-full" style={{ backgroundColor: style.dot }} />
-                        {origin}
-                      </span>
-                    );
-                  })}
-                  <div className="flex flex-wrap gap-1.5 font-sans italic text-sm text-muted-foreground/80">
-                    {roles.join(" • ")}
+                <div key={groupKey} className="mb-8">
+                  <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                    <h3 className="text-lg font-serif font-bold">{groupKey}</h3>
+                    <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                      {group.count}
+                    </span>
                   </div>
+
+                  {viewMode === "grid" ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {group.cards.map((entry, idx) => (
+                        <motion.div
+                          key={`${entry.card.id}-${idx}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.02 }}
+                          className="relative group/card"
+                        >
+                          <CardDisplay 
+                            card={entry.card} 
+                            returnTo={returnPath} 
+                            className={cn(
+                              "transition-opacity w-full",
+                              user && entry.ownedQty === 0 && "opacity-50 grayscale-[0.5]"
+                            )} 
+                          />
+                          
+                          {user ? (
+                            <>
+                              <div className="absolute -top-2 -right-2 min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
+                                 {entry.ownedQty} <span className="mx-0.5 opacity-40">/</span> {entry.qty}
+                              </div>
+                              {entry.missingQty > 0 && (
+                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg z-20 whitespace-nowrap border border-white/20">
+                                  Missing {entry.missingQty}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="absolute -top-2 -right-2 min-w-[28px] h-7 px-2 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
+                               x{entry.qty}
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {group.cards.map((entry, idx) => (
+                        <Link 
+                          key={`${entry.card.id}-${idx}`}
+                          href={`/cards/${entry.card.id}?return=${encodeURIComponent(returnPath)}`}
+                          className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md group transition-colors border border-transparent hover:border-border"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-muted-foreground">{entry.qty}x</span>
+                            <div className="flex flex-col">
+                              <span className="font-medium group-hover:text-primary transition-colors">{entry.card.name}</span>
+                              {entry.card.subtitle && <span className="text-xs text-muted-foreground">{entry.card.subtitle}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-xs font-medium px-2 py-0.5 rounded bg-muted uppercase tracking-wider">{entry.card.rarity}</span>
+                            <div 
+                              className="w-2 h-2 rounded-full" 
+                              style={{ backgroundColor: inkHexColors[entry.card.inkColor] }} 
+                            />
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
-            })()}
+            })}
+          </div>
+        </div>
 
-            {card.bodyText && (
-              <div className="min-h-[60px]">
-                {highlightRulesText(card.bodyText)}
-              </div>
-            )}
+        <div className="space-y-6">
+          {/* Collection Snapshot Card */}
+          <CardContainer className="border-primary/20 bg-primary/[0.02] shadow-sm overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+              <TrendingUp className="w-32 h-32" />
+            </div>
+            <CardHeader className="pb-4">
+               <CardTitle className="flex items-center gap-2 text-lg">
+                  <Sparkles className="w-4 h-4 text-amber-500" /> Collection Readiness
+               </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {user ? (
+                <>
+                  <div className="space-y-2">
+                     <div className="flex justify-between text-sm font-bold">
+                        <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
+                        <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
+                     </div>
+                     <Progress value={analysis.completionPct} className="h-2.5" />
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                     <div className="space-y-1">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Market Value</p>
+                        <p className="text-lg font-bold">{formatPrice(deck.totalValue)}</p>
+                     </div>
+                     <div className="space-y-1">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
+                        <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
+                     </div>
+                  </div>
 
-            {card.flavorText && (
-              <div className="pt-6 border-t border-border/40 relative">
-                <Quote className="absolute top-4 left-0 w-8 h-8 text-primary/10 -scale-x-100" />
-                <p className="text-sm md:text-lg font-serif italic leading-relaxed text-muted-foreground/90 pl-8 relative z-10">
-                  {card.flavorText}
-                </p>
-              </div>
-            )}
-          </section>
+                  {analysis.missingValue > 0 && (
+                    <Button onClick={handleBuyMissing} size="sm" variant="outline" className="w-full gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+                      <ExternalLink className="w-4 h-4" /> Quick Add Missing to TCGPlayer
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-2 text-center space-y-4">
+                  <div className="p-3 rounded-full bg-primary/10">
+                    <Library className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold">Track your collection</p>
+                    <p className="text-xs text-muted-foreground">Sign in to see your readiness for this deck.</p>
+                  </div>
+                  <Button asChild size="sm" className="w-full">
+                    <Link href="/login">Sign In to Lorbound</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </CardContainer>
 
-          {/* BUREAU: Technical Info */}
-          <section className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 rounded-3xl border bg-secondary/20 text-[11px]">
-            <div>
-              <span className="text-muted-foreground uppercase tracking-widest block mb-1">Set & Expansion</span>
-              <span className="font-bold flex items-center gap-1">
-                {card.set} <span className="text-muted-foreground font-normal">({card.expansion})</span>
-              </span>
+          {/* Infographics Panel */}
+          <div className="border rounded-3xl bg-card shadow-sm overflow-hidden h-fit">
+            <div className="p-6">
+              <h3 className="text-lg font-serif font-bold mb-6 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" /> Deck Analytics
+              </h3>
+              <DeckAnalysisPanel
+                user={user}
+                totalCards={analysis.totalRequired}
+                deckCardsLength={analysis.cardsInDeck.length}
+                avgCost={analysis.avgCost}
+                pieData={analysis.pieData}
+                typeBreakdown={analysis.typeBreakdown}
+                costCurve={analysis.costCurve}
+                activeInks={analysis.activeInks}
+                uninkableCount={analysis.uninkableCount}
+                collectionStats={{
+                  totalMissing: analysis.totalRequired - analysis.totalOwned,
+                  costToFinish: analysis.missingValue,
+                  missingByCard: analysis.cardsInDeck.reduce((acc, c) => {
+                    if (c.missingQty > 0) acc[c.card.id] = c.missingQty;
+                    return acc;
+                  }, {} as Record<string, number>)
+                }}
+                isLegalSize={analysis.isLegalSize}
+                isLegalInkCount={analysis.isLegalInkCount}
+                illegalCardsCount={analysis.illegalCardsCount}
+                format={deck.format}
+                formatPrice={formatPrice}
+              />
             </div>
-            <div>
-              <span className="text-muted-foreground uppercase tracking-widest block mb-1">Rarity</span>
-              <div className="flex items-center gap-1.5">
-                {rarityIcons[card.rarity] && <img src={rarityIcons[card.rarity]} alt="" className="w-3.5 h-3.5 object-contain" />}
-                <span className="font-bold">{card.rarity}</span>
-              </div>
-            </div>
-            <div>
-              <span className="text-muted-foreground uppercase tracking-widest block mb-1">Artist</span>
-              <Link href={`/cards?search=${encodeURIComponent(card.artist || "")}`} className="flex items-center gap-2 hover:text-primary transition-colors group/artist">
-                <Palette className="w-3.5 h-3.5 text-primary/60 group-hover/artist:text-primary transition-colors" />
-                <span className="font-bold">{card.artist || "Unknown"}</span>
-              </Link>
-            </div>
-            <div>
-              <span className="text-muted-foreground uppercase tracking-widest block mb-1">Language</span>
-              <span className="font-bold">English</span>
-            </div>
-          </section>
-        </motion.div>
+          </div>
+        </div>
       </div>
 
-      {/* Artist Gallery */}
-      {card.artist && artistCards.length > 0 && (
-        <section className="mt-10 pt-8 border-t border-border/40">
-          <div className="flex items-center gap-4 mb-6">
-            <div>
-              <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-0.5">More by this artist</p>
-              <h3 className="text-2xl font-serif font-bold">{card.artist}</h3>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
-            {artistCards.map(c => (
-              <Link key={c.id} href={`/cards/${encodeURIComponent(c.id)}${fromUrl ? `?from=${fromUrl}` : ""}`}>
-                <motion.div
-                  whileHover={{ y: -3, scale: 1.03 }}
-                  transition={{ duration: 0.15 }}
-                  className="aspect-[2.5/3.5] rounded-xl overflow-hidden border border-border/50 shadow-md hover:shadow-xl cursor-pointer bg-muted"
-                >
-                  <img src={c.image} alt={c.name} className="w-full h-full object-cover" />
-                </motion.div>
-                <p className="text-xs text-muted-foreground truncate mt-1 px-0.5">{c.name}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
-      {/* Similar Cards */}
-      {relatedCards.length > 0 && (
-        <section className="mt-8 pt-6 border-t border-border/40">
-          <h3 className="text-xl font-serif font-bold mb-4 text-muted-foreground">More Like This</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {relatedCards.map(c => (
-              <CardDisplay key={c.id} card={c} returnTo={fromUrl ?? undefined} />
-            ))}
+
+
+
+
+      {/* Share Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share to Community</DialogTitle>
+            <DialogDescription>
+              This will publish your deck to the Public Decks hub for the community to see, upvote, and clone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex items-center space-x-2 py-4">
+            <Checkbox 
+              id="anonymous" 
+              checked={isAnonymous}
+              onCheckedChange={(c) => setIsAnonymous(c as boolean)}
+            />
+            <Label htmlFor="anonymous" className="font-medium cursor-pointer">
+              Share anonymously
+            </Label>
           </div>
-        </section>
-      )}
+
+          <DialogFooter className="flex gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setShowShareDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              className="gap-2"
+              onClick={() => {
+                const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+                
+                if (!isUUID(deck.id)) {
+                  toast({
+                    title: "Legacy Deck ID",
+                    description: "This deck uses an older ID format. Please open it in the Builder and hit 'Save' to update it before sharing.",
+                    variant: "destructive"
+                  });
+                  setShowShareDialog(false);
+                  return;
+                }
+
+                const authorName = isAnonymous 
+                  ? "Anonymous" 
+                  : (user?.user_metadata?.username || user?.email?.split('@')[0] || "Unknown");
+                publishDeck(deck, authorName);
+                setShowShareDialog(false);
+              }}
+              disabled={isPublishing}
+            >
+              {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+              Publish
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Social Share Modal */}
       <Dialog open={showSocialShare} onOpenChange={setShowSocialShare}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Share Card</DialogTitle>
+            <DialogTitle>Share Deck</DialogTitle>
             <DialogDescription>
-              Share "{card.name}" with other Illumineers.
+              Share "{deck.name}" with the Lorcana community.
             </DialogDescription>
           </DialogHeader>
           
@@ -576,7 +652,7 @@ export default function CardDetail() {
               <Button 
                 variant="outline" 
                 className="gap-2 bg-[#1DA1F2]/5 hover:bg-[#1DA1F2]/10 border-[#1DA1F2]/20 text-[#1DA1F2]"
-                onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this Disney Lorcana card "${card.name}" on Lorbound!`)}&url=${encodeURIComponent(window.location.href)}`, '_blank')}
+                onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out my ${deck.format} Lorcana deck "${deck.name}" on Lorbound!`)}&url=${encodeURIComponent(window.location.href)}`, '_blank')}
               >
                 <Twitter className="w-4 h-4 fill-current" /> Twitter
               </Button>
@@ -598,16 +674,8 @@ export default function CardDetail() {
                   value={window.location.href} 
                   className="bg-muted/50 text-xs h-9"
                 />
-                <Button 
-                  size="sm" 
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
-                    setCopying(true);
-                    setTimeout(() => setCopying(false), 2000);
-                  }} 
-                  className="shrink-0 h-9"
-                >
-                   {copying ? "Copied!" : "Copy"}
+                <Button size="sm" onClick={copyToClipboard} className="shrink-0 h-9">
+                   Copy
                 </Button>
               </div>
             </div>
@@ -618,8 +686,8 @@ export default function CardDetail() {
                 <Sparkles className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-xs font-semibold">Join the community</p>
-                <p className="text-[10px] text-muted-foreground">Track your collection and build decks at www.lorbound.ink</p>
+                <p className="text-xs font-semibold">Spread the word!</p>
+                <p className="text-[10px] text-muted-foreground">Love using Lorbound? Sharing your decks helps our community grow.</p>
               </div>
             </div>
           </div>

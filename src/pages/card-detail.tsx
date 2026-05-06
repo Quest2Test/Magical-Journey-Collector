@@ -11,7 +11,7 @@ import { useCurrency } from "@/components/currency-provider";
 import { getCardLegality } from "@/lib/legality";
 import { detectRegion, buildTCGPlayerUrl, buildCardMarketUrl } from "@/lib/affiliates";
 import { useWishlist } from "@/hooks/useWishlist";
-import { Heart, Palette, Quote, Sparkles, Share2, BookmarkPlus, BookmarkCheck, Twitter, Facebook } from "lucide-react";
+import { Heart, Palette, Quote, Sparkles, Share2, BookmarkPlus, BookmarkCheck, Twitter, Facebook, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,19 @@ export default function CardDetail() {
   const searchStr = useSearch();
   const urlParams = new URLSearchParams(searchStr);
   const fromUrl = urlParams.get("from");
+
+  const { prevCard, nextCard } = useMemo(() => {
+    if (!card || !allCards.length) return { prevCard: null, nextCard: null };
+    const setCards = allCards
+      .filter(c => c.expansion === card.expansion)
+      .sort((a, b) => (a.cardNum ?? 9999) - (b.cardNum ?? 9999));
+    
+    const currentIndex = setCards.findIndex(c => c.id === card.id);
+    return {
+      prevCard: currentIndex > 0 ? setCards[currentIndex - 1] : null,
+      nextCard: currentIndex < setCards.length - 1 ? setCards[currentIndex + 1] : null
+    };
+  }, [allCards, card]);
 
 
   if (isLoading) {
@@ -82,9 +95,36 @@ export default function CardDetail() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-8">
-      <Link href={fromUrl ? fromUrl : "/cards"} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="w-4 h-4 mr-1" /> {fromUrl ? "Back to Set" : "Back to Browse"}
-      </Link>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <Link href={fromUrl ? fromUrl : "/cards"} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4 mr-1" /> {fromUrl ? "Back to Set" : "Back to Browse"}
+        </Link>
+
+        {/* Set Navigation */}
+        {(prevCard || nextCard) && (
+          <div className="flex items-center gap-1">
+            {prevCard && (
+              <Link href={`/cards/${encodeURIComponent(prevCard.id)}?from=${fromUrl ? encodeURIComponent(fromUrl) : ""}`}>
+                <Button variant="ghost" size="sm" className="h-8 gap-1 pl-1 pr-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all group">
+                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Prev <span className="opacity-40 font-mono">#{prevCard.cardNum}</span>
+                </Button>
+              </Link>
+            )}
+            
+            <div className="px-3 py-1 rounded-full bg-muted/30 border border-border/40 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
+               <span className="text-primary-text font-black">{card.cardNum}</span> / {allCards.filter(c => c.expansion === card.expansion).length}
+            </div>
+
+            {nextCard && (
+              <Link href={`/cards/${encodeURIComponent(nextCard.id)}?from=${fromUrl ? encodeURIComponent(fromUrl) : ""}`}>
+                <Button variant="ghost" size="sm" className="h-8 gap-1 pl-3 pr-1 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all group">
+                  Next <span className="opacity-40 font-mono">#{nextCard.cardNum}</span> <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </Button>
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 mb-16">
         {/* Left: Card Art */}
@@ -579,7 +619,7 @@ export default function CardDetail() {
               </div>
               <div className="flex-1">
                 <p className="text-xs font-semibold">Join the community</p>
-                <p className="text-[10px] text-muted-foreground">Track your collection and build decks at www.lorbound.com</p>
+                <p className="text-[10px] text-muted-foreground">Track your collection and build decks at www.lorbound.ink</p>
               </div>
             </div>
           </div>
