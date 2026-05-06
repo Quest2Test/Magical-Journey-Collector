@@ -12,6 +12,8 @@ import { Footer } from "@/components/layout/footer";
 import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import Home from "@/pages/home";
+import { MetaTags } from "@/components/layout/MetaTags";
+import { Analytics } from "@vercel/analytics/react";
 
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
   lazy(async () => {
@@ -76,6 +78,7 @@ function Router() {
   return (
     <div className="flex flex-col min-h-screen">
       <ScrollToTop />
+      <MetaTags />
       <Header />
       <main className="flex-1 flex flex-col">
         <Suspense fallback={<PageLoader />}>
@@ -126,6 +129,7 @@ function App() {
                   <Router />
                 </WouterRouter>
                 <Toaster />
+                <Analytics />
               </TooltipProvider>
             </AuthProvider>
           </QueryClientProvider>

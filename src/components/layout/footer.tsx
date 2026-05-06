@@ -7,8 +7,8 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
             <Link href="/" className="inline-block mb-4 h-10 transition-opacity hover:opacity-90">
-              <img 
-                src="/LorBound_Logo.webp" 
+              <img
+                src="/LorBound_Logo.webp"
                 alt="Lorbound"
                 width="180"
                 height="40"
@@ -25,7 +25,8 @@ export function Footer() {
               <li><Link href="/cards" className="hover:text-primary transition-colors">Card Database</Link></li>
               <li><Link href="/builder" className="hover:text-primary transition-colors">Deck Builder</Link></li>
               <li><Link href="/decks" className="hover:text-primary transition-colors">Community Decks</Link></li>
-              <li><Link href="/academy" className="hover:text-primary transition-colors">Academy</Link></li>
+              <li><Link href="/wishlist" className="hover:text-primary transition-colors">Wishlist</Link></li>
+              <li><Link href="/academy" className="hover:text-primary transition-colors">Academy Guide</Link></li>
             </ul>
           </div>
           <div>
