@@ -1,79 +1,74 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://lorbound.com/</loc>
+    <loc>https://lorbound.ink/</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://lorbound.com/cards</loc>
+    <loc>https://lorbound.ink/cards</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://lorbound.com/builder</loc>
+    <loc>https://lorbound.ink/builder</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://lorbound.com/decks</loc>
+    <loc>https://lorbound.ink/decks</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://lorbound.com/public-decks</loc>
+    <loc>https://lorbound.ink/public-decks</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://lorbound.com/sets</loc>
+    <loc>https://lorbound.ink/sets</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-  <url><loc>https://lorbound.com/sets/1</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/2</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/3</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/4</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/5</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/6</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/7</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/8</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/9</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/10</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/11</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://lorbound.com/sets/12</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/1</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/2</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/3</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/4</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/5</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/6</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/7</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/8</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/9</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/10</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/11</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lorbound.ink/sets/12</loc><lastmod>2026-05-06</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+
   <url>
-    <loc>https://lorbound.com/meta</loc>
-    <lastmod>2026-05-06</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://lorbound.com/academy</loc>
+    <loc>https://lorbound.ink/academy</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://lorbound.com/resources</loc>
+    <loc>https://lorbound.ink/resources</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://lorbound.com/about</loc>
+    <loc>https://lorbound.ink/about</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://lorbound.com/privacy</loc>
+    <loc>https://lorbound.ink/privacy</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.1</priority>

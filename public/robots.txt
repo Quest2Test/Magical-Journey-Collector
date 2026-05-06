@@ -5,7 +5,7 @@ Allow: /cards
 Allow: /builder
 Allow: /decks
 Allow: /sets
-Allow: /meta
+
 Allow: /resources
 Allow: /academy
 Allow: /public-decks
@@ -28,4 +28,4 @@ User-agent: Bingbot
 Allow: /
 
 # Sitemap Location
-Sitemap: https://lorbound.com/sitemap.xml
+Sitemap: https://lorbound.ink/sitemap.xml

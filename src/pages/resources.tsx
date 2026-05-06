@@ -78,10 +78,10 @@ export default function Resources() {
           color: "amber-500"
         },
         {
-          title: "Ravensburger Store US",
-          description: "Purchase official Lorcana products directly from Ravensburger, the publisher of the game.",
+          title: "Card Errata & FAQs",
+          description: "Official clarifications and text corrections for specific glimmers and items.",
           icon: <AlertCircle className="w-5 h-5" />,
-          href: "https://www.ravensburger.us/en-US/products/disney-lorcana",
+          href: "https://www.disneylorcana.com/en-US/resources",
           category: "Official",
           color: "rose-500"
         }
@@ -110,7 +110,7 @@ export default function Resources() {
         },
         {
           title: "Official Discord",
-          description: "The fastest way to get rules questions answered and find out anything new about the world of Lorcana.",
+          description: "The fastest way to get rules questions answered and find online matches via webcam.",
           icon: <Users className="w-5 h-5" />,
           href: "https://discord.gg/disneylorcana",
           category: "Social",
@@ -124,15 +124,15 @@ export default function Resources() {
       icon: <Wrench className="w-6 h-6" />,
       resources: [
         {
-          title: "Lorcana Play Hub",
-          description: "The official Lorcana tournament platform. Register for Lorcana Challenges and find local events.",
+          title: "Melee.gg",
+          description: "The official tournament management platform. Register for Lorcana Challenges and local events.",
           icon: <Trophy className="w-5 h-5" />,
-          href: "https://tcg.ravensburgerplay.com",
+          href: "https://melee.gg/Game/Index/116",
           category: "Tournament",
           color: "violet-500"
         },
         {
-          title: "TCGplayer",
+          title: "TCGplayer Prices",
           description: "Track the current market value of your glimmers and see price trends for all sets.",
           icon: <ShoppingBag className="w-5 h-5" />,
           href: "https://www.tcgplayer.com/search/lorcana-tcg/product",
@@ -140,11 +140,11 @@ export default function Resources() {
           color: "emerald-600"
         },
         {
-          title: "Melee.gg",
-          description: "Find up and coming tournaments close to your home and connect with local players.",
+          title: "Lorcana.gg",
+          description: "Database and meta tracking site with detailed analytics on winning tournament decks.",
           icon: <Search className="w-5 h-5" />,
-          href: "https://melee.gg",
-          category: "Tournament",
+          href: "https://lorcana.gg/",
+          category: "Meta",
           color: "sky-500"
         }
       ]
