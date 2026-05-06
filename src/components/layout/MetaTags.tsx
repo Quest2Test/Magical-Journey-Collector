@@ -55,6 +55,12 @@ export function MetaTags() {
     } else if (location === "/academy") {
       title = `Inkbound Academy | Learn Disney Lorcana | ${siteName}`;
       description = "Master the Great Illuminary with our comprehensive guide to rules, ink theory, and competitive play.";
+    } else if (location.startsWith("/decks/")) {
+      title = `Deck Details | Lorcana Deck Builder | ${siteName}`;
+      description = "View deck composition, ink distribution, and card analysis for this Disney Lorcana deck.";
+    } else if (location.startsWith("/cards/")) {
+      title = `Card Details | Lorcana Collection Tracker | ${siteName}`;
+      description = "View card stats, market prices, and set information for this Disney Lorcana card.";
     } else if (location.startsWith("/profile/")) {
       const username = location.split("/")[2]?.split("?")[0];
       title = `${username}'s Illumineer Profile | ${siteName}`;

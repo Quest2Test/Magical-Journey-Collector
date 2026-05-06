@@ -86,14 +86,14 @@ function Router() {
             <Route path="/" component={Home} />
             <Route path="/login" component={AuthPage} />
             <Route path="/auth/callback" component={AuthCallback} />
-            <Route path="/cards" component={CardsBrowse} />
-            <Route path="/cards/:id" component={CardDetail} />
-            <Route path="/cards/:id/*" component={CardDetail} />
             <Route path="/builder" component={DeckBuilder} />
-            <Route path="/decks" component={DecksBrowse} />
-            <Route path="/public-decks" component={PublicDecks} />
             <Route path="/decks/public/:id" component={DeckDetail} />
             <Route path="/decks/:id" component={DeckDetail} />
+            <Route path="/decks" component={DecksBrowse} />
+            <Route path="/cards/:id" component={CardDetail} />
+            <Route path="/cards/:id/*" component={CardDetail} />
+            <Route path="/cards" component={CardsBrowse} />
+            <Route path="/public-decks" component={PublicDecks} />
             {/* <Route path="/deck/:id/print" component={DeckPrint} /> */}
             {/* <Route path="/meta" component={Meta} />
             <Route path="/meta/:id" component={MetaAnalysis} /> */}
