@@ -243,7 +243,17 @@ export const buildDeckExportImage = async ({
     ctx.fillText(entry.qty.toString(), badgeX, badgeY + 2);
   });
 
-  // Draw Footer - Lorbound Logo in top right replaces text footer
+  // Draw Footer - Subtle Watermark
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'italic 18px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('Created at www.lorbound.com', width - padding, height - 25);
+  
+  ctx.textAlign = 'left';
+  ctx.fillText('All images © Disney / Ravensburger', padding, height - 25);
+  ctx.globalAlpha = 1.0;
 
   const blob = await new Promise<Blob | null>(resolve =>
     canvas.toBlob((blob) => resolve(blob), 'image/png')

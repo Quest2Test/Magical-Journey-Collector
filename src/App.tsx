@@ -43,8 +43,8 @@ const DecksBrowse = lazyWithRetry(() => import("@/pages/decks"));
 const PublicDecks = lazyWithRetry(() => import("@/pages/public-decks"));
 const DeckDetail = lazyWithRetry(() => import("@/pages/deck-detail"));
 const DeckPrint = lazyWithRetry(() => import("@/pages/deck-print"));
-const Meta = lazyWithRetry(() => import("@/pages/meta"));
-const MetaAnalysis = lazyWithRetry(() => import("@/pages/meta-analysis"));
+// const Meta = lazyWithRetry(() => import("@/pages/meta"));
+// const MetaAnalysis = lazyWithRetry(() => import("@/pages/meta-analysis"));
 const Sets = lazyWithRetry(() => import("@/pages/sets"));
 const SetDetail = lazyWithRetry(() => import("@/pages/set-detail"));
 const Profile = lazyWithRetry(() => import("@/pages/profile"));
@@ -95,8 +95,8 @@ function Router() {
             <Route path="/decks/public/:id" component={DeckDetail} />
             <Route path="/decks/:id" component={DeckDetail} />
             {/* <Route path="/deck/:id/print" component={DeckPrint} /> */}
-            <Route path="/meta" component={Meta} />
-            <Route path="/meta/:id" component={MetaAnalysis} />
+            {/* <Route path="/meta" component={Meta} />
+            <Route path="/meta/:id" component={MetaAnalysis} /> */}
             <Route path="/sets" component={Sets} />
             <Route path="/sets/:id" component={SetDetail} />
             <Route path="/wishlist" component={Wishlist} />

@@ -56,7 +56,6 @@ export function Header() {
     { href: "/sets", label: "Sets" },
     { href: "/resources", label: "Resources" },
     { href: "/academy", label: "Academy" },
-    { href: "/meta", label: "Meta" },
   ];
 
   // Keyboard shortcut for search
@@ -77,9 +76,9 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between mx-auto px-4 md:px-6">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 group transition-opacity hover:opacity-90">
-            <img 
-              src="/LorBound_Logo.webp" 
-              alt="Lorbound" 
+            <img
+              src="/LorBound_Logo.webp"
+              alt="Lorbound"
               width="120"
               height="40"
               className="h-10 w-auto object-contain"
@@ -90,9 +89,8 @@ export function Header() {
               if (link.label === "Decks") {
                 return (
                   <DropdownMenu key={link.label}>
-                    <DropdownMenuTrigger className={`flex items-center gap-1 transition-colors hover:text-foreground/80 ${
-                      location.startsWith("/decks") || location.startsWith("/public-decks") ? "text-foreground" : "text-foreground/60"
-                    }`}>
+                    <DropdownMenuTrigger className={`flex items-center gap-1 transition-colors hover:text-foreground/80 ${location.startsWith("/decks") || location.startsWith("/public-decks") ? "text-foreground" : "text-foreground/60"
+                      }`}>
                       Decks
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
@@ -111,9 +109,8 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   onMouseEnter={() => prefetchRoute(link.href)}
-                  className={`transition-colors hover:text-foreground/80 ${
-                    location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
-                  }`}
+                  className={`transition-colors hover:text-foreground/80 ${location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
+                    }`}
                 >
                   {link.label}
                 </Link>
@@ -129,22 +126,22 @@ export function Header() {
             </Button>
           </Link>
 
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="hidden sm:flex" 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden sm:flex"
             aria-label="Search"
             onClick={() => setIsSearchOpen(true)}
           >
             <Search className="h-5 w-5" />
           </Button>
-          
+
           <Suspense fallback={null}>
             {isSearchOpen ? (
               <SearchModal open={isSearchOpen} onOpenChange={setIsSearchOpen} />
             ) : null}
           </Suspense>
-          
+
           <Button
             variant="ghost"
             size="icon"
@@ -218,8 +215,8 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="flex flex-col gap-4">
               <div className="mb-4">
-                <img 
-                  src="/LorBound_Logo.webp" 
+                <img
+                  src="/LorBound_Logo.webp"
                   alt="Lorbound"
                   width="180"
                   height="40"
@@ -249,9 +246,8 @@ export function Header() {
                       href={link.href}
                       onClick={() => setIsOpen(false)}
                       onMouseEnter={() => prefetchRoute(link.href)}
-                      className={`text-lg font-medium transition-colors hover:text-foreground/80 ${
-                        location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
-                      }`}
+                      className={`text-lg font-medium transition-colors hover:text-foreground/80 ${location.startsWith(link.href) ? "text-foreground" : "text-foreground/60"
+                        }`}
                     >
                       {link.label}
                     </Link>
@@ -260,9 +256,8 @@ export function Header() {
                 <Link
                   href="/wishlist"
                   onClick={() => setIsOpen(false)}
-                  className={`text-lg font-medium transition-colors hover:text-pink-500 ${
-                    location === "/wishlist" ? "text-pink-500" : "text-foreground/60"
-                  } flex items-center gap-2`}
+                  className={`text-lg font-medium transition-colors hover:text-pink-500 ${location === "/wishlist" ? "text-pink-500" : "text-foreground/60"
+                    } flex items-center gap-2`}
                 >
                   <Heart className="h-5 w-5 fill-current" /> Wishlist
                 </Link>

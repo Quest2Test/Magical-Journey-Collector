@@ -39,9 +39,6 @@ export function MetaTags() {
     } else if (location === "/wishlist") {
       title = `My Wishlist | Lorcana Collection Goals | ${siteName}`;
       description = "Track the cards you need to complete your collection and monitor their market value.";
-    } else if (location === "/meta") {
-      title = `Meta Analysis | Competitive Lorcana TCG | ${siteName}`;
-      description = "Stay ahead of the game with our deep-dive analysis of the competitive Lorcana meta and trending cards.";
     } else if (location === "/sets") {
       title = `Lorcana Collection Tracker | Set Completion | ${siteName}`;
       description = "Track your collection completion across every Lorcana set. See your progress and missing cards.";
@@ -99,14 +96,14 @@ export function MetaTags() {
     canonical.setAttribute("href", window.location.origin + location);
 
     updateMeta("description", description);
-    
+
     // Open Graph
     updateMeta("og:title", title, true);
     updateMeta("og:description", description, true);
     updateMeta("og:image", ogImage, true);
     updateMeta("og:url", window.location.href, true);
     updateMeta("og:type", "website", true);
-    
+
     // Twitter
     updateMeta("twitter:card", "summary_large_image");
     updateMeta("twitter:title", title);
