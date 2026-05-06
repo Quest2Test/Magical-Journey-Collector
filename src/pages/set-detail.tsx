@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Search, LayoutGrid, List as ListIcon, CheckCircle2, Circle, Loader2, SlidersHorizontal, X, Download, ChevronDown, Trophy, BookOpen, Heart, Sparkles, BookmarkPlus, BookmarkCheck } from "lucide-react";
+import { ArrowLeft, Search, LayoutGrid, List as ListIcon, CheckCircle2, Circle, Loader2, SlidersHorizontal, X, Download, ChevronDown, Trophy, BookOpen, Heart, Sparkles, BookmarkPlus, BookmarkCheck, TrendingUp } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { SET_GRADIENTS, SET_ACCENT, SET_ACRONYMS } from "@/lib/sets";
+import { SET_GRADIENTS, SET_ACCENT, SET_ACRONYMS, SET_BACKGROUNDS } from "@/lib/sets";
 import { getCardPricing, getBaseCardValue } from "@/lib/pricing";
 import { BinderView } from "@/components/profile/BinderView";
 import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-utils";
@@ -62,7 +62,7 @@ export default function SetDetail() {
     const first = setCardsData.find((c: Card) => c.expansion === setId);
     if (!first) return null;
     const isPromo = !/^\d+$/.test(setId);
-    return { id: setId, name: first.set, setNum: first.setNum ?? 0, isPromo };
+    return { id: setId, name: first.set, setNum: first.setNum ?? 0, isPromo, releasedAt: first.releasedAt };
   }, [setCardsData, setId]);
   const setCards = useMemo(
     () => setCardsData.sort((a: Card, b: Card) => (a.cardNum ?? 9999) - (b.cardNum ?? 9999)),
@@ -475,98 +475,131 @@ export default function SetDetail() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Set Hero Header */}
-      <div className="relative pt-8 pb-12" style={{ backgroundColor: gradient }}>
+      {/* Set Hero Header - Redesigned for Premium Look */}
+      <div className="relative pt-12 pb-16 overflow-hidden min-h-[400px] flex items-center">
+        {/* Background Image Layer */}
+        {SET_BACKGROUNDS[setId] && (
+          <div 
+            className="absolute inset-0 z-0"
+            style={{ 
+              backgroundImage: `url(${SET_BACKGROUNDS[setId]})`,
+              backgroundPosition: 'center 20%',
+              backgroundSize: 'cover',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+            <div className={`absolute inset-0 bg-gradient-to-b ${gradient} opacity-90`} />
+          </div>
+        )}
+        
+        {/* Pattern Overlay */}
         <div 
-          className="absolute inset-0" 
+          className="absolute inset-0 z-0 opacity-10" 
           style={{ 
-            backgroundImage: 'linear-gradient(to right, #80808008 1px, transparent 1px), linear-gradient(to bottom, #80808008 1px, transparent 1px)',
-            backgroundSize: '32px 32px'
+            backgroundImage: 'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)',
+            backgroundSize: '40px 40px'
           }} 
         />
-        <div className="container relative mx-auto px-4 md:px-6">
-          <Link href="/sets" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-1" /> All Sets
+
+        <div className="container relative z-10 mx-auto px-4 md:px-6">
+          <Link href="/sets" className="inline-flex items-center text-sm text-white/60 hover:text-white mb-8 transition-colors group">
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Sets Library
           </Link>
 
           {isSetLoading && !setInfo ? (
-            <div className="flex items-center gap-4 py-4">
-              <div className="w-16 h-16 rounded-2xl bg-muted animate-pulse" />
-              <div className="space-y-2">
-                <div className="h-8 w-48 bg-muted animate-pulse rounded" />
-                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+            <div className="flex items-center gap-8 py-4">
+              <div className="w-32 h-32 rounded-3xl bg-white/10 animate-pulse" />
+              <div className="space-y-4">
+                <div className="h-10 w-64 bg-white/10 animate-pulse rounded-lg" />
+                <div className="h-4 w-32 bg-white/10 animate-pulse rounded-lg" />
               </div>
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <SetIcon setId={setId} size="lg" />
+            <div className="flex flex-col lg:flex-row lg:items-center gap-8 lg:gap-12">
+              {/* Large Set Logo with Glow */}
+              <div className="relative group shrink-0">
+                <div 
+                  className="absolute -inset-4 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity rounded-full"
+                  style={{ backgroundColor: accent }}
+                />
+                <SetIcon setId={setId} size="lg" />
+              </div>
 
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-3 mb-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-3 mb-4">
                   <span
-                    className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded border"
+                    className="text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border backdrop-blur-md"
                     style={{ color: accent, borderColor: `${accent}44`, backgroundColor: `${accent}11` }}
                   >
-                    {setInfo ? (setInfo.isPromo ? "Promo Set" : `Set ${setInfo.setNum}`) : "—"}
+                    {setInfo ? (setInfo.isPromo ? "Special Release" : `Chapter ${setInfo.setNum}`) : "Expansion"}
                   </span>
+                  {setInfo?.releasedAt && (
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border border-white/10 bg-white/5 text-white/60">
+                      Released {new Date(setInfo.releasedAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                    </span>
+                  )}
                 </div>
 
-                <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight mb-4">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold tracking-tight mb-6 text-white leading-tight">
                   {setInfo?.name ?? setId}
                 </h1>
 
-                {/* Collection progress */}
-                <div className="space-y-3 max-w-xl">
-                  <div className="space-y-2 max-w-sm">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="font-medium text-muted-foreground">Collection progress</span>
-                      <span className="font-bold" style={{ color: accent }}>
-                        {collectedInSet} / {setCards.length} ({collectionPct}%)
+                {/* Collection & Stats Grid */}
+                <div className="grid sm:grid-cols-2 gap-4 max-w-3xl">
+                  {/* Progress Card */}
+                  <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-bold uppercase tracking-widest text-white/50">Collection Progress</span>
+                      <span className="text-lg font-bold tabular-nums" style={{ color: accent }}>
+                        {collectionPct}%
                       </span>
                     </div>
-                    <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
+                    
+                    <div className="h-2.5 rounded-full bg-white/5 overflow-hidden mb-3">
                       <motion.div
-                        className="h-full rounded-full"
+                        className="h-full rounded-full shadow-[0_0_10px_rgba(255,255,255,0.2)]"
                         style={{ backgroundColor: accent }}
                         initial={{ width: 0 }}
                         animate={{ width: `${collectionPct}%` }}
-                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                       />
                     </div>
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>{setCards.length} total cards</span>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-white/40">
+                        {collectedInSet} of {setCards.length} Cards Found
+                      </span>
                       {!user && (
-                        <>
-                          <span>•</span>
-                          <Link href="/login" className="text-primary-text hover:underline font-bold">Sign in to track your collection</Link>
-                        </>
-                      )}
-                      {user && (
-                        <>
-                          <span>•</span>
-                          <span>{setCards.length - collectedInSet} missing</span>
-                        </>
+                        <Link href="/login" className="text-[10px] text-primary-text hover:underline font-bold uppercase tracking-wider">
+                          Sign in to track
+                        </Link>
                       )}
                     </div>
                   </div>
 
-                  {/* Value row */}
+                  {/* Value Card */}
                   {totalSetValue > 0 && (
-                    <div className="flex flex-wrap gap-3 pt-1">
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-black/20 backdrop-blur">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Set Value</span>
-                        <span className="text-sm font-bold" style={{ color: accent }}>${totalSetValue.toFixed(2)}</span>
+                    <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl flex flex-col justify-between">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-bold uppercase tracking-widest text-white/50">Market Intelligence</span>
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-black/20 backdrop-blur">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">My Value</span>
-                        <span className="text-sm font-bold text-emerald-400">${collectedValue.toFixed(2)}</span>
-                      </div>
-                      {collectedValue > 0 && totalSetValue > 0 && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-black/20 backdrop-blur">
-                          <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Coverage</span>
-                          <span className="text-sm font-bold text-sky-400">{Math.round((collectedValue / totalSetValue) * 100)}%</span>
+                      
+                      <div className="flex items-end gap-4">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1">Your Value</div>
+                          <div className="text-2xl font-bold text-emerald-400 tabular-nums">
+                            {formatPrice(collectedValue)}
+                          </div>
                         </div>
-                      )}
+                        <div className="pb-1 border-l border-white/10 pl-4">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1">Set Potential</div>
+                          <div className="text-sm font-bold text-white/70 tabular-nums">
+                            {formatPrice(totalSetValue)}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

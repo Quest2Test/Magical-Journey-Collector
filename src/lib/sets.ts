@@ -13,6 +13,21 @@ export const SET_GRADIENTS: Record<string, string> = {
   "12": "from-teal-900/60 via-emerald-900/40 to-background",
 };
 
+export const SET_COLORS: Record<string, string> = {
+  "1": "from-blue-500/20 to-purple-500/20",
+  "2": "from-amber-500/20 to-red-500/20",
+  "3": "from-emerald-500/20 to-teal-500/20",
+  "4": "from-purple-600/20 to-pink-500/20",
+  "5": "from-yellow-500/20 to-orange-500/20",
+  "6": "from-sky-500/20 to-indigo-500/20",
+  "7": "from-rose-500/20 to-orange-400/20",
+  "8": "from-violet-500/20 to-indigo-500/20",
+  "9": "from-pink-500/20 to-rose-500/20",
+  "10": "from-amber-500/20 to-yellow-500/20",
+  "11": "from-blue-500/20 to-indigo-500/20",
+  "12": "from-teal-500/20 to-emerald-500/20",
+};
+
 export const SET_ACCENT: Record<string, string> = {
   "1": "#6366f1", // TFC
   "2": "#f59e0b", // ROF
