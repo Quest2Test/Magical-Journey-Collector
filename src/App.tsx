@@ -84,26 +84,22 @@ function Router() {
         <Suspense fallback={<PageLoader />}>
           <Switch>
             <Route path="/" component={Home} />
-            <Route path="/login" component={AuthPage} />
-            <Route path="/auth/callback" component={AuthCallback} />
-            <Route path="/builder" component={DeckBuilder} />
+
             <Route path="/decks/public/:id" component={DeckDetail} />
             <Route path="/decks/:id" component={DeckDetail} />
             <Route path="/decks" component={DecksBrowse} />
-            <Route path="/cards/:id" component={CardDetail} />
-            <Route path="/cards/:id/*" component={CardDetail} />
-            <Route path="/cards" component={CardsBrowse} />
             <Route path="/public-decks" component={PublicDecks} />
-            {/* <Route path="/deck/:id/print" component={DeckPrint} /> */}
-            {/* <Route path="/meta" component={Meta} />
-            <Route path="/meta/:id" component={MetaAnalysis} /> */}
+
+            <Route path="/cards/:id" component={CardDetail} />
+            <Route path="/cards" component={CardsBrowse} />
+
+            <Route path="/builder" component={DeckBuilder} />
+            <Route path="/login" component={AuthPage} />
+            <Route path="/auth/callback" component={AuthCallback} />
             <Route path="/sets" component={Sets} />
             <Route path="/sets/:id" component={SetDetail} />
             <Route path="/wishlist" component={Wishlist} />
             <Route path="/profile/:username" component={Profile} />
-            {/* <Route path="/news" component={NewsPage} />
-            <Route path="/news/:slug" component={ArticlePage} />
-            <Route path="/admin/news" component={AdminNews} /> */}
             <Route path="/resources" component={Resources} />
             <Route path="/academy" component={Academy} />
             <Route path="/about" component={About} />

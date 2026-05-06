@@ -11,13 +11,17 @@ import { useCurrency } from "@/components/currency-provider";
 import { getCardLegality } from "@/lib/legality";
 import { detectRegion, buildTCGPlayerUrl, buildCardMarketUrl } from "@/lib/affiliates";
 import { useWishlist } from "@/hooks/useWishlist";
-import { Heart, Palette, Quote, Sparkles, Share2, BookmarkPlus, BookmarkCheck } from "lucide-react";
+import { Heart, Palette, Quote, Sparkles, Share2, BookmarkPlus, BookmarkCheck, Twitter, Facebook } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogTrigger,
   DialogTitle,
+  DialogHeader,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { highlightRulesText, SYMBOL_ICONS } from "@/components/ui/card-text";
 import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-utils";
 
@@ -29,6 +33,7 @@ export default function CardDetail() {
    const { toggleWishlist, isInWishlist } = useWishlist();
    const [imgError, setImgError] = useState(false);
    const [copying, setCopying] = useState(false);
+   const [showSocialShare, setShowSocialShare] = useState(false);
 
   const decodedId = id ? decodeURIComponent(id) : "";
   const card = allCards.find(c => c.id === decodedId);
@@ -53,6 +58,7 @@ export default function CardDetail() {
     return (
       <div className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-3xl font-serif font-bold mb-4">Card Not Found</h1>
+        <p className="text-muted-foreground mb-8">Could not find card with ID: {id}</p>
         <Link href={fromUrl ? fromUrl : "/cards"}>
           <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> {fromUrl ? "Back to Set" : "Back to Cards"}</Button>
         </Link>
@@ -205,14 +211,10 @@ export default function CardDetail() {
                   <Button 
                     variant="outline" 
                     className="h-10 w-full rounded-xl border-border bg-card/50 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all active:scale-95"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      setCopying(true);
-                      setTimeout(() => setCopying(false), 2000);
-                    }}
+                    onClick={() => setShowSocialShare(true)}
                   >
-                    {copying ? <Sparkles className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
-                    {copying ? "Link Copied!" : "Share this Card"}
+                    <Share2 className="w-4 h-4" />
+                    Share this Card
                   </Button>
               </div>
             )}
@@ -517,6 +519,72 @@ export default function CardDetail() {
           </div>
         </section>
       )}
+
+      {/* Social Share Modal */}
+      <Dialog open={showSocialShare} onOpenChange={setShowSocialShare}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share Card</DialogTitle>
+            <DialogDescription>
+              Share "{card.name}" with other Illumineers.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-6 py-4">
+            {/* Social Buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button 
+                variant="outline" 
+                className="gap-2 bg-[#1DA1F2]/5 hover:bg-[#1DA1F2]/10 border-[#1DA1F2]/20 text-[#1DA1F2]"
+                onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this Disney Lorcana card "${card.name}" on Lorbound!`)}&url=${encodeURIComponent(window.location.href)}`, '_blank')}
+              >
+                <Twitter className="w-4 h-4 fill-current" /> Twitter
+              </Button>
+              <Button 
+                variant="outline" 
+                className="gap-2 bg-[#4267B2]/5 hover:bg-[#4267B2]/10 border-[#4267B2]/20 text-[#4267B2]"
+                onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`, '_blank')}
+              >
+                <Facebook className="w-4 h-4 fill-current" /> Facebook
+              </Button>
+            </div>
+
+            {/* Copy Link Field */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Direct Link</Label>
+              <div className="flex gap-2">
+                <Input 
+                  readOnly 
+                  value={window.location.href} 
+                  className="bg-muted/50 text-xs h-9"
+                />
+                <Button 
+                  size="sm" 
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    setCopying(true);
+                    setTimeout(() => setCopying(false), 2000);
+                  }} 
+                  className="shrink-0 h-9"
+                >
+                   {copying ? "Copied!" : "Copy"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Subtle Branding */}
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-semibold">Join the community</p>
+                <p className="text-[10px] text-muted-foreground">Track your collection and build decks at www.lorbound.com</p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
