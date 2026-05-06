@@ -1,471 +1,637 @@
-import { useRoute, Link, useLocation } from "wouter";
-import { useAuth } from "@/components/auth-provider";
-import { useAllCards } from "@/hooks/useCards";
-import { ARCHETYPES } from "@/data/archetypes";
-import { useCollection } from "@/hooks/useCollection";
-import { useCurrency } from "@/components/currency-provider";
-import { getBaseCardValue } from "@/lib/pricing";
-import { CardDisplay, inkHexColors, rarityIcons } from "@/components/ui/card-display";
-import { TOURNAMENTS } from "@/data/tournaments";
-import { Trophy, Download } from "lucide-react";
-import { Loader2, ArrowLeft, TrendingUp, ShieldAlert, Sparkles, PieChart as PieChartIcon, BarChart3, Plus, Library } from "lucide-react";
-import { useMemo } from "react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, CartesianGrid } from "recharts";
+import { useParams, Link, useLocation } from "wouter";
+import { useDecks } from "@/hooks/useDecks";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, Loader2, Edit, ExternalLink, PlaySquare, TrendingUp, Info, LayoutGrid, List as ListIcon, Library, Sparkles, Download, Layers, Globe, Link as LinkIcon } from "lucide-react";
+import { getCardLegality } from "@/lib/legality";
+import { motion } from "framer-motion";
+import { CardDisplay, inkHexColors, inkGradients, getInkLogo } from "@/components/ui/card-display";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/currency-provider";
+import { useState, useMemo } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { useCollection } from "@/hooks/useCollection";
+import { getBaseCardValue } from "@/lib/pricing";
+import { getDisplayType } from "@/lib/card-utils";
+import { Progress } from "@/components/ui/progress";
+import { Card as CardContainer, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
-export default function MetaAnalysis({ params }: { params: { id: string } }) {
+import { useAllCards } from "@/hooks/useCards";
+import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
+import { usePublicDecks } from "@/hooks/usePublicDecks";
+import { DeckAnalysisPanel } from "@/components/builder/DeckAnalysisPanel";
+import { useToast } from "@/hooks/use-toast";
+
+export default function DeckDetail() {
+  const { id } = useParams();
+  const [location] = useLocation();
+  const { toast } = useToast();
+  const isPublicRoute = location.includes("/decks/public/");
+
+  const copyToClipboard = async () => {
+    const shareData = {
+      title: `${deck?.name} | Lorcana Deck on Lorbound`,
+      text: `Check out this ${deck?.format} deck "${deck?.name}" by ${isPublicRoute ? (deck as any).authorName : (user?.user_metadata?.username || "a Lorbound user")}.`,
+      url: window.location.href,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        } else {
+          return; // User cancelled
+        }
+      }
+    }
+
+    // Fallback to clipboard
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link Copied!",
+        description: "Deck URL has been copied to your clipboard.",
+      });
+    } catch (err) {
+      toast({
+        title: "Share Failed",
+        description: "Could not copy link to clipboard.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const { decks, isLoading: loadingDecks } = useDecks();
   const { data: allCards = [], isLoading: loadingCards } = useAllCards();
-  const { user } = useAuth();
-  const { collection, isCollected, getEntry } = useCollection();
   const { formatPrice } = useCurrency();
-  const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { collection, getEntry } = useCollection();
+  const { publicDecks, publishDeck, unpublishDeck, isUnpublishing, isLoading: loadingPublic, isPublishing } = usePublicDecks();
 
-  const archetype = useMemo(() => {
-    return ARCHETYPES.find(a => a.id === params?.id);
-  }, [params?.id]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [groupMode, setGroupMode] = useState<"type" | "cost">("type");
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+
+  const deck = useMemo(() => {
+    if (isPublicRoute) {
+      return publicDecks.find(d => d.id === id);
+    }
+
+    // 1. Check user decks
+    const userDeck = decks.find(d => d.id === id);
+    if (userDeck) return userDeck;
+
+    // 2. Check starter decks if ID starts with 'starter-'
+    if (id?.startsWith('starter-') && allCards.length > 0) {
+      const starters = getHydratedStarterDecks(allCards);
+      return starters.find(s => s.id === id);
+    }
+
+    return null;
+  }, [decks, publicDecks, id, allCards, isPublicRoute]);
 
   const analysis = useMemo(() => {
-    if (!archetype || !allCards.length) return null;
+    if (!deck) return null;
 
-    const cardsInDeck = archetype.fullDeck.map(ad => {
-      const cardData = allCards.find(c => 
-        c.name.toLowerCase() === ad.name.toLowerCase() && 
-        (!ad.subtitle || c.subtitle?.toLowerCase() === ad.subtitle.toLowerCase())
-      );
-      
-      const cardId = cardData?.id || "";
-      const owned = collection[cardId] || { normal: 0, foil: 0 };
-      const totalOwned = owned.normal + owned.foil;
-      
+    let totalOwned = 0;
+    let totalRequired = 0;
+    let missingValue = 0;
+    let uninkableCount = 0;
+    let totalInkCost = 0;
+    const inkDist: Record<string, number> = {};
+    const curve: { cost: string; count: number; [ink: string]: string | number }[] = Array.from({ length: 7 }, (_, i) => ({
+      cost: i < 6 ? String(i + 1) : "7+",
+      count: 0,
+    }));
+    const byType: Record<string, number> = {
+      Character: 0, Action: 0, Item: 0, Location: 0, Song: 0,
+    };
+
+    const cardsInDeck = deck.entries.map(entry => {
+      const owned = getEntry(entry.card.id);
+      const totalOwnedCount = owned.normal + owned.foil;
+      const missingQty = Math.max(0, entry.qty - totalOwnedCount);
+      const price = getBaseCardValue(entry.card);
+
+      totalOwned += Math.min(entry.qty, totalOwnedCount);
+      totalRequired += entry.qty;
+      missingValue += missingQty * price;
+
+      // Stats
+      inkDist[entry.card.inkColor] = (inkDist[entry.card.inkColor] || 0) + entry.qty;
+      const costIndex = Math.min(entry.card.cost - 1, 6);
+      if (costIndex >= 0) {
+        curve[costIndex].count += entry.qty;
+        curve[costIndex][entry.card.inkColor] = ((curve[costIndex][entry.card.inkColor] as number) || 0) + entry.qty;
+      }
+      byType[entry.card.type] = (byType[entry.card.type] || 0) + entry.qty;
+      if (!entry.card.inkable) uninkableCount += entry.qty;
+      totalInkCost += entry.card.cost * entry.qty;
+
       return {
-        ...ad,
-        card: cardData,
-        ownedQty: Math.min(ad.qty, totalOwned),
-        missingQty: Math.max(0, ad.qty - totalOwned),
-        price: cardData ? getBaseCardValue(cardData) : 0
+        ...entry,
+        ownedQty: Math.min(entry.qty, totalOwnedCount),
+        missingQty,
+        price
       };
     });
 
-    const totalOwned = cardsInDeck.reduce((sum, c) => sum + c.ownedQty, 0);
-    const totalRequired = cardsInDeck.reduce((sum, c) => sum + c.qty, 0);
-    const missingValue = cardsInDeck.reduce((sum, c) => sum + (c.missingQty * c.price), 0);
-    const totalValue = cardsInDeck.reduce((sum, c) => sum + (c.qty * c.price), 0);
+    const completionPct = totalRequired > 0 ? (totalOwned / totalRequired) * 100 : 0;
+    const activeInks = Object.keys(inkDist);
+    const avgCost = totalRequired > 0 ? totalInkCost / totalRequired : 0;
 
-    // Chart Data
-    const curveData = Array.from({ length: 8 }, (_, i) => ({
-      cost: i === 7 ? "7+" : i,
-      count: cardsInDeck.filter(c => c.card && ((c.card.cost ?? 0) === i || (i === 7 && (c.card.cost ?? 0) >= 7)))
-        .reduce((sum, c) => sum + c.qty, 0)
-    }));
+    // Legality
+    const illegalCardsCount = deck.entries.filter(({ card }) => {
+      if (deck.format === "Any") return false;
+      const legality = getCardLegality(card, allCards);
+      const formatKey = (deck.format === "Core" ? "core" : "infinity") as keyof typeof legality;
+      return legality[formatKey] !== "Legal";
+    }).length;
 
-    const typeData = [
-      { name: "Character", value: cardsInDeck.filter(c => c.card?.type === "Character").reduce((sum, c) => sum + c.qty, 0), color: "#3b82f6" },
-      { name: "Action/Song", value: cardsInDeck.filter(c => c.card?.type === "Action" || c.card?.type === "Song").reduce((sum, c) => sum + c.qty, 0), color: "#ef4444" },
-      { name: "Item", value: cardsInDeck.filter(c => c.card?.type === "Item").reduce((sum, c) => sum + c.qty, 0), color: "#10b981" },
-      { name: "Location", value: cardsInDeck.filter(c => c.card?.type === "Location").reduce((sum, c) => sum + c.qty, 0), color: "#f59e0b" },
-    ].filter(t => t.value > 0);
+    // Grouping
+    const grouped = cardsInDeck.reduce((acc, entry) => {
+      let key = "Other";
+      if (groupMode === "type") {
+        key = getDisplayType(entry.card) + "s";
+      } else {
+        key = `Cost ${entry.card.cost}`;
+      }
+      if (!acc[key]) acc[key] = { cards: [], count: 0 };
+      acc[key].cards.push(entry);
+      acc[key].count += entry.qty;
+      return acc;
+    }, {} as Record<string, { cards: typeof cardsInDeck, count: number }>);
+
+    // Sorting groups
+    let sortedKeys = Object.keys(grouped);
+    if (groupMode === "type") {
+      const order = ["Characters", "Actions", "Items", "Locations"];
+      sortedKeys = sortedKeys.sort((a, b) => {
+        const ia = order.indexOf(a);
+        const ib = order.indexOf(b);
+        if (ia === -1 && ib === -1) return a.localeCompare(b);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+    } else {
+      sortedKeys = sortedKeys.sort((a, b) => parseInt(a.replace("Cost ", "")) - parseInt(b.replace("Cost ", "")));
+    }
+
+    // Sort cards within groups by cost
+    sortedKeys.forEach(key => {
+      grouped[key].cards.sort((a, b) => a.card.cost - b.card.cost || a.card.name.localeCompare(b.card.name));
+    });
 
     return {
       cardsInDeck,
       totalOwned,
       totalRequired,
       missingValue,
-      totalValue,
-      curveData,
-      typeData,
-      completionPct: (totalOwned / totalRequired) * 100
+      completionPct,
+      grouped,
+      sortedKeys,
+      // New stats for infographics
+      inkDistribution: inkDist,
+      costCurve: curve,
+      activeInks,
+      uninkableCount,
+      avgCost,
+      pieData: Object.entries(inkDist).map(([name, value]) => ({ name, value })),
+      typeBreakdown: Object.entries(byType).map(([type, count]) => ({ type, count })).filter(t => t.count > 0),
+      isLegalSize: totalRequired === 60,
+      isLegalInkCount: activeInks.length <= 2,
+      illegalCardsCount
     };
-  }, [archetype, allCards, collection]);
+  }, [deck, collection, getEntry, groupMode]);
 
-  if (!archetype) {
-    return (
-      <div className="container mx-auto py-20 text-center">
-        <h1 className="text-2xl font-bold mb-4">Archetype not found</h1>
-        <Link href="/meta">
-          <Button variant="outline">Back to Meta Snapshot</Button>
-        </Link>
-      </div>
-    );
-  }
+  const isLoading = loadingDecks || (id?.startsWith('starter-') && loadingCards) || (isPublicRoute && loadingPublic);
 
-  // If cards are loading, or we have no cards yet, we show loader
-  if (loadingCards || allCards.length === 0) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="container mx-auto px-4 py-20 flex justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  // If analysis is still null but we have cards, something might be wrong with the ID
-  if (!analysis) {
+  if (!deck || !analysis) {
     return (
-      <div className="container mx-auto py-20 text-center text-muted-foreground">
-        Invalid analysis data. Please try again.
+      <div className="container mx-auto px-4 py-20 text-center">
+        <h1 className="text-3xl font-serif font-bold mb-4">Deck Not Found</h1>
+        <p className="text-muted-foreground mb-8 text-lg">This deck might have been moved or deleted.</p>
+        <Link href="/decks">
+          <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> Back to My Decks</Button>
+        </Link>
       </div>
     );
   }
 
-  const tournamentResults = useMemo(() => {
-    return TOURNAMENTS.flatMap(t => 
-      t.topDecks.filter(td => td.archetypeId === archetype?.id)
-       .map(td => ({ ...td, tournamentName: t.name, date: t.date }))
-    );
-  }, [archetype]);
+  const inkHexes = deck.inkColors.map(ink => inkHexColors[ink] ?? "#888");
+  const bannerGradient = inkHexes.length >= 2
+    ? `linear-gradient(135deg, ${inkHexes[0]}22 0%, ${inkHexes[1]}22 100%)`
+    : `linear-gradient(135deg, ${inkHexes[0] ?? "#88888822"} 0%, transparent 100%)`;
 
-  const handleBuildLikeThis = (nameToUse: string, cardsToUse: any[]) => {
-    localStorage.setItem("lorcana_import_temp", JSON.stringify({
-      name: nameToUse,
-      cards: cardsToUse
-    }));
-    setLocation("/builder?import=latest");
+  const handleBuyMissing = () => {
+    const affiliateId = import.meta.env.VITE_TCGPLAYER_AFFILIATE_ID || "";
+    const missingLines = analysis.cardsInDeck
+      .filter(c => c.missingQty > 0)
+      .map(entry => `${entry.missingQty} ${entry.card.name}${entry.card.subtitle ? ` - ${entry.card.subtitle}` : ""}`)
+      .join("||");
+    if (missingLines) {
+      window.open(`https://tcgplayer.pxf.io/c/${affiliateId}/1830156/21018?u=https://www.tcgplayer.com/massentry?productline=Lorcana TCG&c=${encodeURIComponent(missingLines)}`, '_blank');
+    }
   };
 
   return (
-    <div className="container mx-auto px-4 md:px-6 py-12 animate-in fade-in duration-500">
-      <Link href="/meta" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 group">
-        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Meta Snapshot
+    <div className="container mx-auto px-4 md:px-6 py-8">
+      {/* Breadcrumbs */}
+      <Link href="/decks" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors group">
+        <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Back to My Decks
       </Link>
 
-      {/* Hero Header */}
-      <div className="grid lg:grid-cols-3 gap-12 mb-16">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex flex-wrap items-center gap-3">
-             <Badge className={cn(
-               "px-3 py-1 text-lg font-bold",
-               archetype.tier === 'S' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'
-             )}>
-               Tier {archetype.tier}
-             </Badge>
-             <div className="flex gap-1 p-1 rounded-lg bg-muted border">
-               {archetype.inks.map(ink => (
-                 <div key={ink} className="w-6 h-6 rounded-full border shadow-sm" style={{ backgroundColor: inkHexColors[ink as keyof typeof inkHexColors] }} />
-               ))}
-             </div>
-             <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 bg-emerald-500/5 px-3 py-1 font-mono text-sm uppercase">{archetype.winrate} Win Rate</Badge>
+      {/* Header Section */}
+      <div className="relative rounded-3xl border bg-card overflow-hidden shadow-sm mb-8">
+        <div className="absolute inset-0 opacity-10" style={{ background: bannerGradient }} />
+        <div className="relative p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-3">
+            <div className="flex gap-2.5">
+              {deck.inkColors.map(ink => {
+                const inkColor = (inkHexColors as Record<string, string>)[ink] || "#888";
+                return (
+                  <div
+                    key={ink}
+                    className="w-12 h-12 rounded-full flex items-center justify-center bg-black/40 border border-white/20 shadow-xl relative group/ink overflow-hidden"
+                    title={ink}
+                    style={{ boxShadow: `0 0 20px ${inkColor}40` }}
+                  >
+                    {/* Inner Gradient/Glow */}
+                    <div 
+                      className="absolute inset-0 opacity-40 group-hover/ink:opacity-60 transition-opacity" 
+                      style={{ background: `radial-gradient(circle at center, ${inkColor}, transparent)` }} 
+                    />
+                    <img 
+                      src={getInkLogo(ink)} 
+                      alt={ink} 
+                      className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] relative z-10 transform group-hover/ink:scale-110 transition-transform duration-300" 
+                    />
+                    {/* Gloss effect */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
+                  </div>
+                );
+              })}
+            </div>
+            <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight">{deck.name}</h1>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5"><PlaySquare className="w-4 h-4" /> {deck.totalCards} Cards</span>
+              <span className="flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> {formatPrice(deck.totalValue)} Value</span>
+              <span className="flex items-center gap-1.5"><Info className="w-4 h-4" /> {deck.format} Format</span>
+            </div>
           </div>
-          
-          <h1 className="font-serif text-4xl md:text-6xl font-bold tracking-tight">{archetype.name} Analysis</h1>
-          <p className="text-xl text-muted-foreground italic leading-relaxed max-w-2xl">
-            "{archetype.description}"
-          </p>
-
-          <div className="flex gap-4 pt-4">
-             <Button 
-              onClick={() => handleBuildLikeThis(`Template: ${archetype.name}`, archetype.fullDeck)}
-              className="gap-2 shadow-lg shadow-primary/20"
-            >
-              <Plus className="w-4 h-4" /> Load Template into Builder
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" size="lg" className="gap-2 shadow-sm" onClick={copyToClipboard}>
+              <LinkIcon className="w-4 h-4" /> Share
             </Button>
-             <Button size="lg" variant="outline" className="gap-2" onClick={() => window.print()}>
-                Export Report
-             </Button>
-          </div>
-        </div>
-
-        {/* Collection Snapshot Card */}
-        <Card className="border-primary/20 bg-primary/[0.02] shadow-xl overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-            <TrendingUp className="w-32 h-32" />
-          </div>
-          <CardHeader>
-             <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-500" /> Collection Readiness
-             </CardTitle>
-             <CardDescription>How close are you to this tournament shell?</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {user ? (
-              <>
-                <div className="space-y-2">
-                   <div className="flex justify-between text-sm font-bold">
-                      <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
-                      <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
-                   </div>
-                   <Progress value={analysis.completionPct} className="h-2.5" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                   <div className="space-y-1">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Market Value</p>
-                      <p className="text-lg font-bold">{formatPrice(analysis.totalValue)}</p>
-                   </div>
-                   <div className="space-y-1">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
-                      <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
-                   </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-4 text-center space-y-4">
-                <div className="p-3 rounded-full bg-primary/10">
-                  <Library className="w-6 h-6 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-bold">Track your collection</p>
-                  <p className="text-xs text-muted-foreground">Sign in to see your readiness for this archetype.</p>
-                </div>
-                <Button asChild size="sm" className="w-full">
-                  <Link href="/login">Sign In to Lorbound</Link>
+            {user && decks.some(d => d.id === deck.id) && !isPublicRoute && (
+              publicDecks.some(p => p.id === deck.id) ? (
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="gap-2 shadow-sm text-amber-500 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors"
+                  onClick={() => unpublishDeck(deck.id)}
+                  disabled={isUnpublishing}
+                >
+                  {isUnpublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                  Unshare
+                </Button>
+              ) : (
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="gap-2 shadow-lg"
+                  onClick={() => setShowShareDialog(true)}
+                  disabled={isPublishing}
+                >
+                  {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4 text-primary" />}
+                  Share Publicly
+                </Button>
+              )
+            )}
+            {isPublicRoute ? (
+              <div className="flex gap-2">
+                {user && (deck as any).userId === user.id && (
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="gap-2 shadow-sm text-amber-500 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10"
+                    onClick={() => unpublishDeck(deck.id)}
+                    disabled={isUnpublishing}
+                  >
+                    {isUnpublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                    Unshare
+                  </Button>
+                )}
+                <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20" asChild>
+                   <Link href={`/builder?import=${deck.id}&source=public`}>
+                     <Layers className="w-4 h-4" /> Clone to My Decks
+                   </Link>
                 </Button>
               </div>
+            ) : (
+              <Link href={`/builder?edit=${deck.id}`}>
+                <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20">
+                  <Edit className="w-4 h-4" /> Modify in Builder
+                </Button>
+              </Link>
             )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Analytics Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-         {/* Ink Curve */}
-         <Card>
-            <CardHeader className="pb-2">
-               <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" /> Ink Curve Analysis
-               </CardTitle>
-            </CardHeader>
-            <CardContent>
-               <div className="h-[200px] w-full pt-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={analysis.curveData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                        <XAxis dataKey="cost" fontSize={10} axisLine={false} tickLine={false} />
-                        <Tooltip 
-                          cursor={{fill: 'hsl(var(--muted))', opacity: 0.4}}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '10px' }}
-                        />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                     </BarChart>
-                  </ResponsiveContainer>
-               </div>
-            </CardContent>
-         </Card>
-
-         {/* Type Breakdown */}
-         <Card>
-            <CardHeader className="pb-2">
-               <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <PieChartIcon className="w-4 h-4" /> Type Distribution
-               </CardTitle>
-            </CardHeader>
-            <CardContent>
-               <div className="h-[200px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <PieChart>
-                        <Pie
-                          data={analysis.typeData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {analysis.typeData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '10px' }}
-                        />
-                     </PieChart>
-                  </ResponsiveContainer>
-               </div>
-               <div className="grid grid-cols-2 gap-2 mt-2">
-                  {analysis.typeData.map(t => (
-                    <div key={t.name} className="flex items-center gap-2 text-[10px] font-bold">
-                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
-                       <span className="text-muted-foreground">{t.name}</span>
-                       <span className="ml-auto">{t.value}</span>
-                    </div>
-                  ))}
-               </div>
-            </CardContent>
-         </Card>
-
-         {/* Strengths & Weaknesses */}
-         <div className="space-y-4">
-            <Card className="border-emerald-500/20 bg-emerald-500/[0.02]">
-               <CardHeader className="py-3">
-                  <CardTitle className="text-xs uppercase font-bold text-emerald-500 flex items-center gap-2">
-                     <TrendingUp className="w-3 h-3" /> Core Strengths
-                  </CardTitle>
-               </CardHeader>
-               <CardContent className="py-0 pb-4">
-                  <ul className="space-y-2">
-                     {archetype.strengths.map((s, i) => (
-                       <li key={i} className="text-sm font-medium flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {s}
-                       </li>
-                     ))}
-                  </ul>
-               </CardContent>
-            </Card>
-            <Card className="border-red-500/20 bg-red-500/[0.02]">
-               <CardHeader className="py-3">
-                  <CardTitle className="text-xs uppercase font-bold text-red-500 flex items-center gap-2">
-                     <ShieldAlert className="w-3 h-3" /> Potential Pitfalls
-                  </CardTitle>
-               </CardHeader>
-               <CardContent className="py-0 pb-4">
-                  <ul className="space-y-2">
-                     {archetype.weaknesses.map((w, i) => (
-                       <li key={i} className="text-sm font-medium flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> {w}
-                       </li>
-                     ))}
-                  </ul>
-               </CardContent>
-            </Card>
-         </div>
-      </div>
-
-      {/* Matchup Matrix */}
-      <div className="space-y-8 mb-16">
-         <div className="flex items-center gap-2 border-b pb-4">
-            <h2 className="text-3xl font-serif font-bold">Matchup Matrix</h2>
-            <Badge variant="secondary">Statistical Projections</Badge>
-         </div>
-         <div className="grid md:grid-cols-3 gap-6">
-            {archetype.matchups.map(m => {
-              const opp = ARCHETYPES.find(a => a.id === m.opponentId);
-              return (
-                <Card key={m.opponentId} className="relative overflow-hidden group">
-                  <div className={cn(
-                    "absolute top-0 left-0 w-1.5 h-full",
-                    m.winRate >= 50 ? "bg-emerald-500" : "bg-red-500"
-                  )} />
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                       <div>
-                          <CardTitle className="md:text-lg">{opp?.name || m.opponentId}</CardTitle>
-                          <CardDescription>Competitive Outlook</CardDescription>
-                       </div>
-                       <div className={cn(
-                         "text-2xl font-mono font-bold shrink-0",
-                         m.winRate >= 50 ? "text-emerald-500" : "text-red-500"
-                       )}>
-                          {m.winRate}%
-                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground leading-relaxed italic">
-                      "{m.note}"
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-         </div>
-      </div>
-
-      {/* Tournament Implementations */}
-      {tournamentResults.length > 0 && (
-        <div className="space-y-6 mb-16">
-          <div className="flex items-center gap-2 border-b pb-4">
-             <h2 className="text-3xl font-serif font-bold">Tournament Winning Lists</h2>
-             <Badge variant="secondary">Verified Real-World Results</Badge>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-             {tournamentResults.map((tr) => (
-               <Card key={tr.id} className="p-5 flex flex-col hover:border-primary/40 transition-colors group relative overflow-hidden">
-                 <div className="absolute top-0 right-0 p-3 opacity-10 blur-xl group-hover:opacity-20 transition-opacity">
-                   <Trophy className="w-24 h-24" />
-                 </div>
-                 
-                 <div className="flex items-center gap-3 mb-4 relative z-10">
-                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary border border-primary/20 shadow-inner">
-                     {tr.placement}{tr.placement === 1 ? 'st' : tr.placement === 2 ? 'nd' : tr.placement === 3 ? 'rd' : 'th'}
-                   </div>
-                   <div>
-                     <h4 className="font-bold text-lg leading-tight">{tr.playerName}</h4>
-                     <span className="text-xs text-muted-foreground font-medium flex items-center gap-2">
-                       {tr.tournamentName}
-                     </span>
-                   </div>
-                 </div>
-
-                 <div className="mt-auto pt-4 flex gap-2 border-t relative z-10">
-                   <Button 
-                     variant="secondary" 
-                     className="flex-1 gap-2"
-                     onClick={() => handleBuildLikeThis(`${tr.tournamentName} - ${tr.playerName} Top 8`, tr.decklist)}
-                   >
-                     <Download className="w-4 h-4" /> Import to Builder
-                   </Button>
-                   <Button 
-                     variant="outline" 
-                     className="flex-1 gap-1"
-                     onClick={() => {
-                        if(allCards.length === 0) return;
-                        const affiliateId = import.meta.env.VITE_TCGPLAYER_AFFILIATE_ID || "";
-                        const lines = tr.decklist.map(entry => `${entry.qty} ${entry.name}${entry.subtitle ? ` - ${entry.subtitle}` : ""}`).join("||");
-                        window.open(`https://tcgplayer.pxf.io/c/${affiliateId}/1830156/21018?u=https://www.tcgplayer.com/massentry?productline=Lorcana TCG&c=${encodeURIComponent(lines)}`, '_blank');
-                     }}
-                   >
-                     Buy Deck
-                   </Button>
-                 </div>
-               </Card>
-             ))}
           </div>
         </div>
-      )}
-
-      {/* Deck List Breakdown */}
-      <div className="space-y-8">
-         <div className="flex items-center justify-between border-b pb-4">
-            <h2 className="text-3xl font-serif font-bold flex items-center gap-3">
-               <Library className="w-8 h-8 text-primary" /> Full Tournament Shell
-            </h2>
-            <div className="flex gap-4 text-sm font-medium text-muted-foreground">
-               <span>Characters: {analysis.typeData.find(t => t.name === 'Character')?.value || 0}</span>
-               <span>Non-Characters: {analysis.totalRequired - (analysis.typeData.find(t => t.name === 'Character')?.value || 0)}</span>
-            </div>
-         </div>
-
-         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6">
-            {analysis.cardsInDeck.map((ad, i) => (
-              <div key={i} className="relative group">
-                {ad.card ? (
-                  <>
-                    <CardDisplay card={ad.card} className={cn(
-                      "transition-opacity",
-                      user && ad.ownedQty === 0 && "opacity-40 grayscale-[0.6]"
-                    )} />
-                    {user && (
-                      <>
-                        <div className="absolute -top-3 -right-3 min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
-                           {ad.ownedQty} <span className="mx-0.5 opacity-40">/</span> {ad.qty}
-                        </div>
-                        {ad.missingQty > 0 && (
-                          <div className="absolute -bottom-2 -left-2 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[9px] font-bold uppercase tracking-wider shadow-lg z-10">
-                            Missing {ad.missingQty}
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {!user && (
-                      <div className="absolute -top-3 -right-3 min-w-[28px] h-7 px-2 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
-                         x{ad.qty}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="aspect-[2/3] w-full rounded-lg border border-dashed flex flex-col items-center justify-center text-center p-2 bg-muted/20">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">{ad.name}</p>
-                    <p className="text-[8px] text-muted-foreground/60">{ad.subtitle}</p>
-                    <p className="text-[10px] text-destructive mt-2 font-bold">Data Missing</p>
-                  </div>
-                )}
-              </div>
-            ))}
-         </div>
       </div>
+
+      <div className="grid lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2">
+          {/* Deck Display Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4 mb-6">
+            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
+               <Library className="w-6 h-6 text-primary" /> Decklist
+            </h2>
+            <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
+              <div className="flex items-center gap-1.5 border rounded-md p-0.5 bg-muted/50">
+                <button
+                  onClick={() => setGroupMode("type")}
+                  className={cn("px-2.5 py-1 text-xs font-bold rounded-sm transition-colors", groupMode === "type" ? "bg-background shadow-sm text-foreground" : "hover:text-foreground")}
+                >
+                  By Type
+                </button>
+                <button
+                  onClick={() => setGroupMode("cost")}
+                  className={cn("px-2.5 py-1 text-xs font-bold rounded-sm transition-colors", groupMode === "cost" ? "bg-background shadow-sm text-foreground" : "hover:text-foreground")}
+                >
+                  By Cost
+                </button>
+              </div>
+              <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={cn("p-1.5 rounded-sm transition-colors", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "hover:text-foreground")}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={cn("p-1.5 rounded-sm transition-colors", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "hover:text-foreground")}
+                  title="List View"
+                >
+                  <ListIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Deck Content */}
+          <div className={cn("gap-8", viewMode === "list" ? "grid md:grid-cols-1" : "flex flex-col")}>
+            {analysis.sortedKeys.map((groupKey) => {
+              const group = analysis.grouped[groupKey];
+              const returnPath = isPublicRoute ? `/decks/public/${deck.id}` : `/decks/${deck.id}`;
+              if (!group || group.cards.length === 0) return null;
+
+              return (
+                <div key={groupKey} className="mb-8">
+                  <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                    <h3 className="text-lg font-serif font-bold">{groupKey}</h3>
+                    <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                      {group.count}
+                    </span>
+                  </div>
+
+                  {viewMode === "grid" ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {group.cards.map((entry, idx) => (
+                        <motion.div
+                          key={`${entry.card.id}-${idx}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.02 }}
+                          className="relative group/card"
+                        >
+                          <CardDisplay 
+                            card={entry.card} 
+                            returnTo={returnPath} 
+                            className={cn(
+                              "transition-opacity w-full",
+                              user && entry.ownedQty === 0 && "opacity-50 grayscale-[0.5]"
+                            )} 
+                          />
+                          
+                          {user ? (
+                            <>
+                              <div className="absolute -top-2 -right-2 min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
+                                 {entry.ownedQty} <span className="mx-0.5 opacity-40">/</span> {entry.qty}
+                              </div>
+                              {entry.missingQty > 0 && (
+                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg z-20 whitespace-nowrap border border-white/20">
+                                  Missing {entry.missingQty}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="absolute -top-2 -right-2 min-w-[28px] h-7 px-2 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
+                               x{entry.qty}
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {group.cards.map((entry, idx) => (
+                        <Link 
+                          key={`${entry.card.id}-${idx}`}
+                          href={`/cards/${entry.card.id}?return=${encodeURIComponent(returnPath)}`}
+                          className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md group transition-colors border border-transparent hover:border-border"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-muted-foreground">{entry.qty}x</span>
+                            <div className="flex flex-col">
+                              <span className="font-medium group-hover:text-primary transition-colors">{entry.card.name}</span>
+                              {entry.card.subtitle && <span className="text-xs text-muted-foreground">{entry.card.subtitle}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-xs font-medium px-2 py-0.5 rounded bg-muted uppercase tracking-wider">{entry.card.rarity}</span>
+                            <div 
+                              className="w-2 h-2 rounded-full" 
+                              style={{ backgroundColor: inkHexColors[entry.card.inkColor] }} 
+                            />
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* Collection Snapshot Card */}
+          <CardContainer className="border-primary/20 bg-primary/[0.02] shadow-sm overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+              <TrendingUp className="w-32 h-32" />
+            </div>
+            <CardHeader className="pb-4">
+               <CardTitle className="flex items-center gap-2 text-lg">
+                  <Sparkles className="w-4 h-4 text-amber-500" /> Collection Readiness
+               </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {user ? (
+                <>
+                  <div className="space-y-2">
+                     <div className="flex justify-between text-sm font-bold">
+                        <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
+                        <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
+                     </div>
+                     <Progress value={analysis.completionPct} className="h-2.5" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                     <div className="space-y-1">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Market Value</p>
+                        <p className="text-lg font-bold">{formatPrice(deck.totalValue)}</p>
+                     </div>
+                     <div className="space-y-1">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
+                        <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
+                     </div>
+                  </div>
+
+                  {analysis.missingValue > 0 && (
+                    <Button onClick={handleBuyMissing} size="sm" variant="outline" className="w-full gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+                      <ExternalLink className="w-4 h-4" /> Quick Add Missing to TCGPlayer
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-2 text-center space-y-4">
+                  <div className="p-3 rounded-full bg-primary/10">
+                    <Library className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold">Track your collection</p>
+                    <p className="text-xs text-muted-foreground">Sign in to see your readiness for this deck.</p>
+                  </div>
+                  <Button asChild size="sm" className="w-full">
+                    <Link href="/login">Sign In to Lorbound</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </CardContainer>
+
+          {/* Infographics Panel */}
+          <div className="border rounded-3xl bg-card shadow-sm overflow-hidden h-fit">
+            <div className="p-6">
+              <h3 className="text-lg font-serif font-bold mb-6 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" /> Deck Analytics
+              </h3>
+              <DeckAnalysisPanel
+                user={user}
+                totalCards={analysis.totalRequired}
+                deckCardsLength={analysis.cardsInDeck.length}
+                avgCost={analysis.avgCost}
+                pieData={analysis.pieData}
+                typeBreakdown={analysis.typeBreakdown}
+                costCurve={analysis.costCurve}
+                activeInks={analysis.activeInks}
+                uninkableCount={analysis.uninkableCount}
+                collectionStats={{
+                  totalMissing: analysis.totalRequired - analysis.totalOwned,
+                  costToFinish: analysis.missingValue,
+                  missingByCard: analysis.cardsInDeck.reduce((acc, c) => {
+                    if (c.missingQty > 0) acc[c.card.id] = c.missingQty;
+                    return acc;
+                  }, {} as Record<string, number>)
+                }}
+                isLegalSize={analysis.isLegalSize}
+                isLegalInkCount={analysis.isLegalInkCount}
+                illegalCardsCount={analysis.illegalCardsCount}
+                format={deck.format}
+                formatPrice={formatPrice}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+
+
+
+      {/* Share Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share to Community</DialogTitle>
+            <DialogDescription>
+              This will publish your deck to the Public Decks hub for the community to see, upvote, and clone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex items-center space-x-2 py-4">
+            <Checkbox 
+              id="anonymous" 
+              checked={isAnonymous}
+              onCheckedChange={(c) => setIsAnonymous(c as boolean)}
+            />
+            <Label htmlFor="anonymous" className="font-medium cursor-pointer">
+              Share anonymously
+            </Label>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setShowShareDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              className="gap-2"
+              onClick={() => {
+                const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+                
+                if (!isUUID(deck.id)) {
+                  toast({
+                    title: "Legacy Deck ID",
+                    description: "This deck uses an older ID format. Please open it in the Builder and hit 'Save' to update it before sharing.",
+                    variant: "destructive"
+                  });
+                  setShowShareDialog(false);
+                  return;
+                }
+
+                const authorName = isAnonymous 
+                  ? "Anonymous" 
+                  : (user?.user_metadata?.username || user?.email?.split('@')[0] || "Unknown");
+                publishDeck(deck, authorName);
+                setShowShareDialog(false);
+              }}
+              disabled={isPublishing}
+            >
+              {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+              Publish
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

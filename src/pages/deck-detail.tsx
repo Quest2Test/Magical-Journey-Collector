@@ -437,7 +437,7 @@ export default function DeckDetail() {
                                  {entry.ownedQty} <span className="mx-0.5 opacity-40">/</span> {entry.qty}
                               </div>
                               {entry.missingQty > 0 && (
-                                <div className="absolute -bottom-2 -left-2 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[9px] font-bold uppercase tracking-wider shadow-lg z-10">
+                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg z-20 whitespace-nowrap border border-white/20">
                                   Missing {entry.missingQty}
                                 </div>
                               )}
