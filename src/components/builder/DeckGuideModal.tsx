@@ -61,7 +61,6 @@ export function DeckGuideModal({ open, onOpenChange }: Props) {
               <p className="text-sm text-muted-foreground leading-relaxed">Access professional export tools via the <strong className="text-foreground">Export</strong> menu:</p>
               <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
                 <li><strong className="text-foreground">Registration Sheet</strong> - Official PDF for tournament play.</li>
-                <li><strong className="text-foreground">Print Proxies</strong> - High-quality 2.5" × 3.5" print sheets.</li>
                 <li><strong className="text-foreground">Share Image</strong> - Beautiful high-res graphics for social media.</li>
                 <li><strong className="text-foreground">Text Lists</strong> - One-click copy for Melee, Pixelborn, or Inktable.</li>
               </ul>
