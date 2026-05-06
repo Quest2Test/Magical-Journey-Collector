@@ -249,7 +249,7 @@ export const buildDeckExportImage = async ({
   ctx.font = 'italic 18px Inter, system-ui, sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('Created at www.lorbound.com', width - padding, height - 25);
+  ctx.fillText('Created at www.lorbound.ink', width - padding, height - 25);
   
   ctx.textAlign = 'left';
   ctx.fillText('All images © Disney / Ravensburger', padding, height - 25);
