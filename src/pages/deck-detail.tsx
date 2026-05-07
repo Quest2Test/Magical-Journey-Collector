@@ -25,7 +25,9 @@ import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
 import { usePublicDecks } from "@/hooks/usePublicDecks";
 import { DeckAnalysisPanel } from "@/components/builder/DeckAnalysisPanel";
 import { useToast } from "@/hooks/use-toast";
-import { Twitter, Facebook, Share2 } from "lucide-react";
+import { Twitter, Facebook, Share2, Image as ImageIcon } from "lucide-react";
+import { useImageExport } from "@/hooks/useImageExport";
+import { DeckShareModal } from "@/components/builder/DeckShareModal";
 
 export default function DeckDetail() {
   const { id } = useParams();
@@ -80,6 +82,11 @@ export default function DeckDetail() {
   const [groupMode, setGroupMode] = useState<"type" | "cost">("type");
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showSocialShare, setShowSocialShare] = useState(false);
+  const [showImageExport, setShowImageExport] = useState(false);
+  const [shareColumns, setShareColumns] = useState(8);
+  const [showValue, setShowValue] = useState(true);
+  const [showFormat, setShowFormat] = useState(true);
+  const [showCount, setShowCount] = useState(true);
   const [isAnonymous, setIsAnonymous] = useState(false);
 
   const deck = useMemo(() => {
@@ -99,6 +106,7 @@ export default function DeckDetail() {
 
     return null;
   }, [decks, publicDecks, id, allCards, isPublicRoute]);
+
 
   const analysis = useMemo(() => {
     if (!deck) return null;
@@ -214,6 +222,24 @@ export default function DeckDetail() {
       illegalCardsCount
     };
   }, [deck, collection, getEntry, groupMode]);
+
+  const memoizedCards = useMemo(() => deck?.entries || [], [deck?.entries]);
+  const memoizedInks = useMemo(() => analysis?.inkDistribution || {}, [analysis?.inkDistribution]);
+
+  const { sharePreviewUrl, isGeneratingPreview, previewError, handleDownload } = useImageExport({
+    active: showImageExport,
+    deckCards: memoizedCards,
+    deckName: deck?.name || "Untitled Deck",
+    format: deck?.format || "Any",
+    totalCards: deck?.totalCards || 0,
+    totalValue: deck?.totalValue || 0,
+    shareColumns,
+    inkDistribution: memoizedInks,
+    formatPrice,
+    showFormat,
+    showCount,
+    showValue
+  });
 
   const isLoading = loadingDecks || (id?.startsWith('starter-') && loadingCards) || (isPublicRoute && loadingPublic);
 
@@ -665,6 +691,21 @@ export default function DeckDetail() {
               </Button>
             </div>
 
+            <Button 
+              variant="outline" 
+              className="gap-2 py-6 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 transition-all group"
+              onClick={() => {
+                setShowSocialShare(false);
+                setShowImageExport(true);
+              }}
+            >
+              <ImageIcon className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
+              <div className="text-left">
+                <p className="font-bold text-sm">Generate Share Image</p>
+                <p className="text-[10px] text-muted-foreground">Download a beautiful infographic of your deck</p>
+              </div>
+            </Button>
+
             {/* Copy Link Field */}
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Direct Link</Label>
@@ -693,6 +734,22 @@ export default function DeckDetail() {
           </div>
         </DialogContent>
       </Dialog>
+      <DeckShareModal
+        open={showImageExport}
+        onOpenChange={setShowImageExport}
+        shareColumns={shareColumns}
+        onShareColumnsChange={setShareColumns}
+        showFormat={showFormat}
+        onShowFormatChange={setShowFormat}
+        showCount={showCount}
+        onShowCountChange={setShowCount}
+        showValue={showValue}
+        onShowValueChange={setShowValue}
+        isGeneratingPreview={isGeneratingPreview}
+        previewError={previewError}
+        sharePreviewUrl={sharePreviewUrl}
+        onDownload={handleDownload}
+      />
     </div>
   );
 }

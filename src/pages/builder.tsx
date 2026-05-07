@@ -27,6 +27,7 @@ import { getBaseCardValue } from "@/lib/pricing";
 import { useAuth } from "@/components/auth-provider";
 
 
+import { useImageExport } from "@/hooks/useImageExport";
 import { buildDeckExportImage } from "@/lib/export-image";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { DeckAnalysisPanel } from "@/components/builder/DeckAnalysisPanel";
@@ -64,14 +65,10 @@ export default function DeckBuilder() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [sharePreviewUrl, setSharePreviewUrl] = useState<string | null>(null);
-  const previewUrlRef = useRef<string | null>(null);
   const [shareColumns, setShareColumns] = useState(8);
   const [showValue, setShowValue] = useState(true);
   const [showFormat, setShowFormat] = useState(true);
   const [showCount, setShowCount] = useState(true);
-  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
   const [sideboardCards, setSideboardCards] = useState<{ card: Card; qty: number }[]>([]);
   const [activeCanvas, setActiveCanvas] = useState<'main' | 'sideboard'>('main');
   const [printProxiesOpen, setPrintProxiesOpen] = useState(false);
@@ -263,59 +260,20 @@ export default function DeckBuilder() {
 
   const availableSets = useMemo(() => Array.from(new Set(allCards.map(c => c.set))).sort(), [allCards]);
 
-  useEffect(() => {
-    if (!shareModalOpen) {
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-        previewUrlRef.current = null;
-      }
-      setSharePreviewUrl(null);
-      return;
-    }
-
-    let active = true;
-    setIsGeneratingPreview(true);
-    setPreviewError(null);
-
-    const generatePreview = async () => {
-      try {
-        const blob = await buildDeckExportImage({
-          deckCards,
-          deckName,
-          format,
-          totalCards,
-          totalValue,
-          shareColumns,
-          inkDistribution,
-          formatPrice,
-          showFormat,
-          showCount,
-          showValue
-        });
-        if (blob && active) {
-          const url = URL.createObjectURL(blob);
-          if (previewUrlRef.current) {
-            URL.revokeObjectURL(previewUrlRef.current);
-          }
-          previewUrlRef.current = url;
-          setSharePreviewUrl(url);
-        }
-      } catch (err) {
-        if (active) {
-          console.error("Failed to generate preview:", err);
-          setPreviewError("Failed to generate the preview image. Please try again.");
-        }
-      } finally {
-        if (active) setIsGeneratingPreview(false);
-      }
-    };
-
-    generatePreview();
-
-    return () => {
-      active = false;
-    };
-  }, [shareModalOpen, deckCards, format, deckName, shareColumns, showFormat, showCount, showValue]);
+  const { sharePreviewUrl, isGeneratingPreview, previewError, handleDownload } = useImageExport({
+    active: shareModalOpen,
+    deckCards,
+    deckName,
+    format,
+    totalCards,
+    totalValue,
+    shareColumns,
+    inkDistribution,
+    formatPrice,
+    showFormat,
+    showCount,
+    showValue
+  });
 
   // Filtering Left Panel
   const filteredCards = useMemo(() => {
@@ -1247,31 +1205,7 @@ export default function DeckBuilder() {
             isGeneratingPreview={isGeneratingPreview}
             previewError={previewError}
             sharePreviewUrl={sharePreviewUrl}
-            onDownload={async () => {
-              setIsGeneratingPreview(true);
-              const blob = await buildDeckExportImage({
-                deckCards,
-                deckName,
-                format,
-                totalCards,
-                totalValue,
-                shareColumns,
-                inkDistribution,
-                formatPrice
-              });
-              setIsGeneratingPreview(false);
-              if (!blob) {
-                toast({ title: 'Export Failed', description: 'Unable to generate share image.', variant: 'destructive' });
-                return;
-              }
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `${deckName || 'lorbound-deck'}-share.png`;
-              a.click();
-              URL.revokeObjectURL(url);
-              toast({ title: 'Image Saved', description: 'Your branded deck share image is ready.' });
-            }}
+            onDownload={handleDownload}
           />
 
           <DeckGuideModal open={helpOpen} onOpenChange={setHelpOpen} />

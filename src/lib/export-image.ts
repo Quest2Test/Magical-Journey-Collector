@@ -41,53 +41,47 @@ export const buildDeckExportImage = async ({
     new Promise<HTMLImageElement | null>((resolve) => {
       if (!src) return resolve(null);
       const img = new Image();
-      img.crossOrigin = "anonymous"; // Essential for canvas exports
+      img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
-      
-      // Use a public CORS-friendly proxy for production stability
+
       const normalizedSrc = src.includes('cards.lorcast.io')
         ? `https://images.weserv.nl/?url=${encodeURIComponent(src)}`
         : src;
-        
+
       const finalSrc = normalizedSrc.startsWith('http') || normalizedSrc.startsWith('data:')
         ? normalizedSrc
         : `${window.location.origin}${normalizedSrc.startsWith('/') ? '' : '/'}${normalizedSrc}`;
       img.src = finalSrc;
     });
 
-  // Determine Background Gradient based on active inks
   const activeInksList = Object.keys(inkDistribution);
-  let color1 = '#7c3aed';
-  let color2 = '#0f172a';
+  let color1 = '#1e1b4b'; // Deep Indigo
+  let color2 = '#0f172a'; // Slate 950
 
   if (activeInksList.length > 0) {
     const firstInk = activeInksList[0];
     color1 = INK_HEX_COLORS[firstInk] || color1;
-    
+
     if (activeInksList.length >= 2) {
       const secondInk = activeInksList[1];
-      color2 = INK_HEX_COLORS[secondInk] || '#0ea5e9';
-    } else {
-      color2 = '#0f172a';
+      color2 = INK_HEX_COLORS[secondInk] || color2;
     }
   }
 
-  const gridCards = deckCards;
-  
   // Layout Math
-  const width = 1400;
-  const padding = 60;
-  const gap = 16;
+  const width = 1440; // Slightly wider for 2024 standards
+  const padding = 80;
+  const gap = 20;
   const availableWidthForGrid = width - padding * 2;
   const cardWidth = (availableWidthForGrid - (shareColumns - 1) * gap) / shareColumns;
-  const cardHeight = cardWidth * (3.5 / 2.5); // Standard TCG aspect ratio
+  const cardHeight = cardWidth * (3.5 / 2.5);
 
-  const rows = Math.ceil(gridCards.length / shareColumns);
+  const rows = Math.ceil(deckCards.length / shareColumns);
   const gridHeight = rows * cardHeight + (rows > 0 ? rows - 1 : 0) * gap;
-  
-  const topSectionHeight = 180;
-  const bottomSectionHeight = 80;
+
+  const topSectionHeight = 260;
+  const bottomSectionHeight = 120;
   const height = topSectionHeight + gridHeight + bottomSectionHeight;
 
   const canvas = document.createElement('canvas');
@@ -96,178 +90,231 @@ export const buildDeckExportImage = async ({
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
-  // Draw Background
-  ctx.fillStyle = '#0f172a';
+  // 1. Draw Base Background (Dark Slate)
+  ctx.fillStyle = '#020617';
   ctx.fillRect(0, 0, width, height);
+
+  // 2. Draw Blurred Card Mosaic (The "WOW" factor)
+  // We'll pick up to 6 cards to draw large and blurred in the background
+  const mosaicCards = [...deckCards].sort(() => 0.5 - Math.random()).slice(0, 8);
+  const mosaicImages = await Promise.all(mosaicCards.map(c => loadImage(c.card.image || c.card.thumbnail || "")));
+
+  ctx.save();
+  ctx.filter = 'blur(60px) saturate(1.5) brightness(0.4)';
+  mosaicImages.forEach((img, i) => {
+    if (img) {
+      const x = (i % 4) * (width / 4) - 100;
+      const y = Math.floor(i / 4) * (height / 2) - 100;
+      const size = Math.max(width, height) / 2;
+      ctx.drawImage(img, x, y, size, size * (img.height / img.width));
+    }
+  });
+  ctx.restore();
+
+  // 3. Draw Gradient Overlay for depth
+  const grad = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width);
+  grad.addColorStop(0, 'rgba(15, 23, 42, 0.1)');
+  grad.addColorStop(1, 'rgba(2, 6, 23, 0.8)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+
+  // 4. Header Section - Glassmorphism Card
+  const headerY = 50;
+  const headerHeight = 160;
   
-  try {
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, color1);
-    gradient.addColorStop(1, color2);
-    
-    ctx.fillStyle = gradient;
-    ctx.globalAlpha = 0.65;
-    ctx.fillRect(0, 0, width, height);
-    ctx.globalAlpha = 1;
-  } catch (e) {
-    console.error("Gradient failed", e);
-    // Fallback to a solid color if gradient fails
-    ctx.fillStyle = color1;
-    ctx.fillRect(0, 0, width, height);
+  // Header Glass Background
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 40;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  ctx.beginPath();
+  ctx.roundRect(padding - 20, headerY, width - padding * 2 + 40, headerHeight, 32);
+  ctx.fill();
+  
+  // Subtle Highlighted Gradient Border
+  const borderGrad = ctx.createLinearGradient(padding - 20, headerY, width - padding * 2, headerY);
+  borderGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); // Bright start
+  
+  if (activeInksList.length > 0) {
+    activeInksList.forEach((ink, i) => {
+      const color = INK_HEX_COLORS[ink] || '#ffffff';
+      const pos = 0.2 + (i * 0.6 / Math.max(1, activeInksList.length - 1));
+      borderGrad.addColorStop(pos, color + '88'); // Add each ink color with some transparency
+    });
+  } else {
+    borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+  }
+  
+  borderGrad.addColorStop(1, 'rgba(255, 255, 255, 0.1)'); // Soft end
+  
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2; // Slightly thicker for visibility
+  ctx.stroke();
+  ctx.restore();
+
+  // Ink Logos in Header
+  let currentInkX = padding + 10;
+  for (const ink of activeInksList) {
+    const inkLogo = await loadImage(getInkLogo(ink));
+    if (inkLogo) {
+      const inkColor = INK_HEX_COLORS[ink] || '#fff';
+      
+      ctx.save();
+      // Subtle Glow Halo behind the logo
+      const haloGrad = ctx.createRadialGradient(currentInkX + 22, headerY + 67, 0, currentInkX + 22, headerY + 67, 35);
+      haloGrad.addColorStop(0, inkColor + '44');
+      haloGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.arc(currentInkX + 22, headerY + 67, 35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw the logo itself
+      ctx.shadowColor = inkColor + '88';
+      ctx.shadowBlur = 15;
+      ctx.drawImage(inkLogo, currentInkX, headerY + 45, 45, 45);
+      ctx.restore();
+      currentInkX += 60;
+    }
   }
 
-  // Draw Header
+  // Deck Name
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 64px Inter, system-ui, sans-serif';
-  ctx.textBaseline = 'top';
+  ctx.font = 'bold 56px "Outfit", "Inter", sans-serif';
+  ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  ctx.fillText(deckName || 'Untitled Deck', padding, 50);
+  const nameX = activeInksList.length > 0 ? currentInkX + 10 : padding + 10;
+  ctx.fillText(deckName || 'Untitled Deck', nameX, headerY + 68);
 
-  ctx.font = '24px Inter, system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  
-  const headerParts = [];
-  if (showFormat) headerParts.push(`${format} Format`);
-  if (showCount) headerParts.push(`${totalCards} cards`);
-  if (showValue) headerParts.push(`${formatPrice(totalValue)}`);
-  
-  const headerSubText = headerParts.join(' · ');
-  if (headerSubText) {
-    ctx.fillText(headerSubText, padding, 125);
-  }
+  // Stats Pills
+  ctx.font = '600 18px "Outfit", "Inter", sans-serif';
+  let statsX = padding + 10;
+  const statsY = headerY + 115;
+  const parts = [];
+  if (showFormat) parts.push({ label: format.toUpperCase(), color: '#6366f1' });
+  if (showCount) parts.push({ label: `${totalCards} CARDS`, color: '#94a3b8' });
+  if (showValue) parts.push({ label: formatPrice(totalValue), color: '#f59e0b' });
 
-  // Draw Logo (Top Right)
+  parts.forEach(p => {
+    const textWidth = ctx.measureText(p.label).width;
+    const pillPadding = 16;
+    const pillWidth = textWidth + pillPadding * 2;
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath();
+    ctx.roundRect(statsX, statsY - 15, pillWidth, 30, 15);
+    ctx.fill();
+    
+    ctx.fillStyle = p.color;
+    ctx.fillText(p.label, statsX + pillPadding, statsY);
+    statsX += pillWidth + 12;
+  });
+
+  // Logo in Header (Right)
   const logo = await loadImage('/LorBound_Logo.webp');
   if (logo) {
-    const logoHeight = 45;
-    const logoWidth = logo.width * (logoHeight / logo.height);
-    const logoX = width - padding - logoWidth;
-    const logoY = 55;
-    ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
+    const lH = 50;
+    const lW = logo.width * (lH / logo.height);
+    ctx.drawImage(logo, width - padding - lW - 10, headerY + 55, lW, lH);
   }
 
+  // 5. Grid Drawing
   const gridX = padding;
   const gridY = topSectionHeight;
 
-  // Load Images
   const previewCells = (await Promise.allSettled(
-    gridCards.map(async entry => {
+    deckCards.map(async entry => {
       const src = entry.card.image || entry.card.thumbnail || getInkLogo(entry.card.inkColor);
       const image = await loadImage(src);
       return { entry, image };
     })
   ))
-    .filter((r): r is PromiseFulfilledResult<{ entry: typeof gridCards[0]; image: HTMLImageElement | null }> => r.status === 'fulfilled')
+    .filter((r): r is PromiseFulfilledResult<{ entry: typeof deckCards[0]; image: HTMLImageElement | null }> => r.status === 'fulfilled')
     .map(r => r.value);
 
-  // Draw Cards
   previewCells.forEach(({ entry, image }, index) => {
     const col = index % shareColumns;
     const row = Math.floor(index / shareColumns);
     const x = gridX + col * (cardWidth + gap);
     const y = gridY + row * (cardHeight + gap);
 
-    const radius = 12; // Rounded corners for authentic card look
+    // Card Glow (Subtle atmosphere)
+    ctx.save();
+    ctx.shadowColor = (INK_HEX_COLORS[entry.card.inkColor] || '#888') + '33';
+    ctx.shadowBlur = 20;
     
-    // Define the rounded rectangle path
+    const radius = 14;
     ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + cardWidth - radius, y);
-    ctx.quadraticCurveTo(x + cardWidth, y, x + cardWidth, y + radius);
-    ctx.lineTo(x + cardWidth, y + cardHeight - radius);
-    ctx.quadraticCurveTo(x + cardWidth, y + cardHeight, x + cardWidth - radius, y + cardHeight);
-    ctx.lineTo(x + radius, y + cardHeight);
-    ctx.quadraticCurveTo(x, y + cardHeight, x, y + cardHeight - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-
-    // Card Background (fills the rounded rect)
-    ctx.fillStyle = INK_HEX_COLORS[entry.card.inkColor] ?? '#888';
+    ctx.roundRect(x, y, cardWidth, cardHeight, radius);
+    
+    // Background fill for cards without images
+    ctx.fillStyle = '#1e293b';
     ctx.fill();
 
-    // Card Image
     if (image) {
-      try {
-        ctx.save();
-        ctx.clip(); // Clip to rounded corners
-        
-        // Implement object-fit: cover logic to prevent stretching
-        const imgAspect = image.width / image.height;
-        const canvasAspect = cardWidth / cardHeight;
-        let drawWidth = cardWidth;
-        let drawHeight = cardHeight;
-        let drawX = x;
-        let drawY = y;
-        
-        if (imgAspect > canvasAspect) {
-          // Image is wider than canvas
-          drawWidth = cardHeight * imgAspect;
-          drawX = x - (drawWidth - cardWidth) / 2;
-        } else {
-          // Image is taller than canvas (or square)
-          drawHeight = cardWidth / imgAspect;
-          drawY = y - (drawHeight - cardHeight) / 2;
-        }
-        
-        ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
-        ctx.restore();
-      } catch {
-        // fallback handled by rect fill above
+      ctx.save();
+      ctx.clip();
+      
+      const imgAspect = image.width / image.height;
+      const canvasAspect = cardWidth / cardHeight;
+      let dW = cardWidth, dH = cardHeight, dX = x, dY = y;
+
+      if (imgAspect > canvasAspect) {
+        dW = cardHeight * imgAspect;
+        dX = x - (dW - cardWidth) / 2;
+      } else {
+        dH = cardWidth / imgAspect;
+        dY = y - (dH - cardHeight) / 2;
       }
+      ctx.drawImage(image, dX, dY, dW, dH);
+      ctx.restore();
     }
 
-    // Card Border/Shadow (strokes the rounded rect)
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    // Modern Border
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
     ctx.lineWidth = 1;
     ctx.stroke();
+    ctx.restore();
 
-    // Quantity Badge (Sleek Circle in Top Right)
-    const badgeRadius = 22;
-    const badgeX = x + cardWidth - badgeRadius - 8;
-    const badgeY = y + badgeRadius + 8;
-    
+    // Premium Quantity Badge (Glass Style)
+    const bR = 24;
+    const bX = x + cardWidth - bR - 10;
+    const bY = y + bR + 10;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
     ctx.beginPath();
-    ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.arc(bX, bY, bR, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 1.5;
+    
+    // Badge Accent Ring
+    ctx.strokeStyle = (INK_HEX_COLORS[entry.card.inkColor] || '#fff') + 'aa';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 22px Inter, system-ui, sans-serif';
+    ctx.font = 'bold 24px "Outfit", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Adjust text rendering slightly down for perfect visual centering
-    ctx.fillText(entry.qty.toString(), badgeX, badgeY + 2);
+    ctx.fillText(entry.qty.toString(), bX, bY + 2);
+    ctx.restore();
   });
 
-  // Draw Footer - Subtle Watermark
-  ctx.globalAlpha = 0.4;
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'italic 18px Inter, system-ui, sans-serif';
+  // 6. Footer
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '500 16px "Outfit", sans-serif';
   ctx.textAlign = 'right';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText('Created at www.lorbound.ink', width - padding, height - 25);
-  
+  ctx.fillText('DESIGNED ON LORBOUND.INK', width - padding, height - 50);
+
   ctx.textAlign = 'left';
-  ctx.fillText('All images © Disney / Ravensburger', padding, height - 25);
-  ctx.globalAlpha = 1.0;
+  ctx.fillText('© DISNEY / RAVENSBURGER • ALL IMAGES PROTECTED', padding, height - 50);
 
   const blob = await new Promise<Blob | null>(resolve =>
-    canvas.toBlob((blob) => resolve(blob), 'image/png')
+    canvas.toBlob((blob) => resolve(blob), 'image/png', 0.95)
   );
 
-  if (blob) {
-    return blob;
-  }
-
-  try {
-    const dataUrl = canvas.toDataURL('image/png');
-    const response = await fetch(dataUrl);
-    return await response.blob();
-  } catch {
-    return null;
-  }
+  return blob;
 };
+
