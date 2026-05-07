@@ -350,27 +350,27 @@ export default function Academy() {
             </Collapsible>
 
             {/* ── Tournament Primer ── */}
-            <Collapsible title="Your First Tournament" icon={<Trophy className="w-5 h-5" />}>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Thinking about attending a Disney Lorcana Challenge or a local League event? Here's what you need to know.
-              </p>
-              <div className="space-y-3 mt-3">
-                <StepCard step={1} title="Register on Melee.gg">
-                  All official Lorcana tournaments are managed through Melee.gg. Create a free account and search for events near you.
-                </StepCard>
-                <StepCard step={2} title="Build a Core-Legal Deck">
-                  Most official events use the Core Constructed format. Use the <Link href="/builder" className="text-primary underline underline-offset-2 font-medium">Lorbound Deck Builder</Link> to construct and validate your deck - it will flag any cards outside rotation.
-                </StepCard>
-                <StepCard step={3} title="Submit Your Decklist">
-                  Submit your deck through Melee.gg before the deadline. You can export your Lorbound deck in Melee-compatible format with one click from the Export menu.
-                </StepCard>
-                <StepCard step={4} title="Bring Your Deck + Supplies">
-                  Bring your physical 60-card deck, a way to track lore (tokens/dice), and optionally card sleeves (recommended). Arrive early to check in.
-                </StepCard>
-                <StepCard step={5} title="Play Swiss Rounds">
-                  Tournaments use Swiss-style pairings. You play multiple rounds, and your record determines if you advance to a Top Cut (single elimination).
-                </StepCard>
-              </div>
+<Collapsible title="Your First Tournament" icon={<Trophy className="w-5 h-5" />}>
+  <p className="text-sm text-muted-foreground leading-relaxed">
+    Thinking about attending a Disney Lorcana event or a local League? Here's what you need to know.
+  </p>
+  <div className="space-y-3 mt-3">
+    <StepCard step={1} title="Register on the Ravensburger Play Hub">
+      All official Lorcana tournaments are managed through the Ravensburger Play Hub. Create a free account at <a href="https://tcg.ravensburgerplay.com" className="text-primary underline underline-offset-2 font-medium" target="_blank" rel="noopener noreferrer">tcg.ravensburgerplay.com</a>, personalise your profile, then search for events near you.
+    </StepCard>
+    <StepCard step={2} title="Build a Core-Legal Deck">
+      Most official events use the Core Constructed format. Use the <Link href="/builder" className="text-primary underline underline-offset-2 font-medium">Lorbound Deck Builder</Link> to construct and validate your deck, it will flag any cards outside rotation.
+    </StepCard>
+    <StepCard step={3} title="Submit Your Decklist">
+      Submit your deck through the Ravensburger Play Hub before the deadline. You can export your Lorbound deck in a compatible format with one click from the Export menu.
+    </StepCard>
+    <StepCard step={4} title="Bring Your Deck + Supplies">
+      Bring your physical 60-card deck, a way to track lore (tokens/dice), Play Mat and card sleeves. Arrive early to check in.
+    </StepCard>
+    <StepCard step={5} title="Play Swiss Rounds">
+      Tournaments use Swiss-style pairings. You play multiple rounds, and your record determines if you advance to a Top Cut (single elimination).
+    </StepCard>
+  </div> 
               <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mt-4">
                 <p className="text-sm text-muted-foreground">
                   <strong className="text-foreground">💡 Pro Tip:</strong> Print your official deck registration sheet directly from Lorbound! Save your deck in the Builder, then click <strong className="text-foreground">Export → Physical Print Sheet</strong>.
@@ -407,7 +407,7 @@ export default function Academy() {
                 </div>
                 <div className="p-4 rounded-xl bg-muted/30 border">
                   <h4 className="font-bold text-sm text-amber-500">💡 "Can I use Shift on a character that just entered play?"</h4>
-                  <p className="text-xs text-muted-foreground mt-1">No. Shift requires an existing character of the same name <strong className="text-foreground">already in play</strong>. You play the Shift character on top of it - it doesn't need to be ready, it just has to be on the board.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Yes. Shift requires an existing character of the same name already in play, but it doesn't need to be ready - so you can shift onto a character the same turn it was played.</p>
                 </div>
                 <div className="p-4 rounded-xl bg-muted/30 border">
                   <h4 className="font-bold text-sm text-amber-500">💡 "Does a Shifted character have summoning sickness?"</h4>
