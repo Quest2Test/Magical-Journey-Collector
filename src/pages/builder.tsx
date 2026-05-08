@@ -57,6 +57,9 @@ export default function DeckBuilder() {
   const [filterKeywords, setFilterKeywords] = useState<string[]>([]);
   const [filterClassifications, setFilterClassifications] = useState<string[]>([]);
   const [filterRarity, setFilterRarity] = useState<string[]>([]);
+  const [filterFranchise, setFilterFranchise] = useState<string[]>([]);
+  const [filterLore, setFilterLore] = useState<number[]>([]);
+  const [ownershipFilter, setOwnershipFilter] = useState<"All" | "Owned" | "Missing">("All");
   const [inkableOnly, setInkableOnly] = useState(false);
   const [showUnreleased, setShowUnreleased] = useState(false);
   const [smartFilter, setSmartFilter] = useState(true);
@@ -264,6 +267,12 @@ export default function DeckBuilder() {
 
   const availableSets = useMemo(() => Array.from(new Set(allCards.map(c => c.set))).sort(), [allCards]);
 
+  const availableFranchises = useMemo(() => {
+    const set = new Set<string>();
+    allCards.forEach(c => { if (c.franchise) set.add(c.franchise); });
+    return Array.from(set).sort();
+  }, [allCards]);
+
   const { sharePreviewUrl, isGeneratingPreview, previewError, handleDownload } = useImageExport({
     active: shareModalOpen,
     deckCards,
@@ -314,6 +323,20 @@ export default function DeckBuilder() {
         if (!c.classifications?.some(cl => filterClassifications.includes(cl))) return false;
       }
 
+      if (filterFranchise.length > 0 && (!c.franchise || !filterFranchise.includes(c.franchise))) return false;
+      
+      if (filterLore.length > 0) {
+        const lore = c.lore || 0;
+        if (!filterLore.includes(lore >= 4 ? 4 : lore)) return false;
+      }
+
+      if (ownershipFilter !== "All") {
+        const entry = getEntry(c.id);
+        const owned = entry.normal + entry.foil;
+        if (ownershipFilter === "Owned" && owned === 0) return false;
+        if (ownershipFilter === "Missing" && owned > 0) return false;
+      }
+
       // Smart Filter logic: locks browser to current deck inks if deck is saturated
       if (smartFilter && maxInksReached) {
         if (!activeInks.includes(c.inkColor)) return false;
@@ -357,7 +380,7 @@ export default function DeckBuilder() {
       // 4. Fallback: Sort by Name
       return a.name.localeCompare(b.name);
     });
-  }, [allCards, deferredSearch, inkableOnly, filterSet, filterCost, filterInk, filterType, filterKeywords, filterClassifications, filterRarity, smartFilter, maxInksReached, activeInks, format]);
+  }, [allCards, deferredSearch, inkableOnly, filterSet, filterCost, filterInk, filterType, filterKeywords, filterClassifications, filterRarity, filterFranchise, filterLore, ownershipFilter, smartFilter, maxInksReached, activeInks, format, getEntry]);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -805,6 +828,13 @@ export default function DeckBuilder() {
                   sets={sets}
                   allCards={allCards}
                   format={format}
+                  filterFranchise={filterFranchise}
+                  setFilterFranchise={setFilterFranchise}
+                  filterLore={filterLore}
+                  setFilterLore={setFilterLore}
+                  ownershipFilter={ownershipFilter}
+                  setOwnershipFilter={setOwnershipFilter}
+                  availableFranchises={availableFranchises}
                 />
                 <div 
                   ref={parentRef} 

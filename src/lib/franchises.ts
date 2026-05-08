@@ -5,22 +5,30 @@
 
 const franchiseMap: Record<string, string> = {
   // Lilo & Stitch
+// Characters
   "Lilo": "Lilo & Stitch",
   "Stitch": "Lilo & Stitch",
   "Jumba Jookiba": "Lilo & Stitch",
-  "Agent Pleakley": "Lilo & Stitch",
+  "Pleakley": "Lilo & Stitch",
   "Gantu": "Lilo & Stitch",
   "Nani": "Lilo & Stitch",
   "David Kawena": "Lilo & Stitch",
-  "Dr. Hämsterviel": "Lilo & Stitch",
-  "Grand Councilwoman": "Lilo & Stitch",
-  "Mrs. Hasagawa": "Lilo & Stitch",
-  "Pleakley": "Lilo & Stitch",
-  "Cobra Bubbles": "Lilo & Stitch",
-  "Reuben": "Lilo & Stitch",
-  "Pudge": "Lilo & Stitch",
   "David": "Lilo & Stitch",
+  "Cobra Bubbles": "Lilo & Stitch",
+  "Grand Councilwoman": "Lilo & Stitch",
   "Angel": "Lilo & Stitch",
+  "Pudge": "Lilo & Stitch",
+  "Dr. Hamsterviel": "Lilo & Stitch",
+  "Reuben": "Lilo & Stitch",
+  "Raging Storm": "Lilo & Stitch",
+  "Akood et Emuti": "Lilo & Stitch",
+  "Ohana Means Family": "Lilo & Stitch",
+  "Snowball Fight": "Lilo & Stitch",
+  "Slushy": "Lilo & Stitch",
+  "Nani's Payback": "Lilo & Stitch",
+  "Wipe Out!": "Lilo & Stitch",
+  "Nearly Indestructible": "Lilo & Stitch",
+  "Containment Unit": "Lilo & Stitch",
 
   // The Black Cauldron
   "Taran": "The Black Cauldron",
@@ -98,6 +106,9 @@ const franchiseMap: Record<string, string> = {
   "Agnarr": "Frozen",
   "Iduna": "Frozen",
   "Bruni": "Frozen",
+  "Do You Want to Build A Snowman?": "Frozen",
+  "Freeze the Vine": "Frozen",
+  "The Cold Never Bothered Me": "Frozen",
 
   // The Lion King
   "Simba": "The Lion King",
@@ -140,6 +151,7 @@ const franchiseMap: Record<string, string> = {
   "Nakoma": "Pocahontas",
   "Kocoum": "Pocahontas",
   "Chief Powhatan": "Pocahontas",
+  "Colors of the Wind": "Pocahontas",
 
   // The Little Mermaid
   "Ariel": "The Little Mermaid",
@@ -356,7 +368,7 @@ const franchiseMap: Record<string, string> = {
   "Chi-Fu": "Mulan",
 
   // Wreck-It Ralph
-  "Wreck-It Ralph": "Wreck-It Ralph",
+  "Wreck-it Ralph": "Wreck-It Ralph",
   "Vanellope von Schweetz": "Wreck-It Ralph",
   "Fix-It Felix Jr.": "Wreck-It Ralph",
   "King Candy": "Wreck-It Ralph",
@@ -373,6 +385,10 @@ const franchiseMap: Record<string, string> = {
   "Eeyore": "Winnie the Pooh",
   "Rabbit": "Winnie the Pooh",
   "Christopher Robin": "Winnie the Pooh",
+  "Lumpy": "Winnie the Pooh",
+  "Kanga": "Winnie the Pooh",
+  "Roo": "Winnie the Pooh",
+  "Owl": "Winnie the Pooh",
 
   // Raya and the Last Dragon
   "Raya": "Raya and the Last Dragon",
@@ -495,6 +511,7 @@ const franchiseMap: Record<string, string> = {
   "Manchas": "Zootopia",
   "Rain": "Zootopia",
   "Clawhauser": "Zootopia",
+  "Zootopia": "Zootopia",
 
   // Toy Story
   "Woody": "Toy Story",
@@ -604,6 +621,7 @@ const franchiseMap: Record<string, string> = {
   "Chief": "The Fox and the Hound",
   "Widow Tweed": "The Fox and the Hound",
   "Boomer": "The Fox and the Hound",
+  "Vixey": "The Fox and the Hound",
 
   // Gargoyles
   "Goliath": "Gargoyles",
@@ -616,8 +634,9 @@ const franchiseMap: Record<string, string> = {
   "Hudson": "Gargoyles",
   "Bronx": "Gargoyles",
   "Xanatos": "Gargoyles",
+  };
 
-};
+
 
 // Special cases for partial matches or complex names
 const partialMatches: Record<string, string> = {

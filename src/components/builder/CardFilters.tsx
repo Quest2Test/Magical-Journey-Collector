@@ -1,4 +1,4 @@
-import { Search, Filter, Settings2, Sparkles, Droplet, Clock, ChevronDown } from "lucide-react";
+import { Search, Filter, Settings2, Sparkles, Droplet, Clock, ChevronDown, Film } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,7 +19,7 @@ interface CardFiltersProps {
   filterCost: string[];
   setFilterCost: (v: string[] | ((p: string[]) => string[])) => void;
   filterType: string[];
-  setFilterType: (v: string[]) => void;
+  setFilterType: (v: string[] | ((p: string[]) => string[])) => void;
   filterSet: string[];
   setFilterSet: (v: string[] | ((p: string[]) => string[])) => void;
   filterKeywords: string[];
@@ -28,6 +28,12 @@ interface CardFiltersProps {
   setFilterClassifications: (v: string[] | ((p: string[]) => string[])) => void;
   filterRarity: string[];
   setFilterRarity: (v: string[] | ((p: string[]) => string[])) => void;
+  filterFranchise: string[];
+  setFilterFranchise: (v: string[] | ((p: string[]) => string[])) => void;
+  filterLore: number[];
+  setFilterLore: (v: number[] | ((p: number[]) => number[])) => void;
+  ownershipFilter: "All" | "Owned" | "Missing";
+  setOwnershipFilter: (v: "All" | "Owned" | "Missing") => void;
   inkableOnly: boolean;
   setInkableOnly: (v: boolean) => void;
   showUnreleased: boolean;
@@ -39,6 +45,7 @@ interface CardFiltersProps {
   sets: any[];
   allCards: Card[];
   format: "Any" | "Core" | "Infinity";
+  availableFranchises: string[];
 }
 
 export function CardFilters({
@@ -54,7 +61,11 @@ export function CardFilters({
   showUnreleased, setShowUnreleased,
   smartFilter, setSmartFilter,
   maxInksReached, activeInks,
-  sets, allCards, format
+  sets, allCards, format,
+  filterFranchise, setFilterFranchise,
+  filterLore, setFilterLore,
+  ownershipFilter, setOwnershipFilter,
+  availableFranchises
 }: CardFiltersProps) {
 
   const availableClassifications = useMemo(() => {
@@ -75,7 +86,7 @@ export function CardFilters({
   const availableRarities = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Enchanted", "Special"];
 
   return (
-    <div className="p-2 border-b shrink-0 bg-card/30 backdrop-blur-sm">
+    <div className="p-3 border-b shrink-0 bg-card/30 backdrop-blur-sm space-y-3">
       {/* Row 1: Search */}
       <div className="flex gap-2 mb-2">
         <div className="relative flex-1">
@@ -89,8 +100,9 @@ export function CardFilters({
         </div>
       </div>
 
-      {/* Row 2: Filters */}
-      <div className="flex items-center gap-3 py-1 overflow-x-auto custom-scrollbar no-scrollbar pb-2 sm:pb-0">
+      {/* Row 2: Controls (Inks, Costs, Toggles) */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Group: Inks & Costs */}
         <div className="flex flex-col gap-2 shrink-0">
           {/* Inks Row */}
           <div className="flex items-center gap-1 shrink-0 px-1 py-0.5 bg-muted/20 rounded-md border border-border/10">
@@ -139,10 +151,10 @@ export function CardFilters({
           </div>
         </div>
 
-        <div className="w-[1px] h-10 bg-border/20 mx-0.5 hidden sm:block" />
+        <div className="w-[1px] h-8 bg-border/20 mx-1" />
 
-        {/* Toggles & Dropdowns */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Group: Toggles */}
+        <div className="flex items-center gap-2">
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -188,179 +200,227 @@ export function CardFilters({
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-[10px] font-bold uppercase">Show Spoilers ({showUnreleased ? 'ON' : 'OFF'})</TooltipContent>
             </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
 
-            <Select value={filterType[0] || "All"} onValueChange={(v) => setFilterType(v === "All" ? [] : [v])}>
-              <SelectTrigger className="w-24 h-8 text-[10px] bg-muted/30 border-border/20 font-bold uppercase tracking-tighter">
-                <SelectValue placeholder="TYPES" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Types</SelectItem>
-                <SelectItem value="Character">Characters</SelectItem>
-                <SelectItem value="Action">Actions</SelectItem>
-                <SelectItem value="Item">Items</SelectItem>
-                <SelectItem value="Location">Locations</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Set Filter */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className={cn(
-                    "h-8 px-2 text-[10px] bg-muted/30 border-border/20 font-bold uppercase tracking-tighter gap-1.5",
-                    filterSet.length > 0 && "border-primary/50 bg-primary/10 text-primary"
-                  )}
+      {/* Row 3: Discovery Dropdowns */}
+      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/5">
+        {/* Set Filter */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className={cn(
+                "h-8 px-3 text-[10px] bg-muted/40 border-border/20 font-bold uppercase tracking-wider gap-2 w-full",
+                filterSet.length > 0 && "border-primary/50 bg-primary/10 text-primary"
+              )}
+            >
+              <Filter className="w-3 h-3" />
+              {filterSet.length === 0 ? "SETS" : `${filterSet.length} SETS`}
+              <ChevronDown className="w-3 h-3 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-0 bg-popover border-border shadow-xl" align="start">
+            <div className="p-2 border-b border-border/50 flex items-center justify-between bg-muted/20">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Filter by Set</span>
+              {filterSet.length > 0 && (
+                <button 
+                  onClick={() => setFilterSet([])}
+                  className="text-[9px] font-bold text-primary hover:underline uppercase"
                 >
-                  <Filter className="w-3 h-3" />
-                  {filterSet.length === 0 ? "SETS" : `${filterSet.length} SETS`}
-                  <ChevronDown className="w-3 h-3 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-0 bg-popover border-border shadow-xl" align="end">
-                <div className="p-2 border-b border-border/50 flex items-center justify-between bg-muted/20">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Filter by Set</span>
-                  {filterSet.length > 0 && (
+                  Clear
+                </button>
+              )}
+            </div>
+            <ScrollArea className="h-[300px]">
+              <div className="p-2 space-y-4">
+                {/* Core Sets */}
+                <div>
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter">Core Sets</span>
                     <button 
-                      onClick={() => setFilterSet([])}
-                      className="text-[9px] font-bold text-primary hover:underline uppercase"
+                      onClick={() => {
+                        const coreSets = sets.filter(s => !s.isPromo && (format === "Any" || format === "Infinity" || s.setNum >= 5)).map(s => s.name);
+                        const allCoreSelected = coreSets.length > 0 && coreSets.every(s => filterSet.includes(s));
+                        if (allCoreSelected) {
+                          setFilterSet(prev => prev.filter(s => !coreSets.includes(s)));
+                        } else {
+                          setFilterSet(prev => Array.from(new Set([...prev, ...coreSets])));
+                        }
+                      }}
+                      className="text-[9px] font-bold text-primary/60 hover:text-primary uppercase"
                     >
-                      Clear
+                      {sets.filter(s => !s.isPromo && (format === "Any" || format === "Infinity" || s.setNum >= 5)).every(s => filterSet.includes(s.name)) ? "Deselect Legal" : "Select Legal"}
                     </button>
-                  )}
-                </div>
-                <ScrollArea className="h-[300px]">
-                  <div className="p-2 space-y-4">
-                    {/* Core Sets */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter">Core Sets</span>
-                        <button 
-                          onClick={() => {
-                            const coreSets = sets.filter(s => !s.isPromo && (format === "Any" || format === "Infinity" || s.setNum >= 5)).map(s => s.name);
-                            const allCoreSelected = coreSets.length > 0 && coreSets.every(s => filterSet.includes(s));
-                            if (allCoreSelected) {
-                              setFilterSet(prev => prev.filter(s => !coreSets.includes(s)));
-                            } else {
-                              setFilterSet(prev => Array.from(new Set([...prev, ...coreSets])));
-                            }
-                          }}
-                          className="text-[9px] font-bold text-primary/60 hover:text-primary uppercase"
-                        >
-                          {sets.filter(s => !s.isPromo && (format === "Any" || format === "Infinity" || s.setNum >= 5)).every(s => filterSet.includes(s.name)) ? "Deselect Legal" : "Select Legal"}
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 gap-0.5">
-                        {sets.filter(s => !s.isPromo).map(set => {
-                          const isLegal = format === "Any" || format === "Infinity" || (format === "Core" && set.setNum >= 5);
-                          return (
-                            <button
-                              key={set.id}
-                              disabled={!isLegal}
-                              onClick={() => setFilterSet(prev => prev.includes(set.name) ? prev.filter(s => s !== set.name) : [...prev, set.name])}
-                              className={cn(
-                                "flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors",
-                                filterSet.includes(set.name) ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground",
-                                !isLegal && "opacity-30 cursor-not-allowed grayscale"
-                              )}
-                            >
-                              <div className={cn(
-                                "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
-                                filterSet.includes(set.name) ? "bg-primary border-primary" : "border-muted-foreground/30"
-                              )}>
-                                {filterSet.includes(set.name) && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full" />}
-                              </div>
-                              <span className="text-[11px] font-medium truncate">{set.name}</span>
-                              <span className="ml-auto text-[9px] font-bold opacity-30">{SET_ACRONYMS[set.id] || set.id}</span>
-                              {!isLegal && <span className="ml-1 text-[8px] font-black text-destructive/80 uppercase">Illegal</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Bonus Sets */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter">Bonus Sets</span>
-                        <button 
-                          onClick={() => {
-                            const infiniteSets = sets.filter(s => s.isPromo && (format === "Any" || format === "Infinity")).map(s => s.name);
-                            const allInfiniteSelected = infiniteSets.length > 0 && infiniteSets.every(s => filterSet.includes(s));
-                            if (allInfiniteSelected) {
-                              setFilterSet(prev => prev.filter(s => !infiniteSets.includes(s)));
-                            } else {
-                              setFilterSet(prev => Array.from(new Set([...prev, ...infiniteSets])));
-                            }
-                          }}
-                          className="text-[9px] font-bold text-primary/60 hover:text-primary uppercase disabled:opacity-30 disabled:cursor-not-allowed"
-                          disabled={format === "Core"}
-                        >
-                          {sets.filter(s => s.isPromo && (format === "Any" || format === "Infinity")).length > 0 && 
-                           sets.filter(s => s.isPromo && (format === "Any" || format === "Infinity")).every(s => filterSet.includes(s.name)) 
-                           ? "Deselect Legal" : "Select Legal"}
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 gap-0.5">
-                        {sets.filter(s => s.isPromo).map(set => {
-                          const isLegal = format === "Any" || format === "Infinity";
-                          return (
-                            <button
-                              key={set.id}
-                              disabled={!isLegal}
-                              onClick={() => setFilterSet(prev => prev.includes(set.name) ? prev.filter(s => s !== set.name) : [...prev, set.name])}
-                              className={cn(
-                                "flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors",
-                                filterSet.includes(set.name) ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground",
-                                !isLegal && "opacity-30 cursor-not-allowed grayscale"
-                              )}
-                            >
-                              <div className={cn(
-                                "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
-                                filterSet.includes(set.name) ? "bg-primary border-primary" : "border-muted-foreground/30"
-                              )}>
-                                {filterSet.includes(set.name) && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full" />}
-                              </div>
-                              <span className="text-[11px] font-medium truncate">{set.name}</span>
-                              {!isLegal && <span className="ml-auto text-[8px] font-black text-destructive/80 uppercase">Illegal</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
                   </div>
-                </ScrollArea>
-              </PopoverContent>
-            </Popover>
+                  <div className="grid grid-cols-1 gap-0.5">
+                    {sets.filter(s => !s.isPromo).map(set => {
+                      const isLegal = format === "Any" || format === "Infinity" || (format === "Core" && set.setNum >= 5);
+                      return (
+                        <button
+                          key={set.id}
+                          disabled={!isLegal}
+                          onClick={() => setFilterSet(prev => prev.includes(set.name) ? prev.filter(s => s !== set.name) : [...prev, set.name])}
+                          className={cn(
+                            "flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors",
+                            filterSet.includes(set.name) ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground",
+                            !isLegal && "opacity-30 cursor-not-allowed grayscale"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
+                            filterSet.includes(set.name) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                          )}>
+                            {filterSet.includes(set.name) && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full" />}
+                          </div>
+                          <span className="text-[11px] font-medium truncate">{set.name}</span>
+                          <span className="ml-auto text-[9px] font-bold opacity-30">{SET_ACRONYMS[set.id] || set.id}</span>
+                          {!isLegal && <span className="ml-1 text-[8px] font-black text-destructive/80 uppercase">Illegal</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            {/* Advanced Filters */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className={cn(
-                    "h-8 px-2 text-[10px] bg-muted/30 border-border/20 font-bold uppercase tracking-tighter gap-1.5",
-                    (filterKeywords.length > 0 || filterClassifications.length > 0 || filterRarity.length > 0) && "border-amber-500/50 bg-amber-500/10 text-amber-500"
-                  )}
+                {/* Bonus Sets */}
+                <div>
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter">Bonus Sets</span>
+                    <button 
+                      onClick={() => {
+                        const infiniteSets = sets.filter(s => s.isPromo && (format === "Any" || format === "Infinity")).map(s => s.name);
+                        const allInfiniteSelected = infiniteSets.length > 0 && infiniteSets.every(s => filterSet.includes(s));
+                        if (allInfiniteSelected) {
+                          setFilterSet(prev => prev.filter(s => !infiniteSets.includes(s)));
+                        } else {
+                          setFilterSet(prev => Array.from(new Set([...prev, ...infiniteSets])));
+                        }
+                      }}
+                      className="text-[9px] font-bold text-primary/60 hover:text-primary uppercase disabled:opacity-30 disabled:cursor-not-allowed"
+                      disabled={format === "Core"}
+                    >
+                      {sets.filter(s => s.isPromo && (format === "Any" || format === "Infinity")).length > 0 && 
+                       sets.filter(s => s.isPromo && (format === "Any" || format === "Infinity")).every(s => filterSet.includes(s.name)) 
+                       ? "Deselect Legal" : "Select Legal"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-0.5">
+                    {sets.filter(s => s.isPromo).map(set => {
+                      const isLegal = format === "Any" || format === "Infinity";
+                      return (
+                        <button
+                          key={set.id}
+                          disabled={!isLegal}
+                          onClick={() => setFilterSet(prev => prev.includes(set.name) ? prev.filter(s => s !== set.name) : [...prev, set.name])}
+                          className={cn(
+                            "flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors",
+                            filterSet.includes(set.name) ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground",
+                            !isLegal && "opacity-30 cursor-not-allowed grayscale"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
+                            filterSet.includes(set.name) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                          )}>
+                            {filterSet.includes(set.name) && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full" />}
+                          </div>
+                          <span className="text-[11px] font-medium truncate">{set.name}</span>
+                          {!isLegal && <span className="ml-auto text-[8px] font-black text-destructive/80 uppercase">Illegal</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        {/* Franchise Filter */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className={cn(
+                "h-8 px-3 text-[10px] bg-muted/40 border-border/20 font-bold uppercase tracking-wider gap-2 w-full",
+                filterFranchise.length > 0 && "border-rose-500/50 bg-rose-500/10 text-rose-500"
+              )}
+            >
+              <Film className="w-3 h-3" />
+              {filterFranchise.length === 0 ? "MOVIES" : `${filterFranchise.length} MOVIES`}
+              <ChevronDown className="w-3 h-3 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-0 bg-popover border-border shadow-xl" align="center">
+            <div className="p-2 border-b border-border/50 flex items-center justify-between bg-muted/20">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Disney Franchise</span>
+              {filterFranchise.length > 0 && (
+                <button 
+                  onClick={() => setFilterFranchise([])}
+                  className="text-[9px] font-bold text-rose-500 hover:underline uppercase"
                 >
-                  <Settings2 className="w-3 h-3" />
-                  ADVANCED
-                  {(filterKeywords.length + filterClassifications.length + filterRarity.length) > 0 && (
-                    <span className="flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-amber-950 text-[9px] font-black">
-                      {filterKeywords.length + filterClassifications.length + filterRarity.length}
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-0 bg-popover border-border shadow-xl" align="end">
+                  Clear
+                </button>
+              )}
+            </div>
+            <ScrollArea className="h-[300px]">
+              <div className="p-2 grid grid-cols-1 gap-0.5">
+                {availableFranchises.map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFilterFranchise(prev => prev.includes(f) ? prev.filter(s => s !== f) : [...prev, f])}
+                    className={cn(
+                      "flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors",
+                      filterFranchise.includes(f) ? "bg-rose-500/10 text-rose-500" : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
+                      filterFranchise.includes(f) ? "bg-rose-500 border-rose-500" : "border-muted-foreground/30"
+                    )}>
+                      {filterFranchise.includes(f) && <div className="w-1.5 h-1.5 bg-rose-950 rounded-full" />}
+                    </div>
+                    <span className="text-[11px] font-medium truncate">{f}</span>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        {/* Advanced Filters */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className={cn(
+                "h-8 px-3 text-[10px] bg-muted/40 border-border/20 font-bold uppercase tracking-wider gap-2 w-full",
+                (filterKeywords.length > 0 || filterClassifications.length > 0 || filterRarity.length > 0 || filterFranchise.length > 0 || filterLore.length > 0 || filterType.length > 0 || ownershipFilter !== "All") && "border-amber-500/50 bg-amber-500/10 text-amber-500"
+              )}
+            >
+              <Settings2 className="w-3 h-3" />
+              ADVANCED
+              {(filterKeywords.length + filterClassifications.length + filterRarity.length + filterFranchise.length + filterLore.length + filterType.length + (ownershipFilter !== "All" ? 1 : 0)) > 0 && (
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-amber-950 text-[9px] font-black">
+                  {filterKeywords.length + filterClassifications.length + filterRarity.length + filterFranchise.length + filterLore.length + filterType.length + (ownershipFilter !== "All" ? 1 : 0)}
+                </span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-0 bg-popover border-border shadow-xl" align="end">
                 <div className="p-2 border-b border-border/50 flex items-center justify-between bg-muted/20">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Advanced Filters</span>
-                  {(filterKeywords.length > 0 || filterClassifications.length > 0 || filterRarity.length > 0) && (
+                  {(filterKeywords.length > 0 || filterClassifications.length > 0 || filterRarity.length > 0 || filterFranchise.length > 0 || filterLore.length > 0 || filterType.length > 0 || ownershipFilter !== "All") && (
                     <button 
                       onClick={() => {
                         setFilterKeywords([]);
                         setFilterClassifications([]);
                         setFilterRarity([]);
+                        setFilterFranchise([]);
+                        setFilterLore([]);
+                        setFilterType([]);
+                        setOwnershipFilter("All");
                       }}
                       className="text-[9px] font-bold text-amber-500 hover:underline uppercase"
                     >
@@ -368,8 +428,70 @@ export function CardFilters({
                     </button>
                   )}
                 </div>
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="h-[450px]">
                   <div className="p-3 space-y-6">
+                    {/* Ownership Filter */}
+                    <div>
+                      <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter block mb-2 px-1">Collection Status</span>
+                      <div className="flex gap-1 bg-muted/40 p-1 rounded-lg border border-border/10">
+                        {(["All", "Owned", "Missing"] as const).map(opt => (
+                          <button
+                            key={opt}
+                            onClick={() => setOwnershipFilter(opt)}
+                            className={cn(
+                              "flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all capitalize",
+                              ownershipFilter === opt 
+                                ? "bg-primary text-primary-foreground shadow-sm" 
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            )}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Card Type */}
+                    <div>
+                      <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter block mb-2 px-1">Card Type</span>
+                      <div className="grid grid-cols-2 gap-1">
+                        {["Character", "Action", "Item", "Location"].map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setFilterType((prev: string[]) => prev.includes(type) ? prev.filter((x: string) => x !== type) : [...prev, type])}
+                            className={cn(
+                              "py-1.5 rounded-md text-[10px] font-bold border transition-all",
+                              filterType.includes(type) 
+                                ? "bg-blue-500/20 border-blue-500/40 text-blue-500" 
+                                : "bg-muted/50 border-border/40 text-muted-foreground hover:border-border/60 hover:text-foreground"
+                            )}
+                          >
+                            {type}s
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Lore Value */}
+                    <div>
+                      <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter block mb-2 px-1">Lore Value</span>
+                      <div className="flex gap-1">
+                        {[0, 1, 2, 3, 4].map(l => (
+                          <button
+                            key={l}
+                            onClick={() => setFilterLore(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l])}
+                            className={cn(
+                              "flex-1 py-1.5 rounded-md text-[10px] font-bold border transition-all",
+                              filterLore.includes(l) 
+                                ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-500" 
+                                : "bg-muted/50 border-border/40 text-muted-foreground hover:border-border/60 hover:text-foreground"
+                            )}
+                          >
+                            {l === 4 ? "4+" : l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     {/* Rarities */}
                     <div>
                       <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter block mb-2 px-1">Rarity</span>
@@ -435,9 +557,7 @@ export function CardFilters({
                   </div>
                 </ScrollArea>
               </PopoverContent>
-            </Popover>
-          </TooltipProvider>
-        </div>
+        </Popover>
       </div>
     </div>
   );
