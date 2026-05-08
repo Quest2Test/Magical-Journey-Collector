@@ -279,10 +279,10 @@ export function CardFilters({
                       </div>
                     </div>
 
-                    {/* Infinite Sets */}
+                    {/* Bonus Sets */}
                     <div>
                       <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter">Infinite Sets</span>
+                        <span className="text-[10px] font-black text-foreground/40 uppercase tracking-tighter">Bonus Sets</span>
                         <button 
                           onClick={() => {
                             const infiniteSets = sets.filter(s => s.isPromo && (format === "Any" || format === "Infinity")).map(s => s.name);
