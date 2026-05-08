@@ -39,6 +39,7 @@ import { DeckPrintProxiesModal } from "@/components/builder/DeckPrintProxiesModa
 import { DeckRegistrationSheetModal } from "@/components/builder/DeckRegistrationSheetModal";
 import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
 import { MulliganSimulator } from "@/components/builder/MulliganSimulator";
+import { CardFilters } from "@/components/builder/CardFilters";
 
 export default function DeckBuilder() {
   const { data: allCards = [], isLoading } = useAllCards();
@@ -52,7 +53,10 @@ export default function DeckBuilder() {
   const [filterInk, setFilterInk] = useState<string[]>([]);
   const [filterCost, setFilterCost] = useState<string[]>([]);
   const [filterType, setFilterType] = useState<string[]>([]);
-  const [filterSet, setFilterSet] = useState<string>("All");
+  const [filterSet, setFilterSet] = useState<string[]>([]);
+  const [filterKeywords, setFilterKeywords] = useState<string[]>([]);
+  const [filterClassifications, setFilterClassifications] = useState<string[]>([]);
+  const [filterRarity, setFilterRarity] = useState<string[]>([]);
   const [inkableOnly, setInkableOnly] = useState(false);
   const [showUnreleased, setShowUnreleased] = useState(false);
   const [smartFilter, setSmartFilter] = useState(true);
@@ -287,7 +291,7 @@ export default function DeckBuilder() {
 
       if (!showUnreleased && c.releasedAt && new Date(c.releasedAt) > new Date()) return false;
       if (inkableOnly && !c.inkable) return false;
-      if (filterSet !== "All" && c.set !== filterSet) return false;
+      if (filterSet.length > 0 && !filterSet.includes(c.set)) return false;
       if (filterCost.length > 0) {
         if (!filterCost.includes(c.cost >= 7 ? "7+" : c.cost.toString())) return false;
       }
@@ -298,6 +302,16 @@ export default function DeckBuilder() {
           return c.type === t;
         });
         if (!matchesType) return false;
+      }
+      
+      if (filterRarity.length > 0 && !filterRarity.includes(c.rarity)) return false;
+      
+      if (filterKeywords.length > 0) {
+        if (!c.keywords?.some(kw => filterKeywords.some(fk => kw.startsWith(fk)))) return false;
+      }
+      
+      if (filterClassifications.length > 0) {
+        if (!c.classifications?.some(cl => filterClassifications.includes(cl))) return false;
       }
 
       // Smart Filter logic: locks browser to current deck inks if deck is saturated
@@ -343,7 +357,7 @@ export default function DeckBuilder() {
       // 4. Fallback: Sort by Name
       return a.name.localeCompare(b.name);
     });
-  }, [allCards, deferredSearch, inkableOnly, filterSet, filterCost, filterInk, filterType, smartFilter, maxInksReached, activeInks, format]);
+  }, [allCards, deferredSearch, inkableOnly, filterSet, filterCost, filterInk, filterType, filterKeywords, filterClassifications, filterRarity, smartFilter, maxInksReached, activeInks, format]);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -763,154 +777,35 @@ export default function DeckBuilder() {
             {/* Left: Card Browser */}
             <ResizablePanel defaultSize={28} minSize={20}>
               <div className="flex flex-col h-full border-r bg-background min-h-0">
-                <div className="p-2 border-b shrink-0 bg-card/30 backdrop-blur-sm">
-                  {/* Row 1: Search & Set Select */}
-                  <div className="flex gap-2 mb-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground/60" />
-                      <Input
-                        placeholder="Search cards..."
-                        className="pl-8 h-8 text-xs bg-background/50 border-border/40 focus:ring-1"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                      />
-                    </div>
-                    <Select value={filterSet === "All" ? "All" : filterSet} onValueChange={(v: string) => setFilterSet(v)}>
-                      <SelectTrigger className="w-[140px] h-8 text-[10px] bg-background/50 border-border/40 font-bold uppercase tracking-wider">
-                        <SelectValue placeholder="All Sets" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        <SelectItem value="All" className="text-[10px] font-bold uppercase tracking-wider">All Sets</SelectItem>
-                        {sets.map(set => (
-                          <SelectItem 
-                            key={set.id} 
-                            value={set.name} 
-                            className="text-[10px] font-medium"
-                          >
-                            {SET_ACRONYMS[set.id] || set.id}: {set.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Row 2: Surfaced Ribbon */}
-                  <div className="flex items-center gap-3 py-1">
-                    {/* Core Filters: Inks & Costs Stacked */}
-                    <div className="flex flex-col gap-2 shrink-0">
-                      {/* Inks Row */}
-                      <div className="flex items-center gap-1 shrink-0 px-1 py-0.5 bg-muted/20 rounded-md border border-border/10">
-                        {Object.entries(inkHexColors).map(([inkName]) => {
-                          const isActive = filterInk.includes(inkName);
-                          const isLocked = smartFilter && maxInksReached && !activeInks.includes(inkName);
-                          return (
-                            <TooltipProvider key={inkName} delayDuration={300}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    onClick={() => {
-                                      if (isLocked) return;
-                                      setFilterInk(p => p.includes(inkName) ? p.filter(x => x !== inkName) : [...p, inkName])
-                                    }}
-                                    className={cn(
-                                      "w-6 h-6 rounded-sm flex items-center justify-center transition-all",
-                                      isLocked ? "opacity-10 grayscale cursor-not-allowed" : "hover:scale-110 grayscale-[0.3]",
-                                      isActive && "ring-1 ring-primary ring-offset-1 ring-offset-background grayscale-0 opacity-100"
-                                    )}
-                                  >
-                                    <img src={getInkLogo(inkName)} alt={inkName} className="w-full h-full object-contain" />
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" className="text-[10px] font-bold uppercase">{inkName}</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )
-                        })}
-                      </div>
-
-                      {/* Costs Row */}
-                      <div className="flex items-center gap-0.5 bg-muted/20 rounded-md p-0.5 border border-border/10">
-                        {["1", "2", "3", "4", "5", "6", "7+"].map(c => (
-                          <button
-                            key={c}
-                            onClick={() => setFilterCost(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])}
-                            className={cn(
-                              "w-5 h-5 rounded text-[9px] font-black transition-all",
-                              filterCost.includes(c) ? "bg-primary text-primary-foreground" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/40"
-                            )}
-                          >
-                            {c}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="w-[1px] h-10 bg-border/20 mx-0.5" />
-
-                    {/* Toggles */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => setSmartFilter(!smartFilter)}
-                              className={cn(
-                                "w-8 h-8 rounded-md flex items-center justify-center border transition-all",
-                                smartFilter ? "bg-primary/20 border-primary/40 text-primary shadow-[0_0_10px_-2px_rgba(var(--primary),0.3)]" : "border-border/40 text-muted-foreground/40 hover:border-border/60"
-                              )}
-                            >
-                              <Sparkles className="w-4 h-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-[10px] font-bold uppercase">Smart Sync ({smartFilter ? 'ON' : 'OFF'})</TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => setInkableOnly(!inkableOnly)}
-                              className={cn(
-                                "w-8 h-8 rounded-md flex items-center justify-center border transition-all",
-                                inkableOnly ? "bg-blue-500/20 border-blue-500/40 text-blue-500" : "border-border/40 text-muted-foreground/40 hover:border-border/60"
-                              )}
-                            >
-                              <Droplet className="w-4 h-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-[10px] font-bold uppercase">Inkable Only ({inkableOnly ? 'ON' : 'OFF'})</TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => setShowUnreleased(!showUnreleased)}
-                              className={cn(
-                                "w-8 h-8 rounded-md flex items-center justify-center border transition-all",
-                                showUnreleased ? "bg-amber-500/20 border-amber-500/40 text-amber-500" : "border-border/40 text-muted-foreground/40 hover:border-border/60"
-                              )}
-                            >
-                              <Clock className="w-4 h-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-[10px] font-bold uppercase">Show Spoilers ({showUnreleased ? 'ON' : 'OFF'})</TooltipContent>
-                        </Tooltip>
-
-                        <Select value={filterType[0] || "All"} onValueChange={(v) => setFilterType(v === "All" ? [] : [v])}>
-                          <SelectTrigger className="w-24 h-8 text-[10px] bg-muted/30 border-border/20 font-bold uppercase tracking-tighter">
-                            <SelectValue placeholder="TYPES" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="All">All Types</SelectItem>
-                            <SelectItem value="Character">Characters</SelectItem>
-                            <SelectItem value="Action">Actions</SelectItem>
-                            <SelectItem value="Item">Items</SelectItem>
-                            <SelectItem value="Location">Locations</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                </div>
+                <CardFilters 
+                  search={search}
+                  setSearch={setSearch}
+                  filterInk={filterInk}
+                  setFilterInk={setFilterInk}
+                  filterCost={filterCost}
+                  setFilterCost={setFilterCost}
+                  filterType={filterType}
+                  setFilterType={setFilterType}
+                  filterSet={filterSet}
+                  setFilterSet={setFilterSet}
+                  filterKeywords={filterKeywords}
+                  setFilterKeywords={setFilterKeywords}
+                  filterClassifications={filterClassifications}
+                  setFilterClassifications={setFilterClassifications}
+                  filterRarity={filterRarity}
+                  setFilterRarity={setFilterRarity}
+                  inkableOnly={inkableOnly}
+                  setInkableOnly={setInkableOnly}
+                  showUnreleased={showUnreleased}
+                  setShowUnreleased={setShowUnreleased}
+                  smartFilter={smartFilter}
+                  setSmartFilter={setSmartFilter}
+                  maxInksReached={maxInksReached}
+                  activeInks={activeInks}
+                  sets={sets}
+                  allCards={allCards}
+                  format={format}
+                />
                 <div 
                   ref={parentRef} 
                   className="flex-1 overflow-y-auto custom-scrollbar"
