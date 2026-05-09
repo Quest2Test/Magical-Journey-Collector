@@ -525,7 +525,7 @@ export default function SetDetail() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -80, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-16 left-0 right-0 z-40 h-16 bg-black/60 backdrop-blur-xl border-b border-white/10 flex items-center shadow-2xl"
+            className="fixed top-16 left-0 right-0 z-40 h-16 bg-background/80 backdrop-blur-xl border-b border-border/50 flex items-center shadow-2xl"
           >
             <div className="container mx-auto px-4 md:px-6 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">
@@ -533,54 +533,54 @@ export default function SetDetail() {
                   <SetIcon setId={setId} size="sm" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-sm font-serif font-bold text-white truncate">{setInfo?.name ?? setId}</h2>
+                  <h2 className="text-sm font-serif font-bold truncate">{setInfo?.name ?? setId}</h2>
                   <div className="flex items-center gap-2">
-                    <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div className="w-24 h-1.5 rounded-full bg-secondary overflow-hidden">
                       <div 
                         className="h-full rounded-full transition-all duration-1000" 
                         style={{ backgroundColor: accent, width: `${collectionPct}%` }} 
                       />
                     </div>
-                    <span className="text-[10px] font-bold text-white/50">{collectionPct}%</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">{collectionPct}%</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="hidden sm:flex border rounded-md p-0.5 bg-white/5 border-white/10">
+                <div className="hidden sm:flex border rounded-md p-0.5 bg-secondary/50 border-border/50">
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "grid" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60")}
+                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("list")}
-                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "list" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60")}
+                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
                   >
                     <ListIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("binder")}
-                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "binder" ? "bg-white/10 text-primary-text" : "text-white/40 hover:text-white/60")}
+                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "binder" ? "bg-background shadow-sm text-primary-text" : "text-muted-foreground hover:text-foreground")}
                   >
                     <BookOpen className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="h-8 w-px bg-white/10 hidden sm:block" />
+                <div className="h-8 w-px bg-border/50 hidden sm:block" />
 
                 <div className="flex gap-1">
                   {prevSet && (
                     <Link href={`/sets/${prevSet.id}`}>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 text-white/60 hover:text-white hover:bg-white/10">
+                      <Button variant="ghost" size="icon" className="h-9 w-9">
                         <ArrowLeft className="w-4 h-4" />
                       </Button>
                     </Link>
                   )}
                   {nextSet && (
                     <Link href={`/sets/${nextSet.id}`}>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 text-white/60 hover:text-white hover:bg-white/10 rotate-180">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rotate-180">
                         <ArrowLeft className="w-4 h-4" />
                       </Button>
                     </Link>
@@ -630,18 +630,18 @@ export default function SetDetail() {
             <div className="hidden md:flex items-center gap-2">
               {prevSet && (
                 <Link href={`/sets/${prevSet.id}`}>
-                  <button className="group flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 px-3 rounded-full transition-all backdrop-blur-md">
-                    <ArrowLeft className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors" />
-                    <span className="text-[10px] font-bold text-white/40 group-hover:text-white transition-colors uppercase tracking-wider">{prevSet.name}</span>
+                  <button className="group flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border py-1.5 px-3 rounded-full transition-all backdrop-blur-md">
+                    <ArrowLeft className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-wider">{prevSet.name}</span>
                   </button>
                 </Link>
               )}
-              <div className="h-4 w-px bg-white/10 mx-1" />
+              <div className="h-4 w-px bg-border mx-1" />
               {nextSet && (
                 <Link href={`/sets/${nextSet.id}`}>
-                  <button className="group flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 px-3 rounded-full transition-all backdrop-blur-md">
-                    <span className="text-[10px] font-bold text-white/40 group-hover:text-white transition-colors uppercase tracking-wider">{nextSet.name}</span>
-                    <ArrowLeft className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors rotate-180" />
+                  <button className="group flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border py-1.5 px-3 rounded-full transition-all backdrop-blur-md">
+                    <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-wider">{nextSet.name}</span>
+                    <ArrowLeft className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors rotate-180" />
                   </button>
                 </Link>
               )}
@@ -1082,7 +1082,7 @@ export default function SetDetail() {
                                     "w-10 h-10 rounded-xl border flex items-center justify-center transition-all",
                                     isInWishlist(card.id, "normal") 
                                       ? "bg-pink-500 border-pink-400 text-white shadow-lg" 
-                                      : "bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10"
+                                      : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                                   )}
                                   title="Normal Wishlist"
                                 >
@@ -1094,7 +1094,7 @@ export default function SetDetail() {
                                     "w-10 h-10 rounded-xl border flex items-center justify-center transition-all",
                                     isInWishlist(card.id, "foil") 
                                       ? "bg-amber-500 border-amber-400 text-white shadow-lg" 
-                                      : "bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10"
+                                      : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                                   )}
                                   title="Foil Wishlist"
                                 >
