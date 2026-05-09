@@ -18,6 +18,8 @@ import { getCardPricing, getBaseCardValue } from "@/lib/pricing";
 import { BinderView } from "@/components/profile/BinderView";
 import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-utils";
 import { useWishlist } from "@/hooks/useWishlist";
+import { useSets } from "@/hooks/useCards";
+import { useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 
 const RARITIES = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Enchanted", "Iconic", "Promo"];
 const INK_COLORS = ["Amber", "Amethyst", "Emerald", "Ruby", "Sapphire", "Steel"];
@@ -53,9 +55,10 @@ export default function SetDetail() {
 
   const { data: allCards = [], isLoading } = useAllCards();
   const { data: setCardsData = [], isLoading: isSetLoading } = useCardsBySet(setId);
+  const { data: sets = [] } = useSets();
   const { user } = useAuth();
-   const { collection, getEntry, addCopy, removeCopy, toggleCollected, isCollected, collectedCount } = useCollection();
-   const { wishlist, toggleWishlist, isInWishlist } = useWishlist();
+  const { collection, getEntry, addCopy, removeCopy, toggleCollected, isCollected, collectedCount } = useCollection();
+  const { wishlist, toggleWishlist, isInWishlist } = useWishlist();
 
   // Derive set metadata from card data
   const setInfo = useMemo(() => {
@@ -112,6 +115,13 @@ export default function SetDetail() {
       .sort((a, b) => a.meta.order - b.meta.order);
   }, [setCards, collection]);
 
+  // Top 3 Most Wanted Glimmers
+  const topGlimmers = useMemo(() => {
+    return [...setCards]
+      .sort((a, b) => getBaseCardValue(b) - getBaseCardValue(a))
+      .slice(0, 3);
+  }, [setCards]);
+
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [selectedInks, setSelectedInks] = useState<string[]>([]);
@@ -137,6 +147,38 @@ export default function SetDetail() {
   const toggleSection = (id: string) => {
     setOpenSections(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
+
+  // SEO & Dynamic Title
+  useEffect(() => {
+    if (setInfo) {
+      document.title = `${setInfo.name} - Lorcana Expansion | Lorbound`;
+    }
+  }, [setInfo]);
+
+  // Set Navigation
+  const { prevSet, nextSet } = useMemo(() => {
+    const currentIndex = sets.findIndex(s => s.id === setId);
+    if (currentIndex === -1) return { prevSet: null, nextSet: null };
+    return {
+      prevSet: currentIndex > 0 ? sets[currentIndex - 1] : null,
+      nextSet: currentIndex < sets.length - 1 ? sets[currentIndex + 1] : null,
+    };
+  }, [sets, setId]);
+
+  // Scroll logic for sticky header
+  const { scrollY } = useScroll();
+  const [showSticky, setShowSticky] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    if (heroRef.current) {
+      const heroHeight = heroRef.current.offsetHeight;
+      setShowSticky(latest > heroHeight - 100);
+    }
+  });
+
+  const heroBgY = useTransform(scrollY, [0, 500], [0, 150]);
+  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0.4]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -475,38 +517,136 @@ export default function SetDetail() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Sticky Top Bar - Premium Glassmorphism */}
+      <AnimatePresence>
+        {showSticky && (
+          <motion.div
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -80, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed top-16 left-0 right-0 z-40 h-16 bg-black/60 backdrop-blur-xl border-b border-white/10 flex items-center shadow-2xl"
+          >
+            <div className="container mx-auto px-4 md:px-6 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="shrink-0 scale-75 origin-left">
+                  <SetIcon setId={setId} size="sm" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-serif font-bold text-white truncate">{setInfo?.name ?? setId}</h2>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-1000" 
+                        style={{ backgroundColor: accent, width: `${collectionPct}%` }} 
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-white/50">{collectionPct}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex border rounded-md p-0.5 bg-white/5 border-white/10">
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "grid" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60")}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "list" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60")}
+                  >
+                    <ListIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("binder")}
+                    className={cn("p-1.5 rounded-sm transition-colors", viewMode === "binder" ? "bg-white/10 text-primary-text" : "text-white/40 hover:text-white/60")}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="h-8 w-px bg-white/10 hidden sm:block" />
+
+                <div className="flex gap-1">
+                  {prevSet && (
+                    <Link href={`/sets/${prevSet.id}`}>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 text-white/60 hover:text-white hover:bg-white/10">
+                        <ArrowLeft className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                  )}
+                  {nextSet && (
+                    <Link href={`/sets/${nextSet.id}`}>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 text-white/60 hover:text-white hover:bg-white/10 rotate-180">
+                        <ArrowLeft className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Set Hero Header - Redesigned for Premium Look */}
-      <div className="relative pt-12 pb-16 overflow-hidden min-h-[400px] flex items-center bg-slate-950">
+      <div ref={heroRef} className="relative pt-12 pb-16 overflow-hidden min-h-[440px] flex items-center bg-slate-950">
         {/* Background Image & Gradient Layers */}
-        <div className="absolute inset-0 z-0">
+        <motion.div className="absolute inset-0 z-0" style={{ opacity: heroOpacity, y: heroBgY }}>
           {SET_BACKGROUNDS[setId] && (
-            <div 
-              className="absolute inset-0"
-              style={{ 
+            <div
+              className="absolute inset-0 scale-110"
+              style={{
                 backgroundImage: `url(${SET_BACKGROUNDS[setId]})`,
                 backgroundPosition: 'center 20%',
                 backgroundSize: 'cover',
-                backgroundRepeat: 'no-repeat'
+                backgroundRepeat: 'no-repeat',
+                filter: 'blur(4px)'
               }}
             />
           )}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
           <div className={`absolute inset-0 bg-gradient-to-b ${gradient} opacity-90`} />
-        </div>
-        
+        </motion.div>
+
         {/* Pattern Overlay */}
-        <div 
-          className="absolute inset-0 z-0 opacity-10" 
-          style={{ 
+        <div
+          className="absolute inset-0 z-0 opacity-10"
+          style={{
             backgroundImage: 'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)',
             backgroundSize: '40px 40px'
-          }} 
+          }}
         />
 
         <div className="container relative z-10 mx-auto px-4 md:px-6">
-          <Link href="/sets" className="inline-flex items-center text-sm text-white/60 hover:text-white mb-8 transition-colors group">
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Sets Library
-          </Link>
+          <div className="flex items-center justify-between mb-8">
+            <Link href="/sets" className="inline-flex items-center text-sm text-white/60 hover:text-white transition-colors group">
+              <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Sets Library
+            </Link>
+
+            <div className="hidden md:flex items-center gap-2">
+              {prevSet && (
+                <Link href={`/sets/${prevSet.id}`}>
+                  <button className="group flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 px-3 rounded-full transition-all backdrop-blur-md">
+                    <ArrowLeft className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors" />
+                    <span className="text-[10px] font-bold text-white/40 group-hover:text-white transition-colors uppercase tracking-wider">{prevSet.name}</span>
+                  </button>
+                </Link>
+              )}
+              <div className="h-4 w-px bg-white/10 mx-1" />
+              {nextSet && (
+                <Link href={`/sets/${nextSet.id}`}>
+                  <button className="group flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 px-3 rounded-full transition-all backdrop-blur-md">
+                    <span className="text-[10px] font-bold text-white/40 group-hover:text-white transition-colors uppercase tracking-wider">{nextSet.name}</span>
+                    <ArrowLeft className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors rotate-180" />
+                  </button>
+                </Link>
+              )}
+            </div>
+          </div>
 
           {isSetLoading && !setInfo ? (
             <div className="flex items-center gap-8 py-4">
@@ -520,7 +660,7 @@ export default function SetDetail() {
             <div className="flex flex-col lg:flex-row lg:items-center gap-8 lg:gap-12">
               {/* Large Set Logo with Glow */}
               <div className="relative group shrink-0">
-                <div 
+                <div
                   className="absolute -inset-4 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity rounded-full"
                   style={{ backgroundColor: accent }}
                 />
@@ -556,7 +696,7 @@ export default function SetDetail() {
                         {collectionPct}%
                       </span>
                     </div>
-                    
+
                     <div className="h-2.5 rounded-full bg-white/5 overflow-hidden mb-3">
                       <motion.div
                         className="h-full rounded-full shadow-[0_0_10px_rgba(255,255,255,0.2)]"
@@ -566,7 +706,7 @@ export default function SetDetail() {
                         transition={{ duration: 1, ease: "easeOut" }}
                       />
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-white/40">
                         {collectedInSet} of {setCards.length} Cards Found
@@ -586,7 +726,7 @@ export default function SetDetail() {
                         <span className="text-xs font-bold uppercase tracking-widest text-white/50">Market Intelligence</span>
                         <TrendingUp className="w-4 h-4 text-emerald-400" />
                       </div>
-                      
+
                       <div className="flex items-end gap-4">
                         <div>
                           <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1">Your Value</div>
@@ -605,6 +745,60 @@ export default function SetDetail() {
                   )}
                 </div>
               </div>
+
+              {/* Top Glimmers Showcase - Redesigned for Visibility */}
+              {!isSetLoading && topGlimmers.length > 0 && (
+                <div className="hidden xl:flex flex-col gap-6 shrink-0 w-[450px] self-center ml-auto">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">Most Wanted</h3>
+                    </div>
+                    <Link href={`/cards?set=${setId}&rarity=Enchanted,Legendary`} className="text-[10px] font-bold uppercase tracking-widest text-primary-text hover:underline opacity-60 hover:opacity-100">
+                      View All
+                    </Link>
+                  </div>
+                  
+                  <div className="flex items-center justify-between gap-4 h-[240px] px-2">
+                    {topGlimmers.map((card, i) => (
+                      <motion.div
+                        key={card.id}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: i === 1 ? -15 : 15 }}
+                        transition={{ delay: 0.6 + (i * 0.15), duration: 0.8 }}
+                        className="flex-1 max-w-[130px]"
+                      >
+                        <Link href={`/cards/${encodeURIComponent(card.id)}?from=/sets/${setId}`}>
+                          <div className="group/top-card relative aspect-[2.5/3.5] rounded-xl overflow-hidden shadow-2xl border border-white/10 hover:z-50 hover:scale-110 hover:-translate-y-4 transition-all duration-500 cursor-pointer">
+                            <img src={card.image} alt={card.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/top-card:scale-110" />
+                            
+                            {/* Value Badge Overlay */}
+                            <div className="absolute top-2 right-2 z-20">
+                              <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-2 py-0.5 shadow-xl">
+                                <p className="text-[9px] font-bold text-emerald-400 tabular-nums">{formatPrice(getBaseCardValue(card))}</p>
+                              </div>
+                            </div>
+
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/top-card:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                              <p className="text-[10px] font-bold text-white truncate mb-0.5">{card.name}</p>
+                              <div className="flex items-center justify-between">
+                                <p className="text-[8px] font-bold text-white/50 uppercase tracking-tighter truncate max-w-[80%]">{card.rarity}</p>
+                                <TrendingUp className="w-2.5 h-2.5 text-emerald-400" />
+                              </div>
+                            </div>
+                            
+                            {/* Premium Glow Effect */}
+                            <div className="absolute inset-0 opacity-0 group-hover/top-card:opacity-100 transition-opacity duration-500 pointer-events-none">
+                              <div className="absolute inset-0 ring-2 ring-emerald-500/50 rounded-xl" />
+                              <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(16,185,129,0.4)]" />
+                            </div>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -621,26 +815,44 @@ export default function SetDetail() {
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
               {rarityBreakdown.map(({ rarity, total, collected, meta }) => {
                 const pct = Math.round((collected / total) * 100);
+                const isSelected = selectedRarities.includes(rarity);
                 return (
-                  <div key={rarity} className="flex flex-col gap-1.5">
+                  <button
+                    key={rarity}
+                    onClick={() => toggle(selectedRarities, rarity, setSelectedRarities)}
+                    className={cn(
+                      "flex flex-col gap-1.5 p-2 rounded-xl border transition-all text-left",
+                      isSelected ? "bg-white/10 border-white/20 shadow-lg scale-105" : "bg-transparent border-transparent hover:bg-white/5"
+                    )}
+                  >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        {meta.icon && <img src={meta.icon} alt="" className="w-3 h-3 object-contain shrink-0" />}
-                        <span className="text-xs font-semibold truncate" style={{ color: meta.color }}>{meta.label}</span>
+                        {meta.icon && <img src={meta.icon} alt="" className="w-3.5 h-3.5 object-contain shrink-0" />}
+                        <span className="text-xs font-bold truncate" style={{ color: meta.color }}>{meta.label}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground tabular-nums">{collected}/{total}</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums font-bold">{collected}/{total}</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden relative">
                       <motion.div
-                        className="h-full rounded-full"
+                        className="h-full rounded-full relative z-10"
                         style={{ backgroundColor: meta.color }}
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
                         transition={{ duration: 0.7, ease: "easeOut", delay: rarityBreakdown.indexOf({ rarity, total, collected, meta }) * 0.05 }}
                       />
+                      {isSelected && (
+                        <motion.div
+                          layoutId="active-rarity-glow"
+                          className="absolute inset-0 blur-sm opacity-50"
+                          style={{ backgroundColor: meta.color }}
+                        />
+                      )}
                     </div>
-                    <span className="text-[10px] text-muted-foreground">{pct}% collected</span>
-                  </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-muted-foreground font-medium">{pct}%</span>
+                      {isSelected && <div className="w-1 h-1 rounded-full bg-primary" />}
+                    </div>
+                  </button>
                 );
               })}
             </div>
@@ -653,7 +865,7 @@ export default function SetDetail() {
         {/* Mobile filter toggle */}
         <div className="md:hidden flex items-center justify-between w-full mb-2">
           <p className="text-sm text-muted-foreground">
-            {viewMode === 'binder' 
+            {viewMode === 'binder'
               ? "Browse your set in a digital numerical album"
               : `${filtered.length} of ${setCards.length} cards`
             }
@@ -750,20 +962,44 @@ export default function SetDetail() {
           </div>
 
           {isSetLoading && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {Array.from({ length: 20 }).map((_, i) => (
-                <div key={i} className="aspect-[2.5/3.5] rounded-xl bg-muted animate-pulse" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+              {Array.from({ length: 15 }).map((_, i) => (
+                <div key={i} className="flex flex-col gap-3">
+                  <div className="aspect-[2.5/3.5] rounded-2xl bg-white/5 border border-white/10 overflow-hidden relative group">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
+                    <div className="absolute inset-x-4 bottom-4 h-8 rounded-lg bg-white/5" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-3/4 bg-white/5 rounded-md" />
+                    <div className="h-3 w-1/2 bg-white/5 rounded-md" />
+                  </div>
+                </div>
               ))}
             </div>
           )}
 
           {!isSetLoading && filtered.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center border rounded-xl border-dashed">
-              <Search className="w-8 h-8 text-muted-foreground mb-3" />
-              <p className="font-medium mb-1">No cards found</p>
-              <p className="text-sm text-muted-foreground mb-4">Try broadening your filters.</p>
-              <Button variant="outline" size="sm" onClick={clearFilters}>Clear Filters</Button>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-border/40 rounded-[2.5rem] bg-card/20 backdrop-blur-sm"
+            >
+              <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-6">
+                <Search className="w-8 h-8 text-muted-foreground/50" />
+              </div>
+              <h3 className="text-2xl font-serif font-bold mb-2">No Glimmers Found</h3>
+              <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
+                Your current filters didn't match any cards in this expansion. Try broadening your search or clearing active filters.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button variant="outline" size="lg" className="rounded-2xl px-8" onClick={clearFilters}>
+                  Clear All Filters
+                </Button>
+                <Button variant="ghost" size="lg" className="rounded-2xl px-8" onClick={() => setSearch("")}>
+                  Reset Search
+                </Button>
+              </div>
+            </motion.div>
           )}
 
           {!isSetLoading && filtered.length > 0 && (
@@ -783,70 +1019,95 @@ export default function SetDetail() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
                 >
                   {displayed.map((card: Card, i: number) => {
                     const entry = getEntry(card.id);
                     const foilOnly = isFoilOnly(card);
+                    const isItemCollected = isCollected(card.id);
                     return (
                       <motion.div
                         key={card.id}
-                        initial={{ opacity: 0, y: 8 }}
+                        initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.15, delay: Math.min(i * 0.01, 0.3) }}
-                        className="flex flex-col gap-1"
+                        transition={{ duration: 0.3, delay: Math.min(i * 0.02, 0.4) }}
+                        className="flex flex-col group/card"
                       >
-                        <div className="relative group">
-                          <CardDisplay card={card} returnTo={`/sets/${setId}`} useThumbnail />
-                          {/* Collected overlay badge */}
-                          {isCollected(card.id) && (
-                            <div className="absolute top-2 right-2 z-10 pointer-events-none">
-                              <CheckCircle2 className="w-5 h-5 text-green-400 drop-shadow" style={{ filter: "drop-shadow(0 0 4px rgba(0,0,0,0.8))" }} />
-                            </div>
-                          )}
+                        <div className="relative mb-3">
+                          <motion.div 
+                            whileHover={{ y: -8, scale: 1.02 }}
+                            transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                            className="relative z-10"
+                          >
+                            <CardDisplay card={card} returnTo={`/sets/${setId}`} useThumbnail />
+                            
+                            {/* Collected overlay badge - More premium */}
+                            {isItemCollected && (
+                              <motion.div 
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="absolute -top-1 -right-1 z-20"
+                              >
+                                <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg border-2 border-slate-950">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                </div>
+                              </motion.div>
+                            )}
+                          </motion.div>
+                          
+                          {/* Card Glow Effect on Hover */}
+                          <div className="absolute inset-0 bg-primary/20 blur-3xl opacity-0 group-hover/card:opacity-100 transition-opacity rounded-full z-0" />
                         </div>
-                        {user ? (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
-                              className="flex-1 rounded-md border border-border bg-card py-2 text-xs transition-colors hover:bg-secondary/50 flex items-center justify-center gap-2"
-                              title={isCollected(card.id) ? "Remove from collection" : "Add to collection"}
-                            >
-                              {isCollected(card.id) ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-400" />
-                              ) : (
-                                <Circle className="w-4 h-4 text-muted-foreground" />
-                              )}
-                              <span>{isCollected(card.id) ? "Collected" : "Add"}</span>
-                            </button>
-                            <div className="flex flex-col gap-1 shrink-0">
+
+                        <div className="mt-auto space-y-2">
+                          {user ? (
+                            <div className="flex gap-1.5">
+                              <Button
+                                variant={isItemCollected ? "secondary" : "outline"}
+                                size="sm"
+                                onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
+                                className={cn(
+                                  "flex-1 h-9 rounded-xl text-[11px] font-bold uppercase tracking-tight transition-all",
+                                  isItemCollected 
+                                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/20" 
+                                    : "hover:bg-primary/10 hover:border-primary/30"
+                                )}
+                              >
+                                {isItemCollected ? "Collected" : "Add to Set"}
+                              </Button>
+                              <div className="flex flex-col gap-1">
                                 <button
                                   onClick={() => toggleWishlist(card.id, "normal")}
                                   className={cn(
-                                    "w-9 h-[18px] rounded border flex items-center justify-center transition-all",
-                                    isInWishlist(card.id, "normal") ? "bg-pink-500/10 border-pink-500/40 text-pink-500" : "bg-card border-border text-muted-foreground hover:text-foreground"
+                                    "w-9 h-[17px] rounded-lg border flex items-center justify-center transition-all",
+                                    isInWishlist(card.id, "normal") 
+                                      ? "bg-pink-500 border-pink-400 text-white shadow-[0_0_8px_rgba(236,72,153,0.3)]" 
+                                      : "bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10"
                                   )}
                                   title="Normal Wishlist"
                                 >
-                                  <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} />
+                                  <Heart className={cn("w-2.5 h-2.5", isInWishlist(card.id, "normal") && "fill-current")} />
                                 </button>
                                 <button
                                   onClick={() => toggleWishlist(card.id, "foil")}
                                   className={cn(
-                                    "w-9 h-[18px] rounded border flex items-center justify-center transition-all",
-                                    isInWishlist(card.id, "foil") ? "bg-amber-500/10 border-amber-500/40 text-amber-500" : "bg-card border-border text-muted-foreground hover:text-foreground"
+                                    "w-9 h-[17px] rounded-lg border flex items-center justify-center transition-all",
+                                    isInWishlist(card.id, "foil") 
+                                      ? "bg-amber-500 border-amber-400 text-white shadow-[0_0_8px_rgba(245,158,11,0.3)]" 
+                                      : "bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10"
                                   )}
                                   title="Foil Wishlist"
                                 >
-                                  <Sparkles className={cn("w-3 h-3", isInWishlist(card.id, "foil") && "fill-current")} />
+                                  <Sparkles className={cn("w-2.5 h-2.5", isInWishlist(card.id, "foil") && "fill-current")} />
                                 </button>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <Link href="/login" className="w-full text-center py-2 text-[10px] font-bold text-primary-text hover:underline opacity-80 hover:opacity-100 transition-opacity">
-                            Login to add to collection
-                          </Link>
-                        )}
+                          ) : (
+                            <Link href="/login" className="block w-full py-2 text-[10px] font-bold text-primary-text hover:underline text-center opacity-60 hover:opacity-100 transition-opacity uppercase tracking-widest">
+                              Sign in to Track
+                            </Link>
+                          )}
+                        </div>
                       </motion.div>
                     );
                   })}
@@ -882,7 +1143,7 @@ export default function SetDetail() {
                               </button>
 
                               <div className="flex gap-1">
-                                <button 
+                                <button
                                   onClick={() => toggleWishlist(card.id, "normal")}
                                   className={cn(
                                     "transition-colors",
@@ -891,7 +1152,7 @@ export default function SetDetail() {
                                 >
                                   <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} />
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => toggleWishlist(card.id, "foil")}
                                   className={cn(
                                     "transition-colors",
@@ -982,6 +1243,45 @@ export default function SetDetail() {
               </div>
             )}
           </div>
+
+          {/* Bottom Set Navigation - Large Footer Links */}
+          {!isSetLoading && (
+            <div className="mt-24 pt-16 border-t border-border/40">
+              <div className="flex flex-col items-center gap-8">
+                <h3 className="text-xl font-serif font-bold text-center">Continue Exploring the Library</h3>
+                <div className="flex flex-col sm:flex-row gap-6 w-full max-w-4xl">
+                  {prevSet && (
+                    <Link href={`/sets/${prevSet.id}`} className="flex-1">
+                      <div className="group p-8 rounded-[2rem] border bg-card/30 hover:bg-card hover:shadow-2xl transition-all duration-500 flex items-center gap-6 cursor-pointer overflow-hidden relative">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="w-16 h-16 shrink-0 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
+                          <ArrowLeft className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">Previous Set</p>
+                          <h4 className="text-xl font-bold truncate group-hover:text-primary transition-colors">{prevSet.name}</h4>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
+                  {nextSet && (
+                    <Link href={`/sets/${nextSet.id}`} className="flex-1">
+                      <div className="group p-8 rounded-[2rem] border bg-card/30 hover:bg-card hover:shadow-2xl transition-all duration-500 flex items-center justify-between gap-6 cursor-pointer overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1 text-right">Next Set</p>
+                          <h4 className="text-xl font-bold truncate group-hover:text-primary transition-colors text-right">{nextSet.name}</h4>
+                        </div>
+                        <div className="w-16 h-16 shrink-0 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
+                          <ArrowLeft className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors rotate-180" />
+                        </div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
