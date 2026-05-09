@@ -1059,15 +1059,15 @@ export default function SetDetail() {
                           <div className="absolute inset-0 bg-primary/20 blur-3xl opacity-0 group-hover/card:opacity-100 transition-opacity rounded-full z-0" />
                         </div>
 
-                        <div className="mt-auto space-y-2">
+                        <div className="mt-auto pt-3 border-t border-white/5">
                           {user ? (
-                            <div className="flex gap-1.5">
+                            <div className="flex items-center gap-2">
                               <Button
                                 variant={isItemCollected ? "secondary" : "outline"}
                                 size="sm"
                                 onClick={() => toggleCollected(card.id, foilOnly ? "foil" : "normal")}
                                 className={cn(
-                                  "flex-1 h-9 rounded-xl text-[11px] font-bold uppercase tracking-tight transition-all",
+                                  "flex-1 h-10 rounded-xl text-[11px] font-bold uppercase tracking-tight transition-all",
                                   isItemCollected 
                                     ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/20" 
                                     : "hover:bg-primary/10 hover:border-primary/30"
@@ -1075,30 +1075,30 @@ export default function SetDetail() {
                               >
                                 {isItemCollected ? "Collected" : "Add to Set"}
                               </Button>
-                              <div className="flex flex-col gap-1">
+                              <div className="flex gap-1">
                                 <button
                                   onClick={() => toggleWishlist(card.id, "normal")}
                                   className={cn(
-                                    "w-9 h-[17px] rounded-lg border flex items-center justify-center transition-all",
+                                    "w-10 h-10 rounded-xl border flex items-center justify-center transition-all",
                                     isInWishlist(card.id, "normal") 
-                                      ? "bg-pink-500 border-pink-400 text-white shadow-[0_0_8px_rgba(236,72,153,0.3)]" 
+                                      ? "bg-pink-500 border-pink-400 text-white shadow-lg" 
                                       : "bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10"
                                   )}
                                   title="Normal Wishlist"
                                 >
-                                  <Heart className={cn("w-2.5 h-2.5", isInWishlist(card.id, "normal") && "fill-current")} />
+                                  <Heart className={cn("w-4 h-4", isInWishlist(card.id, "normal") && "fill-current")} />
                                 </button>
                                 <button
                                   onClick={() => toggleWishlist(card.id, "foil")}
                                   className={cn(
-                                    "w-9 h-[17px] rounded-lg border flex items-center justify-center transition-all",
+                                    "w-10 h-10 rounded-xl border flex items-center justify-center transition-all",
                                     isInWishlist(card.id, "foil") 
-                                      ? "bg-amber-500 border-amber-400 text-white shadow-[0_0_8px_rgba(245,158,11,0.3)]" 
+                                      ? "bg-amber-500 border-amber-400 text-white shadow-lg" 
                                       : "bg-white/5 border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10"
                                   )}
                                   title="Foil Wishlist"
                                 >
-                                  <Sparkles className={cn("w-2.5 h-2.5", isInWishlist(card.id, "foil") && "fill-current")} />
+                                  <Sparkles className={cn("w-4 h-4", isInWishlist(card.id, "foil") && "fill-current")} />
                                 </button>
                               </div>
                             </div>
