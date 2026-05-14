@@ -712,7 +712,7 @@ export default function Profile() {
                             size="sm" 
                             className="h-11 rounded-xl bg-destructive hover:bg-destructive/90 text-white justify-start px-4" 
                             onClick={async () => {
-                              if (confirm("PERMANENT ACCOUNT DELETION: This will delete everything (Decks, Collection, Wishlist, and Profile Metadata). Your account login will remain, but all progress and personal data will be wiped. This action is irreversible. Proceed?")) {
+                              if (confirm("PERMANENT ACCOUNT DELETION: This will delete everything, including your login credentials, decks, collection, and wishlist. You will be logged out and your account will be permanently removed. This action is irreversible. Proceed?")) {
                                 setIsLoading(true);
                                 try {
                                   await Promise.all([
