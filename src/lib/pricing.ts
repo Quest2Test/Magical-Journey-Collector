@@ -1,19 +1,33 @@
 import { Card } from "@/data/cards";
 
 /**
+ * Detects if a card is exclusively available in foil (Enchanted, Iconic).
+ */
+export function isFoilOnly(card: Card): boolean {
+  const rarity = card.rarity?.toLowerCase();
+  return rarity === "enchanted" || rarity === "iconic";
+}
+
+/**
  * Standardized pricing logic for Lorcana cards.
- * Handles normal and foil prices with conservative fallbacks.
+ * Handles normal and foil prices with cross-variant fallbacks.
  */
 export function getCardPricing(card: Card) {
-  const normal = card.priceUsd ?? 0;
-  
-  // Conservative fallback: if foil price is missing, use the normal price (1.0x)
-  let foil = card.priceUsdFoil ?? normal;
+  const isFoil = isFoilOnly(card);
+  const pUsd = card.priceUsd || 0;
+  const pFoil = card.priceUsdFoil || 0;
 
-  // Special Case: If it's a foil-only rarity (Enchanted) and normal is 0 but foil is present,
-  // we ensure the "normal" price doesn't accidentally zero out if someone is tracking it incorrectly.
-  // But strictly speaking, enchanted cards only have a foil price.
+  // Normal price logic:
+  // 1. If it's Enchanted/Iconic, it HAS no normal version (return 0)
+  // 2. Use priceUsd if available
+  // 3. Fallback to priceUsdFoil if normal price is missing
+  const normal = isFoil ? 0 : (pUsd || pFoil);
   
+  // Foil price logic:
+  // 1. Use priceUsdFoil if available
+  // 2. Fallback to priceUsd if foil price is missing
+  const foil = pFoil || pUsd;
+
   return {
     normal,
     foil
@@ -26,7 +40,7 @@ export function getCardPricing(card: Card) {
  */
 export function getBaseCardValue(card: Card) {
   const { normal, foil } = getCardPricing(card);
-  return normal > 0 ? normal : foil;
+  return isFoilOnly(card) ? foil : (normal > 0 ? normal : foil);
 }
 
 /**

@@ -41,6 +41,24 @@ export default function Home() {
       })
       .slice(0, 4);
   }, [allCards]);
+ 
+  // 3. Set 12 Featured Cards
+  const set12Cards = useMemo(() => {
+    const pool = allCards.filter(c => c.expansion === "12" && !!c.image);
+    if (!pool.length) return [];
+
+    // Prioritize Buzz Lightyear (specifically the "Iconic" rarity if it exists)
+    const buzz = pool.find(c => c.name.toLowerCase().includes("buzz lightyear") && c.rarity === "Iconic")
+              || pool.find(c => c.name.toLowerCase().includes("buzz lightyear"));
+              
+    const others = pool.filter(c => c.id !== buzz?.id).sort(() => 0.5 - Math.random());
+    
+    const selected = [];
+    if (buzz) selected.push(buzz);
+    selected.push(...others.slice(0, 3 - selected.length));
+    
+    return selected;
+  }, [allCards]);
 
 
 
@@ -129,7 +147,7 @@ export default function Home() {
 
                   {/* Card name badge floating below */}
                   <div className="mt-6 text-center">
-                    <Link href={cardOfTheDay ? `/cards/${cardOfTheDay.id}` : "#"}>
+                    <Link href={`/cards/${encodeURIComponent(cardOfTheDay.id)}?returnTo=/`}>
                       <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-card/80 backdrop-blur-xl border border-border/50 shadow-lg hover:border-primary/40 hover:shadow-xl transition-all cursor-pointer group/badge">
                         <img src={getInkLogo(cardOfTheDay.inkColor)} alt={cardOfTheDay.inkColor} className="w-5 h-5 object-contain" />
                         <div className="text-left">
@@ -148,6 +166,74 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Set 12 Celebration Banner */}
+      <section className="relative h-[400px] flex items-center overflow-hidden border-y border-border/40">
+        <div className="absolute inset-0 z-0">
+          <img src="/setsbg/S12.jpg" alt="Wilds Unknown" className="w-full h-full object-cover opacity-60 scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+        </div>
+
+        <div className="container relative z-10 mx-auto px-4 md:px-6">
+          <div className="max-w-2xl">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+            >
+              <Sparkles className="w-3 h-3 animate-pulse" /> New Expansion Released
+            </motion.div>
+
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-4xl md:text-6xl font-serif font-bold tracking-tight mb-4 text-foreground drop-shadow-sm"
+            >
+              Wilds Unknown <span className="text-muted-foreground opacity-50">/ Set 12</span>
+            </motion.h2>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="text-lg text-muted-foreground mb-8 max-w-lg leading-relaxed font-light"
+            >
+              The Inklands were just the beginning. Venture deep into uncharted brush to discover 204 wild new glimmers, untamed locations, and game-changing keywords to aid your expedition. Embrace the Wilds Unknown, Illumineer.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="flex items-center gap-4"
+            >
+              <Link href="/cards?set=12">
+                <Button size="lg" className="h-12 px-8 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 gap-2 font-bold text-white">
+                  Browse Expansion <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Floating cards decoration */}
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 hidden lg:flex items-center justify-center overflow-hidden pointer-events-none opacity-40">
+           <div className="flex flex-wrap gap-6 rotate-12 scale-110 translate-x-12 translate-y-8">
+             {set12Cards.map((card, i) => (
+               <div key={i} className="w-52 aspect-[2.5/3.5] rounded-[1.25rem] border border-white/20 overflow-hidden shadow-2xl bg-muted/20 shrink-0">
+                 <img src={card.image} alt="" className="w-full h-full object-cover" />
+               </div>
+             ))}
+           </div>
+        </div>
+      </section>
+
       {/* Market Trends */}
       <section className="py-24 bg-muted/20 border-y border-border/40 relative overflow-hidden">
         <div className="container mx-auto px-4 md:px-6 relative z-10">
@@ -185,7 +271,7 @@ export default function Home() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.4, delay: i * 0.1 }}
                   >
-                    <CardDisplay card={card} />
+                    <CardDisplay card={card} returnTo="/" />
                   </motion.div>
                 ))}
               </div>

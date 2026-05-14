@@ -45,15 +45,15 @@ export const SET_ACCENT: Record<string, string> = {
 
 export const SET_ACRONYMS: Record<string, string> = {
   "1": "TFC",
-  "2": "ROF",
-  "3": "INK",
-  "4": "URS",
-  "5": "SSK",
-  "6": "ARC",
-  "7": "ARI",
+  "2": "ROTF",
+  "3": "ITI",
+  "4": "UR",
+  "5": "SS",
+  "6": "AZS",
+  "7": "AI",
   "8": "ROJ",
   "9": "FAB",
-  "10": "WHI",
+  "10": "WITW",
   "11": "WIN",
   "12": "WUN",
 };

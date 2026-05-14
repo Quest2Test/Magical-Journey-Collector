@@ -93,9 +93,9 @@ export const CardDisplay = memo(function CardDisplay({
   const isCharacter = card.type === "Character";
   const isSong = card.type === "Song";
   const isLocation = card.type === "Location";
-   const [imgError, setImgError] = useState(false);
-   const hasRealImage = !!card.image && !imgError;
-   const { toggleWishlist, isInWishlist } = useWishlist();
+  const [imgError, setImgError] = useState(false);
+  const hasRealImage = !!card.image && !imgError;
+  const { toggleWishlist, isInWishlist } = useWishlist();
 
   return (
     <motion.div
@@ -108,7 +108,7 @@ export const CardDisplay = memo(function CardDisplay({
           {ownedCount}
         </div>
       )}
-      <Link href={`/cards/${encodeURIComponent(card.id)}${returnTo ? `?from=${returnTo}` : ""}`} className="block relative aspect-[2.5/3.5] rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow border border-border/50 bg-card">
+      <Link href={`/cards/${encodeURIComponent(card.id)}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`} className="block relative aspect-[2.5/3.5] rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow border border-border/50 bg-card">
         {hasRealImage ? (
           <img
             src={useThumbnail ? (card.thumbnail || card.image) : card.image}
@@ -141,7 +141,7 @@ export const CardDisplay = memo(function CardDisplay({
             >
               <Plus className="w-4 h-4" /> Collection
             </Button>
-            
+
             <div className="flex gap-2 w-full">
               <button
                 onClick={(e) => {
@@ -150,8 +150,8 @@ export const CardDisplay = memo(function CardDisplay({
                 }}
                 className={cn(
                   "flex-1 h-9 rounded-lg border flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase transition-all shadow-lg",
-                  isInWishlist(card.id, "normal") 
-                    ? "bg-pink-500 border-pink-400 text-white" 
+                  isInWishlist(card.id, "normal")
+                    ? "bg-pink-500 border-pink-400 text-white"
                     : "bg-white/10 border-white/20 text-white hover:bg-white/20"
                 )}
               >
@@ -164,8 +164,8 @@ export const CardDisplay = memo(function CardDisplay({
                 }}
                 className={cn(
                   "flex-1 h-9 rounded-lg border flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase transition-all shadow-lg",
-                  isInWishlist(card.id, "foil") 
-                    ? "bg-amber-500 border-amber-400 text-white" 
+                  isInWishlist(card.id, "foil")
+                    ? "bg-amber-500 border-amber-400 text-white"
                     : "bg-white/10 border-white/20 text-white hover:bg-white/20"
                 )}
               >

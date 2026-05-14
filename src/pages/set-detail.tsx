@@ -21,7 +21,7 @@ import { useWishlist } from "@/hooks/useWishlist";
 import { useSets } from "@/hooks/useCards";
 import { useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 
-const RARITIES = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Enchanted", "Iconic", "Promo"];
+const RARITIES = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Epic", "Enchanted", "Iconic", "Promo"];
 const INK_COLORS = ["Amber", "Amethyst", "Emerald", "Ruby", "Sapphire", "Steel"];
 const CARD_TYPES = ["Character", "Action", "Item", "Location", "Song"];
 const PAGE_SIZE = 60;
@@ -673,7 +673,7 @@ export default function SetDetail() {
                     className="text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border backdrop-blur-md"
                     style={{ color: accent, borderColor: `${accent}44`, backgroundColor: `${accent}11` }}
                   >
-                    {setInfo ? (setInfo.isPromo ? "Special Release" : `Chapter ${setInfo.setNum}`) : "Expansion"}
+                    {setInfo ? (setInfo.isPromo ? "Promo Set" : `Chapter ${setInfo.setNum}`) : "Expansion"}
                   </span>
                   {setInfo?.releasedAt && (
                     <span className="text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border border-white/10 bg-white/5 text-white/60">
@@ -712,7 +712,7 @@ export default function SetDetail() {
                         {collectedInSet} of {setCards.length} Cards Found
                       </span>
                       {!user && (
-                        <Link href="/login" className="text-[10px] text-primary-text hover:underline font-bold uppercase tracking-wider">
+                        <Link href={`/login?returnTo=/sets/${setId}`} className="text-[10px] text-primary-text hover:underline font-bold uppercase tracking-wider">
                           Sign in to track
                         </Link>
                       )}
@@ -749,16 +749,10 @@ export default function SetDetail() {
               {/* Top Glimmers Showcase - Redesigned for Visibility */}
               {!isSetLoading && topGlimmers.length > 0 && (
                 <div className="hidden xl:flex flex-col gap-6 shrink-0 w-[450px] self-center ml-auto">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
-                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">Most Wanted</h3>
-                    </div>
-                    <Link href={`/cards?set=${setId}&rarity=Enchanted,Legendary`} className="text-[10px] font-bold uppercase tracking-widest text-primary-text hover:underline opacity-60 hover:opacity-100">
-                      View All
-                    </Link>
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">Most Wanted</h3>
                   </div>
-                  
                   <div className="flex items-center justify-between gap-4 h-[240px] px-2">
                     {topGlimmers.map((card, i) => (
                       <motion.div
@@ -768,7 +762,7 @@ export default function SetDetail() {
                         transition={{ delay: 0.6 + (i * 0.15), duration: 0.8 }}
                         className="flex-1 max-w-[130px]"
                       >
-                        <Link href={`/cards/${encodeURIComponent(card.id)}?from=/sets/${setId}`}>
+                        <Link href={`/cards/${encodeURIComponent(card.id)}?returnTo=/sets/${setId}`}>
                           <div className="group/top-card relative aspect-[2.5/3.5] rounded-xl overflow-hidden shadow-2xl border border-white/10 hover:z-50 hover:scale-110 hover:-translate-y-4 transition-all duration-500 cursor-pointer">
                             <img src={card.image} alt={card.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/top-card:scale-110" />
                             
@@ -1103,7 +1097,7 @@ export default function SetDetail() {
                               </div>
                             </div>
                           ) : (
-                            <Link href="/login" className="block w-full py-2 text-[10px] font-bold text-primary-text hover:underline text-center opacity-60 hover:opacity-100 transition-opacity uppercase tracking-widest">
+                            <Link href={`/login?returnTo=/sets/${setId}`} className="block w-full py-2 text-[10px] font-bold text-primary-text hover:underline text-center opacity-60 hover:opacity-100 transition-opacity uppercase tracking-widest">
                               Sign in to Track
                             </Link>
                           )}
@@ -1168,7 +1162,7 @@ export default function SetDetail() {
                               </div>
                             </>
                           ) : (
-                            <Link href="/login" className="text-primary-text hover:underline text-[9px] font-bold text-center leading-tight">
+                            <Link href={`/login?returnTo=/sets/${setId}`} className="text-primary-text hover:underline text-[9px] font-bold text-center leading-tight">
                               Login to track
                             </Link>
                           )}
@@ -1186,7 +1180,7 @@ export default function SetDetail() {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <Link href={`/cards/${encodeURIComponent(card.id)}?from=/sets/${setId}`}>
+                          <Link href={`/cards/${encodeURIComponent(card.id)}?returnTo=/sets/${setId}`}>
                             <p className="text-sm font-semibold truncate hover:text-primary transition-colors cursor-pointer">
                               {card.cardNum ? `#${String(card.cardNum).padStart(3, "0")} ` : ""}{card.name}
                               {getFormattedSubtitle(card) && (

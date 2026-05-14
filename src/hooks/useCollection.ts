@@ -10,20 +10,25 @@ export type CollectionEntry = {
 
 export type Collection = Record<string, CollectionEntry>;
 
-export function useCollection(targetUserId?: string) {
+export function useCollection(targetUserId?: string, options: { enabled?: boolean } = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const activeUserId = targetUserId || user?.id;
 
   const queryKey = ["collection", activeUserId || "guest"];
 
-  const { data: collection = {}, isLoading, isError } = useQuery({
+  const isDemoMode = typeof window !== 'undefined' && 
+                     (localStorage.getItem('lorbound_demo_mode') === 'true' || user?.id === 'demo-user-id');
+
+  const { data: collection = {} as Collection, isLoading, isError } = useQuery<Collection>({
     queryKey,
-    queryFn: async () => {
-      // If no target user and no logged in user, return empty collection
-      // Guest localstorage support removed to encourage account creation
-      if (!activeUserId) {
-        return {};
+    queryFn: async (): Promise<Collection> => {
+      if (!activeUserId) return {};
+
+      // Demo Mode persistence
+      if (isDemoMode) {
+        const stored = localStorage.getItem('lorbound_demo_collection');
+        return stored ? JSON.parse(stored) : {};
       }
 
       // Fetch from Supabase
@@ -40,26 +45,37 @@ export function useCollection(targetUserId?: string) {
       }
       return coll;
     },
-    enabled: !!activeUserId, // Only run query if we have a user to look up
+    enabled: !!activeUserId && (options.enabled !== false),
   });
 
   const mutation = useMutation({
     mutationFn: async ({ cardId, entry }: { cardId: string; entry: CollectionEntry }) => {
-      if (!user) {
+      if (!user && !isDemoMode) {
         return Promise.reject("Must be signed in to modify collection");
+      }
+
+      if (isDemoMode) {
+        const current = JSON.parse(localStorage.getItem('lorbound_demo_collection') || '{}');
+        if (entry.normal === 0 && entry.foil === 0) {
+          delete current[cardId];
+        } else {
+          current[cardId] = entry;
+        }
+        localStorage.setItem('lorbound_demo_collection', JSON.stringify(current));
+        return;
       }
 
       if (entry.normal === 0 && entry.foil === 0) {
         const { error } = await supabase
           .from("collections")
           .delete()
-          .match({ user_id: user.id, card_id: cardId });
+          .match({ user_id: user!.id, card_id: cardId });
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("collections")
           .upsert(
-            { user_id: user.id, card_id: cardId, normal: entry.normal, foil: entry.foil },
+            { user_id: user!.id, card_id: cardId, normal: entry.normal, foil: entry.foil },
             { onConflict: "user_id,card_id" }
           );
         if (error) throw error;
@@ -86,14 +102,17 @@ export function useCollection(targetUserId?: string) {
       }
     },
     onSettled: () => {
-      if (user) {
-        queryClient.invalidateQueries({ queryKey });
-      }
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
   const clearMutation = useMutation({
     mutationFn: async () => {
+      if (isDemoMode) {
+        localStorage.removeItem('lorbound_demo_collection');
+        return;
+      }
+
       if (!user) return Promise.reject("Must be signed in to clear collection");
       const { error } = await supabase
         .from("collections")
@@ -103,17 +122,10 @@ export function useCollection(targetUserId?: string) {
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData<Collection>(queryKey) || {};
       queryClient.setQueryData<Collection>(queryKey, {});
-      return { previous };
-    },
-    onError: (err, newEntry, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData<Collection>(queryKey, context.previous);
-      }
     },
     onSettled: () => {
-      if (user) queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 

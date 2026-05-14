@@ -4,7 +4,7 @@ import { useAuth } from "@/components/auth-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import * as Icons from "lucide-react";
-import { Settings, Share2, Award, Sparkles, Layers, Gem, Flag, PieChart as PieChartIcon, Download, Trash2 } from "lucide-react";
+import { Settings, Share2, Award, Sparkles, Layers, Gem, Flag, PieChart as PieChartIcon, Download, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,8 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useCurrency } from "@/components/currency-provider";
-import { useCollection } from "@/hooks/useCollection";
+import { useCollection, Collection, CollectionEntry } from "@/hooks/useCollection";
+import { isFoilOnly } from "@/lib/pricing";
 import { useAllCards, useSets, useCardLookup } from "@/hooks/useCards";
 import { CardDisplay, inkHexColors, rarityIcons } from "@/components/ui/card-display";
 import { Progress } from "@/components/ui/progress";
@@ -27,12 +28,13 @@ import { SetProgressCard } from "@/components/profile/SetProgressCard";
 import { SET_ACRONYMS } from "@/lib/sets";
 import { getCardPricing } from "@/lib/pricing";
 import { CHALLENGES } from "@/data/challenges";
-import { useWishlist } from "@/hooks/useWishlist";
+import { useWishlist, WishlistEntry } from "@/hooks/useWishlist";
+import { isProfane } from "@/lib/profanity";
 
 export default function Profile() {
   const [match, params] = useRoute("/profile/:username");
   const [, setLocation] = useLocation();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, signOut, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
 
@@ -81,11 +83,11 @@ export default function Profile() {
     Legendary: "#f59e0b",
     "Super Rare": "#9333ea",
     Epic: "#c084fc",
+    Enchanted: "#ec4899",
     Rare: "#3b82f6",
     Uncommon: "#10b981",
     Common: "#6b7280",
-    Iconic: "#06b6d4",
-    Special: "#ef4444",
+    Iconic: "#ef4444",
   };
 
   const isOwnProfile = user && ((user.user_metadata?.username && user.user_metadata?.username === params?.username) || user.id === params?.username || params?.username === 'me');
@@ -105,12 +107,48 @@ export default function Profile() {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 1. Validation
+    const cleanUsername = formData.username.trim();
+    if (cleanUsername.length < 3) {
+      return toast({ title: "Username too short", description: "Minimum 3 characters required.", variant: "destructive" });
+    }
+    if (cleanUsername.length > 20) {
+      return toast({ title: "Username too long", description: "Maximum 20 characters allowed.", variant: "destructive" });
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
+      return toast({ title: "Invalid username", description: "Only letters, numbers, and underscores allowed.", variant: "destructive" });
+    }
+    
+    // Profanity check
+    if (isProfane(cleanUsername)) {
+      return toast({ 
+        title: "Username restricted", 
+        description: "Please choose a username that follows our community guidelines.", 
+        variant: "destructive" 
+      });
+    }
+
     setIsLoading(true);
 
     try {
+      // 2. Check Uniqueness if changed
+      if (cleanUsername !== user?.user_metadata?.username) {
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("username", cleanUsername)
+          .maybeSingle();
+        
+        if (existing) {
+          throw new Error("Username already taken. Please choose another.");
+        }
+      }
+
+      // 3. Update Auth Metadata
       const { error } = await supabase.auth.updateUser({
         data: {
-          username: formData.username,
+          username: cleanUsername,
           avatar_url: formData.avatar_url,
           is_public: formData.is_public
         }
@@ -118,11 +156,26 @@ export default function Profile() {
 
       if (error) throw error;
 
+      // 4. Update Profile Table (Sync)
+      // Note: We do this manually here in addition to any DB triggers for maximum robustness
+      await supabase.from("profiles").upsert({
+        id: user!.id,
+        username: cleanUsername,
+        avatar_url: formData.avatar_url,
+        is_public: formData.is_public,
+        updated_at: new Date().toISOString()
+      });
+
       toast({
         title: "Profile updated!",
         description: "Your changes have been saved successfully.",
       });
       setIsOpen(false);
+      
+      // If username changed, redirect to new URL to keep link stable
+      if (cleanUsername !== params?.username) {
+        setLocation(`/profile/${cleanUsername}`);
+      }
     } catch (error: any) {
       toast({
         title: "Error updating profile",
@@ -158,10 +211,9 @@ export default function Profile() {
   });
 
   const activeUserId = isOwnProfile ? user?.id : targetProfile?.id;
-  const { wishlist } = useWishlist(activeUserId);
-  const { collection, collectedCount, totalCopies, clearCollection } = useCollection(activeUserId);
-
-  const isPublicView = isOwnProfile || (targetProfile?.is_public);
+  const isPublicView = isOwnProfile || !!(targetProfile?.is_public);
+  const { wishlist } = useWishlist(activeUserId, { enabled: isPublicView });
+  const { collection, collectedCount, totalCopies, clearCollection } = useCollection(activeUserId, { enabled: isPublicView });
   const displayUsernameFinal = isOwnProfile ? displayUsername : (targetProfile?.username || params?.username);
   const displayAvatarFinal = isOwnProfile ? displayAvatar : targetProfile?.avatar_url;
 
@@ -241,7 +293,7 @@ export default function Profile() {
       };
     }
 
-    for (const [cardId, entry] of Object.entries(collection)) {
+    for (const [cardId, entry] of Object.entries(collection as Collection)) {
       const card = (lookup as Record<string, any>)[cardId];
       if (!card || (entry.normal === 0 && entry.foil === 0)) continue;
 
@@ -318,7 +370,7 @@ export default function Profile() {
       None: "Novice Illumineer"
     };
 
-    const rarityOrder = ["Legendary", "Super Rare", "Rare", "Uncommon", "Common", "Special"];
+    const rarityOrder = ["Iconic", "Enchanted", "Epic", "Legendary", "Super Rare", "Rare", "Uncommon", "Common"];
     const rarityChartData = Object.entries(rarityCounts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => rarityOrder.indexOf(a.name) - rarityOrder.indexOf(b.name));
@@ -395,6 +447,7 @@ export default function Profile() {
       Rare: "text-blue-500 bg-blue-500/10 border-blue-500/20",
       "Super Rare": "text-purple-500 bg-purple-500/10 border-purple-500/20",
       Legendary: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+      Epic: "text-violet-500 bg-violet-500/10 border-violet-500/20",
       Enchanted: "text-pink-500 bg-pink-500/10 border-pink-500/20"
     };
 
@@ -476,6 +529,39 @@ export default function Profile() {
             <Button variant="ghost" size="sm" onClick={handleShareProfile}>
               <Share2 className="w-4 h-4 mr-2" /> Share
             </Button>
+            {!isOwnProfile && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-muted-foreground hover:text-destructive transition-colors"
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase.from("reports").insert({
+                      reporter_id: user?.id,
+                      target_id: activeUserId,
+                      target_type: "profile",
+                      reason: "Flagged via public profile view"
+                    });
+
+                    if (error) throw error;
+
+                    toast({
+                      title: "Profile Reported",
+                      description: "Thank you. Our moderation team will review this profile shortly.",
+                      variant: "destructive"
+                    });
+                  } catch (e: any) {
+                    toast({
+                      title: "Report Failed",
+                      description: "There was an issue sending your report.",
+                      variant: "destructive"
+                    });
+                  }
+                }}
+              >
+                <Flag className="w-4 h-4 mr-2" /> Report
+              </Button>
+            )}
             {isOwnProfile && (
               <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogTrigger asChild>
@@ -483,66 +569,186 @@ export default function Profile() {
                     <Settings className="w-4 h-4" /> Settings
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Profile Settings</DialogTitle>
+                <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-border/40">
+                  <DialogHeader className="p-6 pb-2">
+                    <DialogTitle className="font-serif text-2xl">Profile Settings</DialogTitle>
                     <DialogDescription>
-                      Managed your identity and collection privacy settings.
+                      Manage your identity and collection privacy settings.
                     </DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={handleUpdateProfile} className="space-y-6 py-4">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="username">Display Name</Label>
-                        <Input
-                          id="username"
-                          value={formData.username}
-                          onChange={(e) => setFormData(p => ({ ...p, username: e.target.value }))}
-                          placeholder="Your username"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="avatar_url">Avatar Image URL</Label>
-                        <Input
-                          id="avatar_url"
-                          value={formData.avatar_url}
-                          onChange={(e) => setFormData(p => ({ ...p, avatar_url: e.target.value }))}
-                          placeholder="https://..."
-                        />
-                      </div>
-                      <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="is_public">Public Profile</Label>
-                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight leading-none pt-0.5">Allow others to see your collection value</p>
+                  
+                  <form onSubmit={handleUpdateProfile} className="space-y-0">
+                    <div className="p-6 pt-2 space-y-6">
+                      {/* Identity Section */}
+                      <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
+                          <Icons.User className="w-3 h-3" /> Identity
+                        </h3>
+                        <div className="grid gap-4 bg-muted/20 p-4 rounded-2xl border border-border/30">
+                          <div className="space-y-2">
+                            <Label htmlFor="username" className="text-xs font-bold text-foreground/70">Unique Username</Label>
+                            <Input
+                              id="username"
+                              value={formData.username}
+                              onChange={(e) => setFormData(p => ({ ...p, username: e.target.value.substring(0, 20) }))}
+                              placeholder="illumina_123"
+                              className="h-10 bg-background/50"
+                            />
+                            <div className="flex justify-between items-center px-1">
+                              <p className="text-[9px] text-muted-foreground italic">Only letters, numbers, and underscores.</p>
+                              <p className="text-[9px] font-mono text-muted-foreground">{formData.username.length}/20</p>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="avatar_url" className="text-xs font-bold text-foreground/70">Avatar Image URL</Label>
+                            <Input
+                              id="avatar_url"
+                              value={formData.avatar_url}
+                              onChange={(e) => setFormData(p => ({ ...p, avatar_url: e.target.value }))}
+                              placeholder="https://images.com/my-avatar.jpg"
+                              className="h-10 bg-background/50"
+                            />
+                          </div>
                         </div>
-                        <Switch
-                          id="is_public"
-                          checked={formData.is_public}
-                          onCheckedChange={(checked) => setFormData(p => ({ ...p, is_public: checked }))}
-                        />
+                      </div>
+
+                      {/* Privacy Section */}
+                      <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
+                          <Icons.Lock className="w-3 h-3" /> Privacy & Social
+                        </h3>
+                        <div className="flex items-center justify-between p-4 rounded-2xl border border-border/30 bg-muted/20">
+                          <div className="space-y-1">
+                            <Label htmlFor="is_public" className="text-sm font-bold">Public Profile</Label>
+                            <p className="text-[11px] text-muted-foreground leading-tight max-w-[240px]">Allow other Illumineers to view your collection value, analysis, and wishlist.</p>
+                          </div>
+                          <Switch
+                            id="is_public"
+                            checked={formData.is_public}
+                            onCheckedChange={(checked) => setFormData(p => ({ ...p, is_public: checked }))}
+                          />
+                        </div>
+                        
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          size="sm" 
+                          className="w-full h-10 rounded-xl gap-2 border border-border/40"
+                          onClick={handleShareProfile}
+                        >
+                          <Share2 className="w-4 h-4" /> Copy Profile URL
+                        </Button>
+                      </div>
+
+                      {/* Danger Zone */}
+                      <div className="space-y-4 pt-2">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-destructive/70 flex items-center gap-2">
+                          <AlertTriangle className="w-3 h-3" /> Danger Zone
+                        </h3>
+                        <div className="grid grid-cols-1 gap-3">
+                          <Button 
+                            type="button"
+                            variant="outline" 
+                            size="sm" 
+                            className="h-10 rounded-xl bg-background/50 w-full" 
+                            onClick={handleExportCollection}
+                          >
+                            <Download className="w-3.5 h-3.5 mr-2" /> Export CSV
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <Button 
+                            type="button"
+                            variant="destructive" 
+                            size="sm" 
+                            className="h-11 rounded-xl bg-destructive/5 hover:bg-destructive/10 text-destructive border-destructive/20 justify-start px-4" 
+                            onClick={async () => {
+                              if (confirm("Permanently delete all your decks? This cannot be undone.")) {
+                                const { error } = await supabase.from("decks").delete().eq("user_id", user?.id);
+                                if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+                                else toast({ title: "Decks Deleted", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <Icons.Layers className="w-3.5 h-3.5 mr-2" /> Clear My Decks
+                          </Button>
+
+                          <Button 
+                            type="button"
+                            variant="destructive" 
+                            size="sm" 
+                            className="h-11 rounded-xl bg-destructive/5 hover:bg-destructive/10 text-destructive border-destructive/20 justify-start px-4" 
+                            onClick={async () => {
+                              if (confirm("Wipe your entire collection? This cannot be undone.")) {
+                                const { error } = await supabase.from("collections").delete().eq("user_id", user?.id);
+                                if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+                                else toast({ title: "Collection Purged", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Reset Collection
+                          </Button>
+
+                          <Button 
+                            type="button"
+                            variant="destructive" 
+                            size="sm" 
+                            className="h-11 rounded-xl bg-destructive/5 hover:bg-destructive/10 text-destructive border-destructive/20 justify-start px-4" 
+                            onClick={async () => {
+                              if (confirm("Clear your entire wishlist?")) {
+                                const { error } = await supabase.from("wishlists").delete().eq("user_id", user?.id);
+                                if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+                                else toast({ title: "Wishlist Cleared", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <Icons.Sparkles className="w-3.5 h-3.5 mr-2" /> Clear Wishlist
+                          </Button>
+
+                          <Button 
+                            type="button"
+                            variant="destructive" 
+                            size="sm" 
+                            className="h-11 rounded-xl bg-destructive hover:bg-destructive/90 text-white justify-start px-4" 
+                            onClick={async () => {
+                              if (confirm("ABSOLUTE DATA WIPE: This will delete everything (Decks, Collection, Wishlist, and Profile Metadata). Your account login will remain, but all progress will be lost. Proceed?")) {
+                                setIsLoading(true);
+                                try {
+                                  await Promise.all([
+                                    supabase.from("decks").delete().eq("user_id", user?.id),
+                                    supabase.from("collections").delete().eq("user_id", user?.id),
+                                    supabase.from("wishlists").delete().eq("user_id", user?.id),
+                                    supabase.from("profiles").delete().eq("id", user?.id)
+                                  ]);
+                                  
+                                  // Sign out the user after wiping data
+                                  await signOut();
+                                  
+                                  toast({ title: "Account & Data Deleted", description: "Your Lorbound profile and all associated data have been permanently removed.", variant: "destructive" });
+                                  window.location.href = "/";
+                                } catch (e: any) {
+                                  toast({ title: "Wipe Failed", description: e.message, variant: "destructive" });
+                                } finally {
+                                  setIsLoading(false);
+                                }
+                              }
+                            }}
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5 mr-2" /> Wipe All Data
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      Save Changes
-                    </Button>
-                  </form>
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold text-xs mb-3 text-muted-foreground uppercase tracking-wider">Data Management</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button variant="outline" size="sm" className="w-full" onClick={handleExportCollection}>
-                        <Download className="w-3 h-3 mr-2" /> Export CSV
-                      </Button>
-                      <Button variant="destructive" size="sm" className="w-full" onClick={() => {
-                        if (confirm("Confirm: Wipe all collection data?")) {
-                          clearCollection();
-                          toast({ title: "Collections Cleared" });
-                        }
-                      }}>
-                        <Trash2 className="w-3 h-3 mr-2" /> Reset
+
+                    <div className="p-4 bg-muted/30 border-t border-border/50 flex gap-3">
+                       <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
+                       <Button type="submit" className="flex-[2] rounded-xl shadow-lg shadow-primary/20" disabled={isLoading}>
+                        {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Icons.Save className="w-4 h-4 mr-2" />}
+                        Update Profile
                       </Button>
                     </div>
-                  </div>
+                  </form>
                 </DialogContent>
               </Dialog>
             )}
@@ -670,257 +876,273 @@ export default function Profile() {
           </TabsContent>
 
           <TabsContent value="collections" className="mt-4 focus-visible:ring-0">
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 className="text-2xl font-serif font-bold">Set Progress</h2>
-                  <p className="text-sm text-muted-foreground">Track your completion across all Lorcana sets</p>
+            {isPublicView ? (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-serif font-bold">Set Progress</h2>
+                    <p className="text-sm text-muted-foreground">Track your completion across all Lorcana sets</p>
+                  </div>
+
+                  <div className="flex bg-muted/50 p-1 rounded-lg border border-border/50">
+                    <button
+                      onClick={() => setSetFilter("main")}
+                      className={cn(
+                        "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                        setFilter === "main" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Main Sets
+                    </button>
+                    <button
+                      onClick={() => setSetFilter("promo")}
+                      className={cn(
+                        "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                        setFilter === "promo" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Promos
+                    </button>
+                    <button
+                      onClick={() => setSetFilter("all")}
+                      className={cn(
+                        "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                        setFilter === "all" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      All
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex bg-muted/50 p-1 rounded-lg border border-border/50">
-                  <button
-                    onClick={() => setSetFilter("main")}
-                    className={cn(
-                      "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
-                      setFilter === "main" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    Main Sets
-                  </button>
-                  <button
-                    onClick={() => setSetFilter("promo")}
-                    className={cn(
-                      "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
-                      setFilter === "promo" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    Promos
-                  </button>
-                  <button
-                    onClick={() => setSetFilter("all")}
-                    className={cn(
-                      "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
-                      setFilter === "all" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    All
-                  </button>
-                </div>
+                {dashboardData && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Object.entries(dashboardData.setProgressStats)
+                      .filter(([_, stats]: [string, any]) => {
+                        if (setFilter === "main") return !stats.isPromo;
+                        if (setFilter === "promo") return stats.isPromo;
+                        return true;
+                      })
+                      .sort((a, b) => {
+                        // Sort by release date (ascending)
+                        return (new Date(a[1].releasedAt || 0).getTime()) - (new Date(b[1].releasedAt || 0).getTime());
+                      })
+                      .map(([id, stats]: [string, any]) => (
+                        <SetProgressCard
+                          key={id}
+                          name={stats.name}
+                          setId={id}
+                          setCode={SET_ACRONYMS[id] || id}
+                          collected={stats.collected}
+                          total={stats.total}
+                          releasedAt={stats.releasedAt}
+                          image={stats.image}
+                        />
+                      ))
+                    }
+                  </div>
+                )}
               </div>
-
-              {dashboardData && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {Object.entries(dashboardData.setProgressStats)
-                    .filter(([_, stats]: [string, any]) => {
-                      if (setFilter === "main") return !stats.isPromo;
-                      if (setFilter === "promo") return stats.isPromo;
-                      return true;
-                    })
-                    .sort((a, b) => {
-                      // Sort by release date (ascending)
-                      return (new Date(a[1].releasedAt || 0).getTime()) - (new Date(b[1].releasedAt || 0).getTime());
-                    })
-                    .map(([id, stats]: [string, any]) => (
-                      <SetProgressCard
-                        key={id}
-                        name={stats.name}
-                        setId={id}
-                        setCode={SET_ACRONYMS[id] || id}
-                        collected={stats.collected}
-                        total={stats.total}
-                        releasedAt={stats.releasedAt}
-                        image={stats.image}
-                      />
-                    ))
-                  }
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="py-20 text-center bg-muted/10 border border-dashed rounded-3xl flex flex-col items-center">
+                <Icons.Lock className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-xl font-serif font-bold mb-2">Set Progress Hidden</h3>
+                <p className="text-muted-foreground max-w-sm">This player's set completion data is private.</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="analysis" className="mt-4 focus-visible:ring-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              {/* Ink Pie */}
-              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
-                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
-                  <span className="w-8 h-1 bg-primary rounded-full"></span> Ink Affinity
-                </h3>
-                {dashboardData?.inkChartData.length ? (
-                  <div className="h-[280px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={dashboardData.inkChartData}
-                          cx="50%"
-                          cy="45%"
-                          innerRadius={65}
-                          outerRadius={95}
-                          paddingAngle={6}
-                          dataKey="value"
-                          stroke="none"
-                          cornerRadius={4}
-                        >
-                          {dashboardData.inkChartData.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={inkHexColors[entry.name as keyof typeof inkHexColors] || '#000'} className="drop-shadow-sm hover:opacity-80 transition-opacity" />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: number) => [`${value} cards`, '']}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
-                        />
-                        <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
-                )}
-              </div>
+            {isPublicView ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                {/* Ink Pie */}
+                <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
+                  <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                    <span className="w-8 h-1 bg-primary rounded-full"></span> Ink Affinity
+                  </h3>
+                  {dashboardData?.inkChartData.length ? (
+                    <div className="h-[280px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={dashboardData.inkChartData}
+                            cx="50%"
+                            cy="45%"
+                            innerRadius={65}
+                            outerRadius={95}
+                            paddingAngle={6}
+                            dataKey="value"
+                            stroke="none"
+                            cornerRadius={4}
+                          >
+                            {dashboardData.inkChartData.map((entry: any, index: number) => (
+                              <Cell key={`cell-${index}`} fill={inkHexColors[entry.name as keyof typeof inkHexColors] || '#000'} className="drop-shadow-sm hover:opacity-80 transition-opacity" />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number) => [`${value} cards`, '']}
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+                          />
+                          <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
+                  )}
+                </div>
 
-              {/* Rarity Pie */}
-              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
-                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
-                  <span className="w-8 h-1 bg-purple-500 rounded-full"></span> Rarity Spectrum
-                </h3>
-                {dashboardData?.rarityChartData.length ? (
-                  <div className="h-[280px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={dashboardData.rarityChartData}
-                          cx="50%"
-                          cy="45%"
-                          innerRadius={65}
-                          outerRadius={95}
-                          paddingAngle={6}
-                          dataKey="value"
-                          stroke="none"
-                          cornerRadius={4}
-                        >
-                          {dashboardData.rarityChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={rarityColors[entry.name] || '#9ca3af'} className="drop-shadow-sm hover:opacity-80 transition-opacity" />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: number) => [`${value} cards`, '']}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
-                        />
-                        <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
-                )}
-              </div>
+                {/* Rarity Pie */}
+                <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
+                  <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                    <span className="w-8 h-1 bg-purple-500 rounded-full"></span> Rarity Spectrum
+                  </h3>
+                  {dashboardData?.rarityChartData.length ? (
+                    <div className="h-[280px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={dashboardData.rarityChartData}
+                            cx="50%"
+                            cy="45%"
+                            innerRadius={65}
+                            outerRadius={95}
+                            paddingAngle={6}
+                            dataKey="value"
+                            stroke="none"
+                            cornerRadius={4}
+                          >
+                            {dashboardData.rarityChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={rarityColors[entry.name] || '#9ca3af'} className="drop-shadow-sm hover:opacity-80 transition-opacity" />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number) => [`${value} cards`, '']}
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+                          />
+                          <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
+                  )}
+                </div>
 
-              {/* Card Type Distribution */}
-              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
-                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
-                  <span className="w-8 h-1 bg-emerald-500 rounded-full"></span> Card Types
-                </h3>
-                {dashboardData?.typeChartData?.length ? (
-                  <div className="h-[280px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={dashboardData.typeChartData}
-                          cx="50%"
-                          cy="45%"
-                          innerRadius={65}
-                          outerRadius={95}
-                          paddingAngle={6}
-                          dataKey="value"
-                          stroke="none"
-                          cornerRadius={4}
-                        >
-                          {dashboardData.typeChartData.map((entry: any, index: number) => {
-                            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
-                            return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} className="drop-shadow-sm hover:opacity-80 transition-opacity" />;
-                          })}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: number) => [`${value} cards`, '']}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
-                        />
-                        <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
-                )}
-              </div>
+                {/* Card Type Distribution */}
+                <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow">
+                  <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                    <span className="w-8 h-1 bg-emerald-500 rounded-full"></span> Card Types
+                  </h3>
+                  {dashboardData?.typeChartData?.length ? (
+                    <div className="h-[280px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={dashboardData.typeChartData}
+                            cx="50%"
+                            cy="45%"
+                            innerRadius={65}
+                            outerRadius={95}
+                            paddingAngle={6}
+                            dataKey="value"
+                            stroke="none"
+                            cornerRadius={4}
+                          >
+                            {dashboardData.typeChartData.map((entry: any, index: number) => {
+                              const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
+                              return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} className="drop-shadow-sm hover:opacity-80 transition-opacity" />;
+                            })}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number) => [`${value} cards`, '']}
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+                          />
+                          <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
+                  )}
+                </div>
 
-              {/* Cost Curve */}
-              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow lg:col-span-2 xl:col-span-1">
-                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
-                  <span className="w-8 h-1 bg-blue-500 rounded-full"></span> Cost Curve
-                </h3>
-                {dashboardData?.costChartData?.some((d: any) => d.value > 0) ? (
-                  <div className="h-[280px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dashboardData.costChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                        <defs>
-                          <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={1}/>
-                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.8}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
-                        <XAxis dataKey="name" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} dy={10}>
-                          <RechartsLabel value="Ink Cost" offset={-15} position="insideBottom" fill="hsl(var(--muted-foreground))" fontSize={11} fontWeight={600} />
-                        </XAxis>
-                        <YAxis tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} />
-                        <Tooltip
-                          cursor={{fill: 'hsl(var(--muted))', opacity: 0.2}}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
-                        />
-                        <Bar dataKey="value" name="Cards" fill="url(#costGradient)" radius={[6, 6, 0, 0]} barSize={32} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
-                )}
-              </div>
+                {/* Cost Curve */}
+                <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow lg:col-span-2 xl:col-span-1">
+                  <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                    <span className="w-8 h-1 bg-blue-500 rounded-full"></span> Cost Curve
+                  </h3>
+                  {dashboardData?.costChartData?.some((d: any) => d.value > 0) ? (
+                    <div className="h-[280px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dashboardData.costChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                          <defs>
+                            <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={1}/>
+                              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
+                          <XAxis dataKey="name" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} dy={10}>
+                            <RechartsLabel value="Ink Cost" offset={-15} position="insideBottom" fill="hsl(var(--muted-foreground))" fontSize={11} fontWeight={600} />
+                          </XAxis>
+                          <YAxis tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} />
+                          <Tooltip
+                            cursor={{fill: 'hsl(var(--muted))', opacity: 0.2}}
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+                          />
+                          <Bar dataKey="value" name="Cards" fill="url(#costGradient)" radius={[6, 6, 0, 0]} barSize={32} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
+                  )}
+                </div>
 
-              {/* Top Franchises */}
-              <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow lg:col-span-2">
-                <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
-                  <span className="w-8 h-1 bg-amber-500 rounded-full"></span> Top Franchises
-                </h3>
-                {dashboardData?.franchiseChartData?.length ? (
-                  <div className="h-[320px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dashboardData.franchiseChartData} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
-                        <defs>
-                          <linearGradient id="franchiseGradient" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.9}/>
-                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.9}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.4} />
-                        <XAxis type="number" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} />
-                        <YAxis type="category" dataKey="name" tick={{fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500}} axisLine={false} tickLine={false} width={100} />
-                        <Tooltip
-                          cursor={{fill: 'hsl(var(--muted))', opacity: 0.2}}
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
-                        />
-                        <Bar dataKey="value" name="Cards" fill="url(#franchiseGradient)" radius={[0, 6, 6, 0]} barSize={28} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-[320px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
-                )}
+                {/* Top Franchises */}
+                <div className="bg-card border rounded-2xl p-6 shadow-md shadow-primary/5 hover:shadow-lg transition-shadow lg:col-span-2">
+                  <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
+                    <span className="w-8 h-1 bg-amber-500 rounded-full"></span> Top Franchises
+                  </h3>
+                  {dashboardData?.franchiseChartData?.length ? (
+                    <div className="h-[320px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dashboardData.franchiseChartData} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
+                          <defs>
+                            <linearGradient id="franchiseGradient" x1="0" y1="0" x2="1" y2="0">
+                              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.9}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.4} />
+                          <XAxis type="number" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} axisLine={false} tickLine={false} />
+                          <YAxis type="category" dataKey="name" tick={{fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500}} axisLine={false} tickLine={false} width={100} />
+                          <Tooltip
+                            cursor={{fill: 'hsl(var(--muted))', opacity: 0.2}}
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+                          />
+                          <Bar dataKey="value" name="Cards" fill="url(#franchiseGradient)" radius={[0, 6, 6, 0]} barSize={28} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[320px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">No data for analysis.</div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="py-20 text-center bg-muted/10 border border-dashed rounded-3xl flex flex-col items-center">
+                <PieChartIcon className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-xl font-serif font-bold mb-2">Analysis Hidden</h3>
+                <p className="text-muted-foreground max-w-sm">Detailed collection analysis is private for this profile.</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="wishlist" className="space-y-8 mt-4 focus-visible:ring-0">
@@ -931,21 +1153,21 @@ export default function Profile() {
                     No items in wishlist yet.
                   </div>
                 ) : (
-                  wishlist.map(item => {
+                  wishlist.map((item: WishlistEntry) => {
                     const card = (lookup as Record<string, any>)[item.cardId];
                     if (!card) return null;
+                    
+                    // Auto-correct variant for Enchanted/Iconic cards which are foil-only
+                    const actualVariant = isFoilOnly(card) ? "foil" : item.variant;
+                    const pricing = getCardPricing(card);
+                    const price = actualVariant === "foil" ? pricing.foil : pricing.normal;
+                    
                     return (
-                      <div key={`${card.id}-${item.variant}`} className="space-y-2 relative">
+                      <div key={`${card.id}-${actualVariant}`} className="space-y-2 relative">
                         <CardDisplay card={card} />
-                        <div className={cn(
-                          "absolute top-2 left-2 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shadow-lg z-20",
-                          item.variant === "foil" ? "bg-amber-500 text-white" : "bg-primary text-white"
-                        )}>
-                          {item.variant}
-                        </div>
                         <div className="flex justify-between items-center px-1">
                           <span className="text-[10px] font-bold text-muted-foreground uppercase">{card.rarity}</span>
-                          <span className="text-[10px] font-bold text-emerald-500">{card.priceUsd ? formatPrice(card.priceUsd) : "N/A"}</span>
+                          <span className="text-[10px] font-bold text-emerald-500">{price > 0 ? formatPrice(price) : "N/A"}</span>
                         </div>
                       </div>
                     );
@@ -961,64 +1183,72 @@ export default function Profile() {
           </TabsContent>
 
           <TabsContent value="challenges" className="mt-4 focus-visible:ring-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              {dashboardData?.achievements.map((ach: any) => {
-                const Icon = (Icons as any)[ach.iconName] || Icons.Award;
-                const tierColors = dashboardData.rarityTierColors[ach.tier] || "";
-                return (
-                  <div
-                    key={ach.id}
-                    className={cn(
-                      "group relative bg-card border rounded-2xl p-6 transition-all duration-300 overflow-hidden",
-                      ach.earned ? "shadow-md hover:shadow-xl ring-2 ring-primary/5" : "opacity-60 grayscale bg-muted/50"
-                    )}
-                  >
-                    {/* Seasonal Indicator */}
-                    {ach.type === 'Seasonal' && (
-                      <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 rounded-bl-xl text-[9px] font-black uppercase tracking-widest text-white shadow-xl z-20">
-                        Seasonal Event
-                      </div>
-                    )}
+            {isPublicView ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                {dashboardData?.achievements.map((ach: any) => {
+                  const Icon = (Icons as any)[ach.iconName] || Icons.Award;
+                  const tierColors = dashboardData.rarityTierColors[ach.tier] || "";
+                  return (
+                    <div
+                      key={ach.id}
+                      className={cn(
+                        "group relative bg-card border rounded-2xl p-6 transition-all duration-300 overflow-hidden",
+                        ach.earned ? "shadow-md hover:shadow-xl ring-2 ring-primary/5" : "opacity-60 grayscale bg-muted/50"
+                      )}
+                    >
+                      {/* Seasonal Indicator */}
+                      {ach.type === 'Seasonal' && (
+                        <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 rounded-bl-xl text-[9px] font-black uppercase tracking-widest text-white shadow-xl z-20">
+                          Seasonal Event
+                        </div>
+                      )}
 
-                    <div className="relative z-10 flex flex-col h-full">
-                      <div className="flex items-start justify-between mb-4">
-                        {ach.badgeImageUrl ? (
-                          <div className="w-16 h-16 rounded-2xl overflow-hidden ring-2 ring-border shadow-sm mb-2 shrink-0">
-                            <img src={ach.badgeImageUrl} alt={ach.title} className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className={cn(
-                            "p-3 rounded-xl ring-1 ring-inset mb-2 shrink-0 flex items-center justify-center w-14 h-14",
-                            ach.earned ? tierColors : "bg-muted text-muted-foreground"
+                      <div className="relative z-10 flex flex-col h-full">
+                        <div className="flex items-start justify-between mb-4">
+                          {ach.badgeImageUrl ? (
+                            <div className="w-16 h-16 rounded-2xl overflow-hidden ring-2 ring-border shadow-sm mb-2 shrink-0">
+                              <img src={ach.badgeImageUrl} alt={ach.title} className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className={cn(
+                              "p-3 rounded-xl ring-1 ring-inset mb-2 shrink-0 flex items-center justify-center w-14 h-14",
+                              ach.earned ? tierColors : "bg-muted text-muted-foreground"
+                            )}>
+                              <Icon className="w-6 h-6" />
+                            </div>
+                          )}
+                          <span className={cn(
+                            "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border",
+                            ach.earned ? tierColors : "border-muted-foreground/30 text-muted-foreground/50"
                           )}>
-                            <Icon className="w-6 h-6" />
-                          </div>
-                        )}
-                        <span className={cn(
-                          "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border",
-                          ach.earned ? tierColors : "border-muted-foreground/30 text-muted-foreground/50"
-                        )}>
-                          {ach.tier}
-                        </span>
-                      </div>
-                      <h3 className="font-serif font-bold text-lg mb-2 group-hover:text-primary transition-colors">{ach.title}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                        {ach.description}
-                      </p>
-                      <div className="mt-auto flex items-center gap-2">
-                        <div className={cn(
-                          "w-2 h-2 rounded-full",
-                          ach.earned ? "bg-green-500 animate-pulse" : "bg-slate-300"
-                        )} />
-                        <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">
-                          {ach.earned ? "Achievement Unlocked" : "Progressing..."}
-                        </span>
+                            {ach.tier}
+                          </span>
+                        </div>
+                        <h3 className="font-serif font-bold text-lg mb-2 group-hover:text-primary transition-colors">{ach.title}</h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                          {ach.description}
+                        </p>
+                        <div className="mt-auto flex items-center gap-2">
+                          <div className={cn(
+                            "w-2 h-2 rounded-full",
+                            ach.earned ? "bg-green-500 animate-pulse" : "bg-slate-300"
+                          )} />
+                          <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">
+                            {ach.earned ? "Achievement Unlocked" : "Progressing..."}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-20 text-center bg-muted/10 border border-dashed rounded-3xl flex flex-col items-center">
+                <Icons.Award className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-xl font-serif font-bold mb-2">Achievements Hidden</h3>
+                <p className="text-muted-foreground max-w-sm">This player's achievements and challenges are private.</p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

@@ -78,10 +78,10 @@ export default function Resources() {
           color: "amber-500"
         },
         {
-          title: "Card Errata & FAQs",
-          description: "Official clarifications and text corrections for specific glimmers and items.",
+          title: "Ravensburger Play Hub",
+          description: "The official destination for organized play and event registration.",
           icon: <AlertCircle className="w-5 h-5" />,
-          href: "https://www.disneylorcana.com/en-US/resources",
+          href: "https://tcg.ravensburgerplay.com/",
           category: "Official",
           color: "rose-500"
         }
@@ -123,14 +123,6 @@ export default function Resources() {
       subtitle: "Optimize your competitive edge and collection value.",
       icon: <Wrench className="w-6 h-6" />,
       resources: [
-        {
-          title: "Melee.gg",
-          description: "The official tournament management platform. Register for Lorcana Challenges and local events.",
-          icon: <Trophy className="w-5 h-5" />,
-          href: "https://melee.gg/Game/Index/116",
-          category: "Tournament",
-          color: "violet-500"
-        },
         {
           title: "TCGplayer Prices",
           description: "Track the current market value of your glimmers and see price trends for all sets.",

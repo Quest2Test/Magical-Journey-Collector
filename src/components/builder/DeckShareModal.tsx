@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -15,6 +16,16 @@ interface Props {
   onShowCountChange: (val: boolean) => void;
   showValue: boolean;
   onShowValueChange: (val: boolean) => void;
+  showQRCode?: boolean;
+  onShowQRCodeChange?: (val: boolean) => void;
+  aspectRatio: "standard" | "square";
+  onAspectRatioChange: (ratio: "standard" | "square") => void;
+  showCostCurve: boolean;
+  onShowCostCurveChange: (val: boolean) => void;
+  showInkBreakdown: boolean;
+  onShowInkBreakdownChange: (val: boolean) => void;
+  showTypeBreakdown: boolean;
+  onShowTypeBreakdownChange: (val: boolean) => void;
   isGeneratingPreview: boolean;
   previewError: string | null;
   sharePreviewUrl: string | null;
@@ -32,6 +43,16 @@ export function DeckShareModal({
   onShowCountChange,
   showValue,
   onShowValueChange,
+  showQRCode = false,
+  onShowQRCodeChange,
+  aspectRatio,
+  onAspectRatioChange,
+  showCostCurve,
+  onShowCostCurveChange,
+  showInkBreakdown,
+  onShowInkBreakdownChange,
+  showTypeBreakdown,
+  onShowTypeBreakdownChange,
   isGeneratingPreview,
   previewError,
   sharePreviewUrl,
@@ -117,6 +138,61 @@ export function DeckShareModal({
                     <span className="text-sm font-medium">Market Value</span>
                     <Switch checked={showValue} onCheckedChange={onShowValueChange} />
                   </div>
+                </div>
+              </div>
+
+              <div className="h-px bg-border/40 my-1"></div>
+
+              <div className="space-y-4">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">Layout Style</Label>
+                <div className="flex p-1 bg-background/50 rounded-2xl border border-border/50">
+                  <button
+                    onClick={() => onAspectRatioChange("standard")}
+                    className={cn(
+                      "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
+                      aspectRatio === "standard" ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Standard
+                  </button>
+                  <button
+                    onClick={() => onAspectRatioChange("square")}
+                    className={cn(
+                      "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
+                      aspectRatio === "square" ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Square (IG)
+                  </button>
+                </div>
+              </div>
+
+              <div className="h-px bg-border/40 my-1"></div>
+
+              <div className="space-y-4">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">Infographics</Label>
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-background/50 border border-border/50 hover:border-primary/30 transition-colors">
+                    <span className="text-sm font-medium">Cost Curve</span>
+                    <Switch checked={showCostCurve} onCheckedChange={onShowCostCurveChange} />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-background/50 border border-border/50 hover:border-primary/30 transition-colors">
+                    <span className="text-sm font-medium">Ink Breakdown</span>
+                    <Switch checked={showInkBreakdown} onCheckedChange={onShowInkBreakdownChange} />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-background/50 border border-border/50 hover:border-primary/30 transition-colors">
+                    <span className="text-sm font-medium">Type Distribution</span>
+                    <Switch checked={showTypeBreakdown} onCheckedChange={onShowTypeBreakdownChange} />
+                  </div>
+                  {onShowQRCodeChange && (
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-background/50 border border-border/50 hover:border-primary/30 transition-colors">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-medium">Link QR Code</span>
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">Public Decks Only</span>
+                      </div>
+                      <Switch checked={showQRCode} onCheckedChange={onShowQRCodeChange} />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

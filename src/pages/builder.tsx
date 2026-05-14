@@ -40,6 +40,7 @@ import { DeckRegistrationSheetModal } from "@/components/builder/DeckRegistratio
 import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
 import { MulliganSimulator } from "@/components/builder/MulliganSimulator";
 import { CardFilters } from "@/components/builder/CardFilters";
+import { isProfane } from "@/lib/profanity";
 
 export default function DeckBuilder() {
   const { data: allCards = [], isLoading } = useAllCards();
@@ -112,7 +113,7 @@ export default function DeckBuilder() {
         setDeckCards(target.entries);
         setDeckId(target.id);
         setSavedAt(target.createdAt);
-        
+
         // If there's a sideboard, handle it if it exists in the data
         if ((target as any).sideboard) {
           setSideboardCards((target as any).sideboard);
@@ -188,7 +189,7 @@ export default function DeckBuilder() {
   // Deck Statistics Processing
   const { inkDistribution, costCurve, cardsByType, uninkableCount, totalValue, activeInks, isLegalInkCount, isLegalSize, maxInksReached, pieData, avgCost, typeBreakdown } = useMemo(() => {
     const inkDist: Record<string, number> = {};
-    const curve: { cost: string; count: number; [ink: string]: string | number }[] = Array.from({ length: 7 }, (_, i) => ({
+    const curve: { cost: string; count: number;[ink: string]: string | number }[] = Array.from({ length: 7 }, (_, i) => ({
       cost: i < 6 ? String(i + 1) : "7+",
       count: 0,
     }));
@@ -273,7 +274,20 @@ export default function DeckBuilder() {
     return Array.from(set).sort();
   }, [allCards]);
 
-  const { sharePreviewUrl, isGeneratingPreview, previewError, handleDownload } = useImageExport({
+  const {
+    sharePreviewUrl,
+    isGeneratingPreview,
+    previewError,
+    handleDownload,
+    aspectRatio,
+    setAspectRatio,
+    showCostCurve,
+    setShowCostCurve,
+    showInkBreakdown,
+    setShowInkBreakdown,
+    showTypeBreakdown,
+    setShowTypeBreakdown
+  } = useImageExport({
     active: shareModalOpen,
     deckCards,
     deckName,
@@ -285,7 +299,8 @@ export default function DeckBuilder() {
     formatPrice,
     showFormat,
     showCount,
-    showValue
+    showValue,
+    deckUrl: deckId ? `${window.location.origin}/decks/${deckId}` : undefined
   });
 
   // Filtering Left Panel
@@ -312,19 +327,19 @@ export default function DeckBuilder() {
         });
         if (!matchesType) return false;
       }
-      
+
       if (filterRarity.length > 0 && !filterRarity.includes(c.rarity)) return false;
-      
+
       if (filterKeywords.length > 0) {
         if (!c.keywords?.some(kw => filterKeywords.some(fk => kw.startsWith(fk)))) return false;
       }
-      
+
       if (filterClassifications.length > 0) {
         if (!c.classifications?.some(cl => filterClassifications.includes(cl))) return false;
       }
 
       if (filterFranchise.length > 0 && (!c.franchise || !filterFranchise.includes(c.franchise))) return false;
-      
+
       if (filterLore.length > 0) {
         const lore = c.lore || 0;
         if (!filterLore.includes(lore >= 4 ? 4 : lore)) return false;
@@ -558,6 +573,24 @@ export default function DeckBuilder() {
       return;
     }
 
+    if (deckName.length > 50) {
+      toast({
+        title: "Deck Name Too Long",
+        description: "Maximum 50 characters allowed.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isProfane(deckName)) {
+      toast({
+        title: "Deck Name Restricted",
+        description: "Please use a deck name that follows our community guidelines.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
     let currentId = deckId;
     if (!isUUID(currentId)) {
@@ -649,235 +682,243 @@ export default function DeckBuilder() {
     } else {
       toast({ title: "Import Failed", description: "No matching cards found. Check your list format.", variant: "destructive" });
     }
-  };    return (
-      <>
-        <div className="fixed inset-x-0 bottom-0 top-16 flex flex-col bg-background overflow-hidden z-40 animate-in fade-in duration-300">
-          <h1 className="sr-only">Lorcana Deck Builder</h1>
-          {/* Top bar content... I'll just keep the existing div and close it correctly */}
-          <div className="h-14 border-b bg-card flex items-center justify-between px-4 shrink-0 overflow-x-auto gap-4">
-            <Input
-              value={deckName}
-              onChange={e => setDeckName(e.target.value)}
-              className="w-[200px] sm:w-[300px] font-serif font-bold text-lg bg-transparent border-transparent hover:border-input focus:border-input focus:ring-1 transition-all shrink-0"
-            />
-            <div className="flex items-center gap-4 shrink-0">
-              <Select value={format} onValueChange={(v: any) => setFormat(v)}>
-                <SelectTrigger className="w-[120px] sm:w-[150px] h-8 text-xs bg-muted/50 border-border">
-                  <SelectValue placeholder="Format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Any">Any Format</SelectItem>
-                  <SelectItem value="Core">Core Constructed</SelectItem>
-                  <SelectItem value="Infinity">Infinity Constructed</SelectItem>
-                </SelectContent>
-              </Select>
-              <span className="font-bold text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-full text-sm">
-                {formatPrice(totalValue)}
-              </span>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {/* Progress Ring */}
-                <svg width="32" height="32" viewBox="0 0 36 36" className="shrink-0">
-                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted/30" />
-                  <circle
-                    cx="18" cy="18" r="15.5" fill="none"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeDasharray={`${Math.min((totalCards / 60) * 97.4, 97.4)} 97.4`}
-                    transform="rotate(-90 18 18)"
-                    className={totalCards === 60 ? "text-emerald-500 stroke-current" : totalCards > 60 ? "text-destructive stroke-current" : "text-primary stroke-current"}
-                  />
-                </svg>
-                <span className={`text-sm font-bold tabular-nums ${totalCards === 60 ? "text-green-500" : totalCards > 60 ? "text-destructive" : "text-muted-foreground"}`}>
-                  {totalCards}/60
-                </span>
-              </div>
-              {!isLegalInkCount && (
-                <span className="text-xs text-destructive bg-destructive/10 px-2 py-1 rounded">
-                  Max 2 inks
-                </span>
-              )}
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setHelpOpen(true)}
-                  className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
-                >
-                  <Info className="w-3.5 h-3.5" /> Guide
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setImportOpen(true)}
-                  className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
-                >
-                  <ClipboardPaste className="w-3.5 h-3.5" /> Import
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTestHandOpen(true)}
-                  disabled={deckCards.length === 0}
-                  className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" /> Test Hand
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors">
-                      <Copy className="w-3.5 h-3.5" /> Export
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Tournament Play</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => handleExport('melee')}>
-                      Melee.gg Official
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setRegSheetOpen(true)}>
-                      Official Registration Sheet
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Digital Platforms</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => handleExport('pixelborn')}>
-                      Pixelborn Format
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExport('inktable')}>
-                      Inktable Format
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShareModalOpen(true)}>
-                      Share Image
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Standard</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => handleExport('text')}>
-                      Plain Text List
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSave}
-                  className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
-                >
-                  <Save className="w-3.5 h-3.5" /> Save Deck
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearDeck}
-                  disabled={deckCards.length === 0}
-                  className="gap-2 h-8 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-30"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Clear
-                </Button>
+  }; return (
+    <>
+      <div className="fixed inset-x-0 bottom-0 top-16 flex flex-col bg-background overflow-hidden z-40 animate-in fade-in duration-300">
+        <h1 className="sr-only">Lorcana Deck Builder</h1>
+        {/* Top bar content... I'll just keep the existing div and close it correctly */}
+        <div className="h-14 border-b bg-card flex items-center justify-between px-4 shrink-0 overflow-x-auto gap-4">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+            <div className="relative group/name">
+              <Input
+                value={deckName}
+                onChange={(e) => setDeckName(e.target.value.substring(0, 50))}
+                className="w-[200px] sm:w-[300px] font-serif font-bold text-lg bg-transparent border-transparent hover:border-input focus:border-input focus:ring-1 transition-all shrink-0"
+                placeholder="Enter deck name..."
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted-foreground opacity-50 group-focus-within:opacity-100 transition-opacity">
+                {deckName.length}/50
               </div>
             </div>
           </div>
-
-          {/* Legality Warning Banner */}
-          {totalCards > 0 && (!isLegalSize || !isLegalInkCount || illegalCardsCount > 0) && (
-            <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-3 shrink-0 overflow-x-auto">
-              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-              <div className="flex items-center gap-3 text-xs font-medium flex-wrap">
-                {totalCards !== 60 && (
-                  <span className="text-amber-600 dark:text-amber-400">
-                    {totalCards < 60 ? `${60 - totalCards} cards short of 60` : `${totalCards - 60} cards over 60`}
-                  </span>
-                )}
-                {!isLegalInkCount && (
-                  <span className="text-amber-600 dark:text-amber-400">Too many ink colors ({activeInks.length}/2)</span>
-                )}
-                {illegalCardsCount > 0 && (
-                  <span className="text-amber-600 dark:text-amber-400">{illegalCardsCount} card{illegalCardsCount !== 1 ? 's' : ''} illegal in {format}</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden min-h-0">
-            {/* Left: Card Browser */}
-            <ResizablePanel defaultSize={28} minSize={20}>
-              <div className="flex flex-col h-full border-r bg-background min-h-0">
-                <CardFilters 
-                  search={search}
-                  setSearch={setSearch}
-                  filterInk={filterInk}
-                  setFilterInk={setFilterInk}
-                  filterCost={filterCost}
-                  setFilterCost={setFilterCost}
-                  filterType={filterType}
-                  setFilterType={setFilterType}
-                  filterSet={filterSet}
-                  setFilterSet={setFilterSet}
-                  filterKeywords={filterKeywords}
-                  setFilterKeywords={setFilterKeywords}
-                  filterClassifications={filterClassifications}
-                  setFilterClassifications={setFilterClassifications}
-                  filterRarity={filterRarity}
-                  setFilterRarity={setFilterRarity}
-                  inkableOnly={inkableOnly}
-                  setInkableOnly={setInkableOnly}
-                  showUnreleased={showUnreleased}
-                  setShowUnreleased={setShowUnreleased}
-                  smartFilter={smartFilter}
-                  setSmartFilter={setSmartFilter}
-                  maxInksReached={maxInksReached}
-                  activeInks={activeInks}
-                  sets={sets}
-                  allCards={allCards}
-                  format={format}
-                  filterFranchise={filterFranchise}
-                  setFilterFranchise={setFilterFranchise}
-                  filterLore={filterLore}
-                  setFilterLore={setFilterLore}
-                  ownershipFilter={ownershipFilter}
-                  setOwnershipFilter={setOwnershipFilter}
-                  availableFranchises={availableFranchises}
+          <div className="flex items-center gap-4 shrink-0">
+            <Select value={format} onValueChange={(v: any) => setFormat(v)}>
+              <SelectTrigger className="w-[120px] sm:w-[150px] h-8 text-xs bg-muted/50 border-border">
+                <SelectValue placeholder="Format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Any">Any Format</SelectItem>
+                <SelectItem value="Core">Core Constructed</SelectItem>
+                <SelectItem value="Infinity">Infinity Constructed</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="font-bold text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-full text-sm">
+              {formatPrice(totalValue)}
+            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Progress Ring */}
+              <svg width="32" height="32" viewBox="0 0 36 36" className="shrink-0">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted/30" />
+                <circle
+                  cx="18" cy="18" r="15.5" fill="none"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeDasharray={`${Math.min((totalCards / 60) * 97.4, 97.4)} 97.4`}
+                  transform="rotate(-90 18 18)"
+                  className={totalCards === 60 ? "text-emerald-500 stroke-current" : totalCards > 60 ? "text-destructive stroke-current" : "text-primary stroke-current"}
                 />
-                <div 
-                  ref={parentRef} 
-                  className="flex-1 overflow-y-auto custom-scrollbar"
-                  style={{ contain: 'strict' }}
-                >
-                  {isLoading ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <div 
-                      style={{
-                        height: `${rowVirtualizer.getTotalSize()}px`,
-                        width: '100%',
-                        position: 'relative',
-                      }}
-                      className="p-2"
-                    >
-                      {rowVirtualizer.getVirtualItems().map((virtualRow: any) => {
-                        const card = filteredCards[virtualRow.index];
-                        const inDeckQty = deckCards.find(e => e.card.id === card.id)?.qty || 0;
-                        // Check total copies of this card identity (name+subtitle) across all variants
-                        const totalIdentityCopies = deckCards.reduce((sum, e) => {
-                          if (e.card.name === card.name && e.card.subtitle === card.subtitle) return sum + e.qty;
-                          return sum;
-                        }, 0);
-                        const isMaxedOut = totalIdentityCopies >= 4;
-                        const isDeckFull = totalCards >= 60;
-                        return (
-                          <div
-                            key={virtualRow.index}
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: `${virtualRow.size}px`,
-                              transform: `translateY(${virtualRow.start}px)`,
-                              paddingBottom: '2px', // space-y-0.5 equivalent
-                            }}
-                          >
-                            <HoverCard openDelay={200} closeDelay={50}>
+              </svg>
+              <span className={`text-sm font-bold tabular-nums ${totalCards === 60 ? "text-green-500" : totalCards > 60 ? "text-destructive" : "text-muted-foreground"}`}>
+                {totalCards}/60
+              </span>
+            </div>
+            {!isLegalInkCount && (
+              <span className="text-xs text-destructive bg-destructive/10 px-2 py-1 rounded">
+                Max 2 inks
+              </span>
+            )}
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setHelpOpen(true)}
+                className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Info className="w-3.5 h-3.5" /> Guide
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setImportOpen(true)}
+                className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <ClipboardPaste className="w-3.5 h-3.5" /> Import
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTestHandOpen(true)}
+                disabled={deckCards.length === 0}
+                className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" /> Test Hand
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors">
+                    <Copy className="w-3.5 h-3.5" /> Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Tournament Play</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => handleExport('melee')}>
+                    Melee.gg Official
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setRegSheetOpen(true)}>
+                    Official Registration Sheet
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Digital Platforms</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => handleExport('pixelborn')}>
+                    Pixelborn Format
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('inktable')}>
+                    Inktable Format
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShareModalOpen(true)}>
+                    Share Image
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Standard</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => handleExport('text')}>
+                    Plain Text List
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSave}
+                className="gap-2 h-8 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Save className="w-3.5 h-3.5" /> Save Deck
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearDeck}
+                disabled={deckCards.length === 0}
+                className="gap-2 h-8 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-30"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Clear
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Legality Warning Banner */}
+        {totalCards > 0 && (!isLegalSize || !isLegalInkCount || illegalCardsCount > 0) && (
+          <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-3 shrink-0 overflow-x-auto">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+            <div className="flex items-center gap-3 text-xs font-medium flex-wrap">
+              {totalCards !== 60 && (
+                <span className="text-amber-600 dark:text-amber-400">
+                  {totalCards < 60 ? `${60 - totalCards} cards short of 60` : `${totalCards - 60} cards over 60`}
+                </span>
+              )}
+              {!isLegalInkCount && (
+                <span className="text-amber-600 dark:text-amber-400">Too many ink colors ({activeInks.length}/2)</span>
+              )}
+              {illegalCardsCount > 0 && (
+                <span className="text-amber-600 dark:text-amber-400">{illegalCardsCount} card{illegalCardsCount !== 1 ? 's' : ''} illegal in {format}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden min-h-0">
+          {/* Left: Card Browser */}
+          <ResizablePanel defaultSize={28} minSize={20}>
+            <div className="flex flex-col h-full border-r bg-background min-h-0">
+              <CardFilters
+                search={search}
+                setSearch={setSearch}
+                filterInk={filterInk}
+                setFilterInk={setFilterInk}
+                filterCost={filterCost}
+                setFilterCost={setFilterCost}
+                filterType={filterType}
+                setFilterType={setFilterType}
+                filterSet={filterSet}
+                setFilterSet={setFilterSet}
+                filterKeywords={filterKeywords}
+                setFilterKeywords={setFilterKeywords}
+                filterClassifications={filterClassifications}
+                setFilterClassifications={setFilterClassifications}
+                filterRarity={filterRarity}
+                setFilterRarity={setFilterRarity}
+                inkableOnly={inkableOnly}
+                setInkableOnly={setInkableOnly}
+                showUnreleased={showUnreleased}
+                setShowUnreleased={setShowUnreleased}
+                smartFilter={smartFilter}
+                setSmartFilter={setSmartFilter}
+                maxInksReached={maxInksReached}
+                activeInks={activeInks}
+                sets={sets}
+                allCards={allCards}
+                format={format}
+                filterFranchise={filterFranchise}
+                setFilterFranchise={setFilterFranchise}
+                filterLore={filterLore}
+                setFilterLore={setFilterLore}
+                ownershipFilter={ownershipFilter}
+                setOwnershipFilter={setOwnershipFilter}
+                availableFranchises={availableFranchises}
+              />
+              <div
+                ref={parentRef}
+                className="flex-1 overflow-y-auto custom-scrollbar"
+                style={{ contain: 'strict' }}
+              >
+                {isLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      height: `${rowVirtualizer.getTotalSize()}px`,
+                      width: '100%',
+                      position: 'relative',
+                    }}
+                    className="p-2"
+                  >
+                    {rowVirtualizer.getVirtualItems().map((virtualRow: any) => {
+                      const card = filteredCards[virtualRow.index];
+                      const inDeckQty = deckCards.find(e => e.card.id === card.id)?.qty || 0;
+                      // Check total copies of this card identity (name+subtitle) across all variants
+                      const totalIdentityCopies = deckCards.reduce((sum, e) => {
+                        if (e.card.name === card.name && e.card.subtitle === card.subtitle) return sum + e.qty;
+                        return sum;
+                      }, 0);
+                      const isMaxedOut = totalIdentityCopies >= 4;
+                      const isDeckFull = totalCards >= 60;
+                      return (
+                        <div
+                          key={virtualRow.index}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: `${virtualRow.size}px`,
+                            transform: `translateY(${virtualRow.start}px)`,
+                            paddingBottom: '2px', // space-y-0.5 equivalent
+                          }}
+                        >
+                          <HoverCard openDelay={200} closeDelay={50}>
                             <HoverCardTrigger asChild>
                               <button
                                 onClick={() => addCard(card)}
@@ -911,252 +952,258 @@ export default function DeckBuilder() {
                               <CardDisplay card={card} className="w-full" />
                             </HoverCardContent>
                           </HoverCard>
-                          </div>
-                        );
-                      })}
-                      {filteredCards.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-8">No cards matching filters</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </ResizablePanel>
-
-            <ResizableHandle />
-
-            {/* Center: Deck Canvas */}
-            <ResizablePanel defaultSize={44} minSize={30}>
-              <div className="h-full flex flex-col min-h-0 bg-background">
-                <div className="p-3 border-b shrink-0 flex flex-wrap justify-between items-center gap-2 bg-muted/20">
-                  <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
-                    <button
-                      onClick={() => setActiveCanvas('main')}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                        activeCanvas === 'main' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      Main <span className="ml-1 text-[10px] opacity-70">{totalCards}/60</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveCanvas('sideboard')}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                        activeCanvas === 'sideboard' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      Sideboard <span className="ml-1 text-[10px] opacity-70">{sideboardCards.reduce((a,c) => a+c.qty,0)}</span>
-                    </button>
-                  </div>
-                  <Select value={groupingMode} onValueChange={(v: any) => setGroupingMode(v)}>
-                    <SelectTrigger className="w-[140px] h-8 text-xs bg-card">
-                      <SelectValue placeholder="Group by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cost">Group by Cost</SelectItem>
-                      <SelectItem value="type">Group by Type</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <ScrollArea className="flex-1">
-                  <div className="p-4 space-y-6">
-                    {activeCanvas === 'main' ? (
-                      totalCards === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] opacity-60 select-none">
-                          <div className="w-24 h-24 mb-6 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-                            <Droplet className="w-12 h-12 text-primary" />
-                          </div>
-                          <h3 className="text-xl font-bold tracking-tight mb-2">Your Deck is Empty</h3>
-                          <p className="text-muted-foreground max-w-xs text-center text-sm">Click cards from the left panel to begin building your deck.</p>
                         </div>
-                      ) : (
-                        Object.entries(groupedDeck).map(([groupName, cards]) => {
-                          if (cards.length === 0) return null;
-                          const groupTotal = cards.reduce((a, c) => a + c.qty, 0);
-                          const displayTitle = groupingMode === 'type' ? `${groupName}s` : `Cost ${groupName}`;
-                          return (
-                            <div key={groupName} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                              <div className="flex items-center justify-between mb-2">
-                                <h3 className="font-bold font-serif text-sm uppercase tracking-wider text-muted-foreground">{displayTitle}</h3>
-                                <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-medium">{groupTotal}</span>
-                              </div>
-                              <div className="space-y-1">
-                                {cards.map(({ card, qty }) => (
-                                  <HoverCard key={card.id} openDelay={300} closeDelay={50}>
-                                    <HoverCardTrigger asChild>
-                                      <div
-                                        className="flex items-center gap-2 p-1.5 rounded-lg bg-card border hover:border-primary/40 transition-colors group cursor-default"
-                                        style={{ backgroundImage: `linear-gradient(90deg, ${inkHexColors[card.inkColor]}55, transparent 35%)` }}
-                                      >
-                                        <div className="w-9 h-12 rounded-md overflow-hidden shrink-0 bg-muted border border-border/50">
-                                          {card.image ? (
-                                            <img src={card.thumbnail || card.image} alt={card.name} loading="lazy" className="w-full h-full object-cover" />
-                                          ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                              <img src={getInkLogo(card.inkColor)} alt={card.inkColor} className="w-5 h-5 object-contain opacity-40" />
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="w-6 h-6 rounded flex items-center justify-center border border-border/50 shrink-0" title={card.inkColor}>
-                                          <img src={getInkLogo(card.inkColor)} alt={card.inkColor} className="w-4 h-4 object-contain" />
-                                        </div>
-                                        <div className="w-6 h-6 rounded flex items-center justify-center bg-muted text-xs font-bold border border-border/50 shrink-0">{card.cost}</div>
-                                        <div className="flex-1 min-w-0 pr-2">
-                                          <p className="text-sm font-medium truncate flex items-center gap-1.5">
-                                            {card.name}
-                                            {!card.inkable && <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" title="Uninkable" />}
-                                            {collectionStats.missingByCard[card.id] > 0 && (
-                                              <span className="text-[10px] bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded font-bold border border-amber-500/20">Missing {collectionStats.missingByCard[card.id]}</span>
-                                            )}
-                                          </p>
-                                          {getFormattedSubtitle(card) ? (
-                                            <p className="text-[10px] text-muted-foreground truncate uppercase">{getFormattedSubtitle(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}</p>
-                                          ) : (
-                                            <p className="text-[10px] text-muted-foreground truncate uppercase">{getDisplayType(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}</p>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                          <button onClick={() => removeCard(card.id)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-secondary transition-colors"><Minus className="w-3 h-3" /></button>
-                                          <span className="w-6 text-center font-bold text-sm">{qty}</span>
-                                          <button onClick={() => addCard(card)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed" disabled={qty >= 4 || totalCards >= 60}><Plus className="w-3 h-3" /></button>
-                                          <button onClick={() => removeCard(card.id, true)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-destructive/20 text-destructive transition-colors opacity-0 group-hover:opacity-100 ml-1"><Trash2 className="w-3 h-3" /></button>
-                                        </div>
-                                      </div>
-                                    </HoverCardTrigger>
-                                    <HoverCardContent side="left" className="w-[280px] p-0 border-0 shadow-2xl bg-transparent" align="start">
-                                      <CardDisplay card={card} className="w-full" />
-                                    </HoverCardContent>
-                                  </HoverCard>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )
-                    ) : (
-                      sideboardCards.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] opacity-60 select-none">
-                          <div className="w-24 h-24 mb-6 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-                            <Archive className="w-12 h-12 text-primary" />
-                          </div>
-                          <h3 className="text-xl font-bold tracking-tight mb-2">Sideboard Empty</h3>
-                          <p className="text-muted-foreground max-w-xs text-center text-sm">Add cards to test possible tech choices and swap-ins.</p>
-                        </div>
-                      ) : (
-                        <div className="animate-in fade-in duration-300">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-bold font-serif text-sm uppercase tracking-wider text-muted-foreground">Sideboard</h3>
-                            <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-medium">{sideboardCards.reduce((a,c)=>a+c.qty,0)}</span>
-                          </div>
-                          <div className="space-y-1">
-                            {sideboardCards.map(({ card, qty }) => (
-                              <HoverCard key={card.id} openDelay={300} closeDelay={50}>
-                                <HoverCardTrigger asChild>
-                                  <div
-                                    className="flex items-center gap-2 p-1.5 rounded-lg bg-card border hover:border-primary/40 transition-colors group cursor-default"
-                                    style={{ backgroundImage: `linear-gradient(90deg, ${inkHexColors[card.inkColor]}55, transparent 35%)` }}
-                                  >
-                                    <div className="w-9 h-12 rounded-md overflow-hidden shrink-0 bg-muted border border-border/50">
-                                      {card.image ? <img src={card.thumbnail || card.image} alt={card.name} loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><img src={getInkLogo(card.inkColor)} alt={card.inkColor} className="w-5 h-5 object-contain opacity-40" /></div>}
-                                    </div>
-                                    <div className="flex-1 min-w-0 pr-2">
-                                      <p className="text-sm font-medium truncate">{card.name}</p>
-                                      <p className="text-[10px] text-muted-foreground truncate uppercase">{card.inkColor} · Cost {card.cost}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <button onClick={() => removeCard(card.id, false, true)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-secondary transition-colors"><Minus className="w-3 h-3" /></button>
-                                      <span className="w-6 text-center font-bold text-sm">{qty}</span>
-                                      <button onClick={() => addCard(card)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-secondary transition-colors"><Plus className="w-3 h-3" /></button>
-                                      <button onClick={() => removeCard(card.id, true, true)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-destructive/20 text-destructive transition-colors opacity-0 group-hover:opacity-100 ml-1"><Trash2 className="w-3 h-3" /></button>
-                                    </div>
-                                  </div>
-                                </HoverCardTrigger>
-                                <HoverCardContent side="left" className="w-[280px] p-0 border-0 shadow-2xl bg-transparent" align="start">
-                                  <CardDisplay card={card} className="w-full" />
-                                </HoverCardContent>
-                              </HoverCard>
-                            ))}
-                          </div>
-                        </div>
-                      )
+                      );
+                    })}
+                    {filteredCards.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No cards matching filters</p>
                     )}
                   </div>
-                </ScrollArea>
+                )}
               </div>
-            </ResizablePanel>
+            </div>
+          </ResizablePanel>
 
-            <ResizableHandle />
+          <ResizableHandle />
 
-            {/* Right: Stats */}
-            <ResizablePanel defaultSize={28} minSize={20}>
-              <DeckAnalysisPanel
-                user={user}
-                totalCards={totalCards}
-                deckCardsLength={deckCards.length}
-                avgCost={avgCost}
-                pieData={pieData}
-                typeBreakdown={typeBreakdown}
-                costCurve={costCurve}
-                activeInks={activeInks}
-                uninkableCount={uninkableCount}
-                collectionStats={collectionStats}
-                isLegalSize={isLegalSize}
-                isLegalInkCount={isLegalInkCount}
-                illegalCardsCount={illegalCardsCount}
-                format={format}
-                formatPrice={formatPrice}
-              />
-            </ResizablePanel>
-          </ResizablePanelGroup>
+          {/* Center: Deck Canvas */}
+          <ResizablePanel defaultSize={44} minSize={30}>
+            <div className="h-full flex flex-col min-h-0 bg-background">
+              <div className="p-3 border-b shrink-0 flex flex-wrap justify-between items-center gap-2 bg-muted/20">
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+                  <button
+                    onClick={() => setActiveCanvas('main')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${activeCanvas === 'main' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                  >
+                    Main <span className="ml-1 text-[10px] opacity-70">{totalCards}/60</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveCanvas('sideboard')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${activeCanvas === 'sideboard' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                  >
+                    Sideboard <span className="ml-1 text-[10px] opacity-70">{sideboardCards.reduce((a, c) => a + c.qty, 0)}</span>
+                  </button>
+                </div>
+                <Select value={groupingMode} onValueChange={(v: any) => setGroupingMode(v)}>
+                  <SelectTrigger className="w-[140px] h-8 text-xs bg-card">
+                    <SelectValue placeholder="Group by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cost">Group by Cost</SelectItem>
+                    <SelectItem value="type">Group by Type</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-4 space-y-6">
+                  {activeCanvas === 'main' ? (
+                    totalCards === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full min-h-[400px] opacity-60 select-none">
+                        <div className="w-24 h-24 mb-6 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                          <Droplet className="w-12 h-12 text-primary" />
+                        </div>
+                        <h3 className="text-xl font-bold tracking-tight mb-2">Your Deck is Empty</h3>
+                        <p className="text-muted-foreground max-w-xs text-center text-sm">Click cards from the left panel to begin building your deck.</p>
+                      </div>
+                    ) : (
+                      Object.entries(groupedDeck).map(([groupName, cards]) => {
+                        if (cards.length === 0) return null;
+                        const groupTotal = cards.reduce((a, c) => a + c.qty, 0);
+                        const displayTitle = groupingMode === 'type' ? `${groupName}s` : `Cost ${groupName}`;
+                        return (
+                          <div key={groupName} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-bold font-serif text-sm uppercase tracking-wider text-muted-foreground">{displayTitle}</h3>
+                              <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-medium">{groupTotal}</span>
+                            </div>
+                            <div className="space-y-1">
+                              {cards.map(({ card, qty }) => (
+                                <HoverCard key={card.id} openDelay={300} closeDelay={50}>
+                                  <HoverCardTrigger asChild>
+                                    <div
+                                      className="flex items-center gap-2 p-1.5 rounded-lg bg-card border hover:border-primary/40 transition-colors group cursor-default"
+                                      style={{ backgroundImage: `linear-gradient(90deg, ${inkHexColors[card.inkColor]}55, transparent 35%)` }}
+                                    >
+                                      <div className="w-9 h-12 rounded-md overflow-hidden shrink-0 bg-muted border border-border/50">
+                                        {card.image ? (
+                                          <img src={card.thumbnail || card.image} alt={card.name} loading="lazy" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center">
+                                            <img src={getInkLogo(card.inkColor)} alt={card.inkColor} className="w-5 h-5 object-contain opacity-40" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="w-6 h-6 rounded flex items-center justify-center border border-border/50 shrink-0" title={card.inkColor}>
+                                        <img src={getInkLogo(card.inkColor)} alt={card.inkColor} className="w-4 h-4 object-contain" />
+                                      </div>
+                                      <div className="w-6 h-6 rounded flex items-center justify-center bg-muted text-xs font-bold border border-border/50 shrink-0">{card.cost}</div>
+                                      <div className="flex-1 min-w-0 pr-2">
+                                        <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                                          {card.name}
+                                          {!card.inkable && <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" title="Uninkable" />}
+                                          {collectionStats.missingByCard[card.id] > 0 && (
+                                            <span className="text-[10px] bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded font-bold border border-amber-500/20">Missing {collectionStats.missingByCard[card.id]}</span>
+                                          )}
+                                        </p>
+                                        {getFormattedSubtitle(card) ? (
+                                          <p className="text-[10px] text-muted-foreground truncate uppercase">{getFormattedSubtitle(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}</p>
+                                        ) : (
+                                          <p className="text-[10px] text-muted-foreground truncate uppercase">{getDisplayType(card)} · {card.cardNum}{setCountMap[card.set] ? `/${setCountMap[card.set]}` : ""}</p>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button onClick={() => removeCard(card.id)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-secondary transition-colors"><Minus className="w-3 h-3" /></button>
+                                        <span className="w-6 text-center font-bold text-sm">{qty}</span>
+                                        <button onClick={() => addCard(card)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed" disabled={qty >= 4 || totalCards >= 60}><Plus className="w-3 h-3" /></button>
+                                        <button onClick={() => removeCard(card.id, true)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-destructive/20 text-destructive transition-colors opacity-0 group-hover:opacity-100 ml-1"><Trash2 className="w-3 h-3" /></button>
+                                      </div>
+                                    </div>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent side="left" className="w-[280px] p-0 border-0 shadow-2xl bg-transparent" align="start">
+                                    <CardDisplay card={card} className="w-full" />
+                                  </HoverCardContent>
+                                </HoverCard>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
+                  ) : (
+                    sideboardCards.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full min-h-[400px] opacity-60 select-none">
+                        <div className="w-24 h-24 mb-6 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                          <Archive className="w-12 h-12 text-primary" />
+                        </div>
+                        <h3 className="text-xl font-bold tracking-tight mb-2">Sideboard Empty</h3>
+                        <p className="text-muted-foreground max-w-xs text-center text-sm">Add cards to test possible tech choices and swap-ins.</p>
+                      </div>
+                    ) : (
+                      <div className="animate-in fade-in duration-300">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-bold font-serif text-sm uppercase tracking-wider text-muted-foreground">Sideboard</h3>
+                          <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-medium">{sideboardCards.reduce((a, c) => a + c.qty, 0)}</span>
+                        </div>
+                        <div className="space-y-1">
+                          {sideboardCards.map(({ card, qty }) => (
+                            <HoverCard key={card.id} openDelay={300} closeDelay={50}>
+                              <HoverCardTrigger asChild>
+                                <div
+                                  className="flex items-center gap-2 p-1.5 rounded-lg bg-card border hover:border-primary/40 transition-colors group cursor-default"
+                                  style={{ backgroundImage: `linear-gradient(90deg, ${inkHexColors[card.inkColor]}55, transparent 35%)` }}
+                                >
+                                  <div className="w-9 h-12 rounded-md overflow-hidden shrink-0 bg-muted border border-border/50">
+                                    {card.image ? <img src={card.thumbnail || card.image} alt={card.name} loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><img src={getInkLogo(card.inkColor)} alt={card.inkColor} className="w-5 h-5 object-contain opacity-40" /></div>}
+                                  </div>
+                                  <div className="flex-1 min-w-0 pr-2">
+                                    <p className="text-sm font-medium truncate">{card.name}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate uppercase">{card.inkColor} · Cost {card.cost}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button onClick={() => removeCard(card.id, false, true)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-secondary transition-colors"><Minus className="w-3 h-3" /></button>
+                                    <span className="w-6 text-center font-bold text-sm">{qty}</span>
+                                    <button onClick={() => addCard(card)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-secondary transition-colors"><Plus className="w-3 h-3" /></button>
+                                    <button onClick={() => removeCard(card.id, true, true)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-destructive/20 text-destructive transition-colors opacity-0 group-hover:opacity-100 ml-1"><Trash2 className="w-3 h-3" /></button>
+                                  </div>
+                                </div>
+                              </HoverCardTrigger>
+                              <HoverCardContent side="left" className="w-[280px] p-0 border-0 shadow-2xl bg-transparent" align="start">
+                                <CardDisplay card={card} className="w-full" />
+                              </HoverCardContent>
+                            </HoverCard>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </ResizablePanel>
 
-          <DeckImportModal
-            open={importOpen}
-            onOpenChange={setImportOpen}
-            importText={importText}
-            onImportTextChange={setImportText}
-            onImport={handleImport}
-          />
+          <ResizableHandle />
 
-          <DeckShareModal
-            open={shareModalOpen}
-            onOpenChange={setShareModalOpen}
-            shareColumns={shareColumns}
-            onShareColumnsChange={setShareColumns}
-            showFormat={showFormat}
-            onShowFormatChange={setShowFormat}
-            showCount={showCount}
-            onShowCountChange={setShowCount}
-            showValue={showValue}
-            onShowValueChange={setShowValue}
-            isGeneratingPreview={isGeneratingPreview}
-            previewError={previewError}
-            sharePreviewUrl={sharePreviewUrl}
-            onDownload={handleDownload}
-          />
+          {/* Right: Stats */}
+          <ResizablePanel defaultSize={28} minSize={20}>
+            <DeckAnalysisPanel
+              user={user}
+              totalCards={totalCards}
+              deckCardsLength={deckCards.length}
+              avgCost={avgCost}
+              pieData={pieData}
+              typeBreakdown={typeBreakdown}
+              costCurve={costCurve}
+              activeInks={activeInks}
+              uninkableCount={uninkableCount}
+              collectionStats={collectionStats}
+              isLegalSize={isLegalSize}
+              isLegalInkCount={isLegalInkCount}
+              illegalCardsCount={illegalCardsCount}
+              format={format}
+              formatPrice={formatPrice}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
 
-          <DeckGuideModal open={helpOpen} onOpenChange={setHelpOpen} />
+        <DeckImportModal
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          importText={importText}
+          onImportTextChange={setImportText}
+          onImport={handleImport}
+        />
 
-          <DeckAuthGuardModal open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
+        <DeckShareModal
+          open={shareModalOpen}
+          onOpenChange={setShareModalOpen}
+          shareColumns={shareColumns}
+          onShareColumnsChange={setShareColumns}
+          showFormat={showFormat}
+          onShowFormatChange={setShowFormat}
+          showCount={showCount}
+          onShowCountChange={setShowCount}
+          showValue={showValue}
+          onShowValueChange={setShowValue}
+          showCostCurve={showCostCurve}
+          onShowCostCurveChange={setShowCostCurve}
+          showInkBreakdown={showInkBreakdown}
+          onShowInkBreakdownChange={setShowInkBreakdown}
+          showTypeBreakdown={showTypeBreakdown}
+          onShowTypeBreakdownChange={setShowTypeBreakdown}
+          isGeneratingPreview={isGeneratingPreview}
+          previewError={previewError}
+          sharePreviewUrl={sharePreviewUrl}
+          onDownload={handleDownload}
+          aspectRatio={aspectRatio}
+          onAspectRatioChange={setAspectRatio}
+        />
 
-          {/* <DeckPrintProxiesModal 
+        <DeckGuideModal open={helpOpen} onOpenChange={setHelpOpen} />
+
+        <DeckAuthGuardModal open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
+
+        {/* <DeckPrintProxiesModal 
             open={printProxiesOpen} 
             onOpenChange={setPrintProxiesOpen} 
             deckCards={deckCards}
           /> */}
 
-          <DeckRegistrationSheetModal
-            open={regSheetOpen}
-            onOpenChange={setRegSheetOpen}
-            deckCards={deckCards}
-            deckName={deckName}
-          />
+        <DeckRegistrationSheetModal
+          open={regSheetOpen}
+          onOpenChange={setRegSheetOpen}
+          deckCards={deckCards}
+          deckName={deckName}
+        />
 
-          <MulliganSimulator 
-            open={testHandOpen} 
-            onOpenChange={setTestHandOpen} 
-            deckCards={deckCards} 
-            deckName={deckName} 
-          />
-        </div>
-      </>
-    );
+        <MulliganSimulator
+          open={testHandOpen}
+          onOpenChange={setTestHandOpen}
+          deckCards={deckCards}
+          deckName={deckName}
+        />
+      </div>
+    </>
+  );
 }

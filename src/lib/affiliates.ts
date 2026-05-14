@@ -41,6 +41,22 @@ export function buildTCGPlayerUrl(card: Card): string {
 }
 
 /**
+ * Builds an affiliate-tracked URL for TCGPlayer Mass Entry.
+ */
+export function buildTCGPlayerMassEntryUrl(lines: string[]): string {
+  if (lines.length === 0) return "";
+  
+  const affiliateId = import.meta.env.VITE_TCGPLAYER_AFFILIATE_ID || "";
+  const massEntryBase = `https://www.tcgplayer.com/massentry?productline=Lorcana TCG&c=${encodeURIComponent(lines.join("||"))}`;
+  
+  if (!affiliateId || affiliateId === "lorbound") {
+    return massEntryBase;
+  }
+  
+  return `https://tcgplayer.pxf.io/c/${affiliateId}/1830156/21018?u=${encodeURIComponent(massEntryBase)}`;
+}
+
+/**
  * Builds an affiliate-tracked URL for CardMarket.
  */
 export function buildCardMarketUrl(card: Card): string {

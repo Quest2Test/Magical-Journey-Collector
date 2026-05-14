@@ -1,5 +1,6 @@
 import { inkHexColors, getInkLogo } from "@/components/ui/card-display";
 import { Card } from "@/data/cards";
+import QRCode from 'qrcode';
 
 export interface ExportImageParams {
   deckCards: { card: Card; qty: number }[];
@@ -13,6 +14,12 @@ export interface ExportImageParams {
   showFormat?: boolean;
   showCount?: boolean;
   showValue?: boolean;
+  showQRCode?: boolean;
+  deckUrl?: string;
+  aspectRatio?: "standard" | "square";
+  showCostCurve?: boolean;
+  showInkBreakdown?: boolean;
+  showTypeBreakdown?: boolean;
 }
 
 const INK_HEX_COLORS: Record<string, string> = {
@@ -35,7 +42,13 @@ export const buildDeckExportImage = async ({
   formatPrice,
   showFormat = true,
   showCount = true,
-  showValue = true
+  showValue = true,
+  showQRCode = false,
+  deckUrl,
+  aspectRatio = "standard",
+  showCostCurve = true,
+  showInkBreakdown = true,
+  showTypeBreakdown = true
 }: ExportImageParams): Promise<Blob | null> => {
   const loadImage = (src: string) =>
     new Promise<HTMLImageElement | null>((resolve) => {
@@ -121,7 +134,7 @@ export const buildDeckExportImage = async ({
   // 4. Header Section - Glassmorphism Card
   const headerY = 50;
   const headerHeight = 160;
-  
+
   // Header Glass Background
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.5)';
@@ -130,11 +143,11 @@ export const buildDeckExportImage = async ({
   ctx.beginPath();
   ctx.roundRect(padding - 20, headerY, width - padding * 2 + 40, headerHeight, 32);
   ctx.fill();
-  
+
   // Subtle Highlighted Gradient Border
   const borderGrad = ctx.createLinearGradient(padding - 20, headerY, width - padding * 2, headerY);
   borderGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); // Bright start
-  
+
   if (activeInksList.length > 0) {
     activeInksList.forEach((ink, i) => {
       const color = INK_HEX_COLORS[ink] || '#ffffff';
@@ -144,9 +157,9 @@ export const buildDeckExportImage = async ({
   } else {
     borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
   }
-  
+
   borderGrad.addColorStop(1, 'rgba(255, 255, 255, 0.1)'); // Soft end
-  
+
   ctx.strokeStyle = borderGrad;
   ctx.lineWidth = 2; // Slightly thicker for visibility
   ctx.stroke();
@@ -158,7 +171,7 @@ export const buildDeckExportImage = async ({
     const inkLogo = await loadImage(getInkLogo(ink));
     if (inkLogo) {
       const inkColor = INK_HEX_COLORS[ink] || '#fff';
-      
+
       ctx.save();
       // Subtle Glow Halo behind the logo
       const haloGrad = ctx.createRadialGradient(currentInkX + 22, headerY + 67, 0, currentInkX + 22, headerY + 67, 35);
@@ -199,12 +212,12 @@ export const buildDeckExportImage = async ({
     const textWidth = ctx.measureText(p.label).width;
     const pillPadding = 16;
     const pillWidth = textWidth + pillPadding * 2;
-    
+
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.beginPath();
     ctx.roundRect(statsX, statsY - 15, pillWidth, 30, 15);
     ctx.fill();
-    
+
     ctx.fillStyle = p.color;
     ctx.fillText(p.label, statsX + pillPadding, statsY);
     statsX += pillWidth + 12;
@@ -242,11 +255,11 @@ export const buildDeckExportImage = async ({
     ctx.save();
     ctx.shadowColor = (INK_HEX_COLORS[entry.card.inkColor] || '#888') + '33';
     ctx.shadowBlur = 20;
-    
+
     const radius = 14;
     ctx.beginPath();
     ctx.roundRect(x, y, cardWidth, cardHeight, radius);
-    
+
     // Background fill for cards without images
     ctx.fillStyle = '#1e293b';
     ctx.fill();
@@ -254,7 +267,7 @@ export const buildDeckExportImage = async ({
     if (image) {
       ctx.save();
       ctx.clip();
-      
+
       const imgAspect = image.width / image.height;
       const canvasAspect = cardWidth / cardHeight;
       let dW = cardWidth, dH = cardHeight, dX = x, dY = y;
@@ -288,7 +301,7 @@ export const buildDeckExportImage = async ({
     ctx.beginPath();
     ctx.arc(bX, bY, bR, 0, Math.PI * 2);
     ctx.fill();
-    
+
     // Badge Accent Ring
     ctx.strokeStyle = (INK_HEX_COLORS[entry.card.inkColor] || '#fff') + 'aa';
     ctx.lineWidth = 2;
@@ -303,13 +316,63 @@ export const buildDeckExportImage = async ({
   });
 
   // 6. Footer
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.font = '500 16px "Outfit", sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('DESIGNED ON LORBOUND.INK', width - padding, height - 50);
-
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.font = '500 14px "Outfit", sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('© DISNEY / RAVENSBURGER • ALL IMAGES PROTECTED', padding, height - 50);
+  ctx.fillText('© DISNEY / RAVENSBURGER • ALL IMAGES PROTECTED', padding, height - 60);
+
+  // 7. QR Code (Stylized with Logo)
+  if (showQRCode && deckUrl) {
+    try {
+      const qrSize = 110;
+      const qrPadding = 10;
+      const qrX = width - padding - qrSize;
+      const qrY = height - bottomSectionHeight + (bottomSectionHeight - qrSize) / 2 - 25;
+
+      // Draw QR Background Card
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(qrX - qrPadding, qrY - qrPadding, qrSize + qrPadding * 2, qrSize + qrPadding * 2, 20);
+      ctx.fill();
+      ctx.restore();
+
+      // Generate QR Code
+      const qrCanvas = document.createElement('canvas');
+      await QRCode.toCanvas(qrCanvas, deckUrl, {
+        width: qrSize,
+        margin: 0,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+        errorCorrectionLevel: 'H'
+      });
+
+      // Draw QR Code onto main canvas
+      ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+
+      // Add Logo in the center
+      const qrLogo = await loadImage('/Lorbound_B.png'); // Script logo for QR
+      if (qrLogo) {
+        const logoSize = qrSize * 0.28;
+        const lx = qrX + (qrSize - logoSize) / 2;
+        const ly = qrY + (qrSize - logoSize) / 2;
+
+        // Draw white circle behind logo
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(lx + logoSize/2, ly + logoSize/2, logoSize/2 + 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.drawImage(qrLogo, lx, ly, logoSize, logoSize);
+      }
+    } catch (err) {
+      console.error("Failed to generate QR code:", err);
+    }
+  }
 
   const blob = await new Promise<Blob | null>(resolve =>
     canvas.toBlob((blob) => resolve(blob), 'image/png', 0.95)

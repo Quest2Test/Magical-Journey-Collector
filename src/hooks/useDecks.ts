@@ -63,13 +63,15 @@ export function useDecks(targetUserId?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const activeUserId = targetUserId || user?.id;
-  
   const queryKey = ["decks", activeUserId || "guest"];
+
+  const isDemoMode = typeof window !== 'undefined' && 
+                     (localStorage.getItem('lorbound_demo_mode') === 'true' || user?.id === 'demo-user-id');
 
   const { data: decks = [], isLoading } = useQuery<SavedDeck[]>({
     queryKey,
     queryFn: async () => {
-      if (!activeUserId) {
+      if (!activeUserId || isDemoMode) {
         return readLocalDecks();
       }
 
@@ -137,7 +139,7 @@ export function useDecks(targetUserId?: string) {
 
   const saveDeckMutation = useMutation({
     mutationFn: async (deck: SavedDeck) => {
-      if (!user) {
+      if (!user || isDemoMode) {
         const current = readLocalDecks();
         const idx = current.findIndex((d) => d.id === deck.id);
         if (idx >= 0) {
@@ -181,7 +183,7 @@ export function useDecks(targetUserId?: string) {
 
   const deleteDeckMutation = useMutation({
     mutationFn: async (deckId: string) => {
-      if (!user) {
+      if (!user || isDemoMode) {
         const current = readLocalDecks().filter((d) => d.id !== deckId);
         writeLocalDecks(current);
         return;

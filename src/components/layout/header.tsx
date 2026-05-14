@@ -202,7 +202,7 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <Button asChild variant="outline" className="hidden sm:flex">
-              <Link href="/login">Sign In</Link>
+              <Link href={`/login?returnTo=${encodeURIComponent(location)}`}>Sign In</Link>
             </Button>
           )}
 
@@ -269,7 +269,7 @@ export function Header() {
                   </Button>
                 ) : (
                   <Button asChild className="w-full">
-                    <Link href="/login" onClick={() => setIsOpen(false)}>Sign In</Link>
+                    <Link href={`/login?returnTo=${encodeURIComponent(location)}`} onClick={() => setIsOpen(false)}>Sign In</Link>
                   </Button>
                 )}
               </div>

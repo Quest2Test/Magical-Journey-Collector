@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { SavedDeckEntry } from "@/hooks/useDecks";
 import { Sparkles, ChevronDown, Archive } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as ChartTooltip } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -6,6 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { inkHexColors } from "@/components/ui/card-display";
+import { calculateProbabilityAtLeast, formatProbability } from "@/lib/math";
+import { Info } from "lucide-react";
 
 interface CollectionStats {
   totalMissing: number;
@@ -40,6 +43,7 @@ interface Props {
   illegalCardsCount: number;
   format: string;
   formatPrice: (val: number) => string;
+  entries?: SavedDeckEntry[];
 }
 
 export function DeckAnalysisPanel({
@@ -58,6 +62,7 @@ export function DeckAnalysisPanel({
   illegalCardsCount,
   format,
   formatPrice,
+  entries = [],
 }: Props) {
   const TYPE_COLORS: Record<string, string> = {
     Character: "bg-blue-500",
@@ -212,8 +217,8 @@ export function DeckAnalysisPanel({
           </div>
 
           {/* Ink Curve */}
-          <div>
-            <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Ink Curve</h4>
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Ink Curve</h4>
             <div className="h-28">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={costCurve} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -232,6 +237,47 @@ export function DeckAnalysisPanel({
               </ResponsiveContainer>
             </div>
           </div>
+          
+          {/* Draw Probabilities (Elite) */}
+          {totalCards >= 60 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Draw Probabilities</h4>
+                <div className="group relative">
+                  <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-popover text-[10px] rounded border shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    Chance of seeing at least X copies of a card (e.g. 4 copies in deck) in your opening hand of 7 cards.
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2">
+                {[4, 3, 2, 1].map(copies => {
+                  const prob1 = calculateProbabilityAtLeast(totalCards, copies, 7, 1);
+                  const prob2 = calculateProbabilityAtLeast(totalCards, copies, 7, 2);
+                  
+                  return (
+                    <div key={copies} className="p-3 bg-muted/20 rounded-xl border border-border/40 flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-tighter">If you play {copies} copies</p>
+                        <p className="text-xs font-medium opacity-60">Chance in opening hand</p>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="text-right">
+                          <p className="text-sm font-bold">{formatProbability(prob1)}</p>
+                          <p className="text-[9px] uppercase font-bold text-muted-foreground/60">1+ Card</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-primary">{formatProbability(prob2)}</p>
+                          <p className="text-[9px] uppercase font-bold text-muted-foreground/60">2+ Cards</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Validation */}
           <div className="rounded-xl border p-4 space-y-3 bg-card shadow-sm">

@@ -24,8 +24,8 @@ import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
 
 const INK_COLORS = ["Amber", "Amethyst", "Emerald", "Ruby", "Sapphire", "Steel"];
 const CARD_TYPES = ["Character", "Action", "Item", "Location", "Song"];
-const RARITIES = ["Common", "Uncommon", "Rare", "Super_rare", "Legendary", "Enchanted", "Iconic", "Promo"];
-const KEYWORDS = ["Rush", "Evasive", "Ward", "Challenger", "Singer", "Reckless", "Bodyguard", "Support", "Shift", "Resist"];
+const RARITIES = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Epic", "Enchanted", "Iconic", "Promo"];
+const KEYWORDS = ["Rush", "Evasive", "Ward", "Challenger", "Singer", "Reckless", "Bodyguard", "Support", "Shift", "Resist", "Sing Together", "Vanish"];
 const PAGE_SIZE = 48;
 
 export default function CardsBrowse() {
@@ -170,10 +170,10 @@ export default function CardsBrowse() {
       } else if (ownershipFilter === "missing") {
         if (getQty(card.id) > 0) return false;
       }
-      
+
       // Permanently exclude unrevealed placeholders from results
       if (card.name.startsWith("Unrevealed Card #") || card.name.startsWith("Unreleased Card #")) return false;
-      
+
       if (!showUnreleased && card.releasedAt && new Date(card.releasedAt) > new Date()) return false;
 
       if (card.priceUsd && card.priceUsd > maxPrice) return false;
@@ -443,7 +443,7 @@ export default function CardsBrowse() {
                     </div>
 
                     <div>
-                      <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 mb-2 ml-1">Special / Promo</h4>
+                      <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 mb-2 ml-1">Promo Sets</h4>
                       <div className="flex flex-col gap-1">
                         {sets.filter(s => s.isPromo).map(set => (
                           <button
@@ -477,7 +477,7 @@ export default function CardsBrowse() {
             onCheckedChange={v => { setInkableOnly(v); setPage(1); }}
           />
         </div>
-        
+
         <div className="flex items-center justify-between">
           <Label htmlFor="show-unreleased" className="text-xs font-medium text-muted-foreground">Show Unreleased</Label>
           <Switch
@@ -640,7 +640,7 @@ export default function CardsBrowse() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: Math.min(i * 0.015, 0.2) }}
                           >
-                            <CardDisplay card={card} ownedCount={getQty(card.id)} useThumbnail />
+                            <CardDisplay card={card} ownedCount={getQty(card.id)} returnTo="/cards" useThumbnail />
                           </motion.div>
                         ))}
                       </div>
@@ -655,7 +655,7 @@ export default function CardsBrowse() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2, delay: Math.min(i * 0.015, 0.3) }}
                       >
-                        <CardDisplay card={card} ownedCount={getQty(card.id)} useThumbnail />
+                        <CardDisplay card={card} ownedCount={getQty(card.id)} returnTo="/cards" useThumbnail />
                       </motion.div>
                     ))}
                   </div>
@@ -670,7 +670,7 @@ export default function CardsBrowse() {
                 className="flex flex-col gap-2"
               >
                 {displayedCards.map((card: Card) => (
-                  <Link key={card.id} href={`/cards/${encodeURIComponent(card.id)}`}>
+                  <Link key={card.id} href={`/cards/${encodeURIComponent(card.id)}?returnTo=/cards`}>
                     <div className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-secondary/50 transition-colors group cursor-pointer">
                       <div className="w-10 h-14 rounded overflow-hidden shrink-0 bg-muted">
                         {card.image ? (

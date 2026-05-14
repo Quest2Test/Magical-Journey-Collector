@@ -83,7 +83,7 @@ export function CardFilters({
     return Array.from(set).sort();
   }, [allCards]);
 
-  const availableRarities = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Enchanted", "Special"];
+  const availableRarities = ["Common", "Uncommon", "Rare", "Super Rare", "Legendary", "Epic", "Enchanted", "Iconic"];
 
   return (
     <div className="p-3 border-b shrink-0 bg-card/30 backdrop-blur-sm space-y-3">

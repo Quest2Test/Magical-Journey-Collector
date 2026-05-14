@@ -23,11 +23,18 @@ import { Input } from "@/components/ui/input";
 import { useAllCards } from "@/hooks/useCards";
 import { getHydratedStarterDecks } from "@/lib/starter-decks-hydration";
 import { usePublicDecks } from "@/hooks/usePublicDecks";
+import { useWishlist } from "@/hooks/useWishlist";
+import { isFoilOnly } from "@/lib/pricing";
 import { DeckAnalysisPanel } from "@/components/builder/DeckAnalysisPanel";
 import { useToast } from "@/hooks/use-toast";
-import { Twitter, Facebook, Share2, Image as ImageIcon } from "lucide-react";
+import { Twitter, Facebook, Share2, Image as ImageIcon, Play, MoreVertical, Flag } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import { useImageExport } from "@/hooks/useImageExport";
 import { DeckShareModal } from "@/components/builder/DeckShareModal";
+import { DeckHandSimulator } from "@/components/builder/DeckHandSimulator";
+import { buildTCGPlayerMassEntryUrl, detectRegion } from "@/lib/affiliates";
+import { ShoppingBag, Copy, CheckCircle2, FileText, Code, ChevronDown, Award } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function DeckDetail() {
   const { id } = useParams();
@@ -75,6 +82,7 @@ export default function DeckDetail() {
   const { data: allCards = [], isLoading: loadingCards } = useAllCards();
   const { formatPrice } = useCurrency();
   const { user } = useAuth();
+  const { wishlist, addToWishlistBulk } = useWishlist();
   const { collection, getEntry } = useCollection();
   const { publicDecks, publishDeck, unpublishDeck, isUnpublishing, isLoading: loadingPublic, isPublishing } = usePublicDecks();
 
@@ -87,7 +95,9 @@ export default function DeckDetail() {
   const [showValue, setShowValue] = useState(true);
   const [showFormat, setShowFormat] = useState(true);
   const [showCount, setShowCount] = useState(true);
+  const [showQRCode, setShowQRCode] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [showHandSimulator, setShowHandSimulator] = useState(false);
 
   const deck = useMemo(() => {
     if (isPublicRoute) {
@@ -117,7 +127,7 @@ export default function DeckDetail() {
     let uninkableCount = 0;
     let totalInkCost = 0;
     const inkDist: Record<string, number> = {};
-    const curve: { cost: string; count: number; [ink: string]: string | number }[] = Array.from({ length: 7 }, (_, i) => ({
+    const curve: { cost: string; count: number;[ink: string]: string | number }[] = Array.from({ length: 7 }, (_, i) => ({
       cost: i < 6 ? String(i + 1) : "7+",
       count: 0,
     }));
@@ -226,8 +236,20 @@ export default function DeckDetail() {
   const memoizedCards = useMemo(() => deck?.entries || [], [deck?.entries]);
   const memoizedInks = useMemo(() => analysis?.inkDistribution || {}, [analysis?.inkDistribution]);
 
-  const { sharePreviewUrl, isGeneratingPreview, previewError, handleDownload } = useImageExport({
-    active: showImageExport,
+  const { 
+    sharePreviewUrl, 
+    isGeneratingPreview, 
+    previewError, 
+    handleDownload,
+    aspectRatio,
+    setAspectRatio,
+    showCostCurve,
+    setShowCostCurve,
+    showInkBreakdown,
+    setShowInkBreakdown,
+    showTypeBreakdown,
+    setShowTypeBreakdown
+  } = useImageExport({
     deckCards: memoizedCards,
     deckName: deck?.name || "Untitled Deck",
     format: deck?.format || "Any",
@@ -238,8 +260,13 @@ export default function DeckDetail() {
     formatPrice,
     showFormat,
     showCount,
-    showValue
+    showValue,
+    showQRCode,
+    active: showImageExport,
+    deckUrl: window.location.href
   });
+
+  const region = useMemo(() => detectRegion(), []);
 
   const isLoading = loadingDecks || (id?.startsWith('starter-') && loadingCards) || (isPublicRoute && loadingPublic);
 
@@ -269,13 +296,58 @@ export default function DeckDetail() {
     : `linear-gradient(135deg, ${inkHexes[0] ?? "#88888822"} 0%, transparent 100%)`;
 
   const handleBuyMissing = () => {
-    const affiliateId = import.meta.env.VITE_TCGPLAYER_AFFILIATE_ID || "";
-    const missingLines = analysis.cardsInDeck
+    const lines = analysis.cardsInDeck
       .filter(c => c.missingQty > 0)
-      .map(entry => `${entry.missingQty} ${entry.card.name}${entry.card.subtitle ? ` - ${entry.card.subtitle}` : ""}`)
-      .join("||");
-    if (missingLines) {
-      window.open(`https://tcgplayer.pxf.io/c/${affiliateId}/1830156/21018?u=https://www.tcgplayer.com/massentry?productline=Lorcana TCG&c=${encodeURIComponent(missingLines)}`, '_blank');
+      .map(entry => `${entry.missingQty} ${entry.card.name}${entry.card.subtitle ? ` - ${entry.card.subtitle}` : ""}`);
+    
+    const url = buildTCGPlayerMassEntryUrl(lines);
+    if (url) window.open(url, '_blank');
+  };
+
+  const handleBuyAll = () => {
+    const lines = analysis.cardsInDeck
+      .map(entry => `${entry.qty} ${entry.card.name}${entry.card.subtitle ? ` - ${entry.card.subtitle}` : ""}`);
+    
+    const url = buildTCGPlayerMassEntryUrl(lines);
+    if (url) window.open(url, '_blank');
+  };
+
+  const copyDeckList = () => {
+    const list = analysis.cardsInDeck
+      .map(entry => `${entry.qty} ${entry.card.name}${entry.card.subtitle ? ` - ${entry.card.subtitle}` : ""}`)
+      .join("\n");
+    
+    navigator.clipboard.writeText(list);
+    toast({
+      title: "Decklist Copied!",
+      description: "Ready to paste into TCGPlayer, CardMarket, or Melee.gg",
+    });
+  };
+
+  const copyPixelbornList = () => {
+    // Pixelborn import format is usually just the list of cards
+    const list = analysis.cardsInDeck
+      .map(entry => `${entry.qty} ${entry.card.name}${entry.card.subtitle ? ` - ${entry.card.subtitle}` : ""}`)
+      .join("\n");
+    
+    navigator.clipboard.writeText(list);
+    toast({
+      title: "Pixelborn Format Copied!",
+      description: "You can now import this deck in Pixelborn.",
+    });
+  };
+
+  const handleAddMissingToWishlist = () => {
+    const missingItems = analysis.cardsInDeck
+      .filter(entry => entry.missingQty > 0)
+      .map(entry => ({
+        cardId: entry.card.id,
+        variant: (isFoilOnly(entry.card) ? "foil" : "normal") as "normal" | "foil",
+        qty: entry.missingQty
+      }));
+    
+    if (missingItems.length > 0) {
+      addToWishlistBulk(missingItems);
     }
   };
 
@@ -302,14 +374,14 @@ export default function DeckDetail() {
                     style={{ boxShadow: `0 0 20px ${inkColor}40` }}
                   >
                     {/* Inner Gradient/Glow */}
-                    <div 
-                      className="absolute inset-0 opacity-40 group-hover/ink:opacity-60 transition-opacity" 
-                      style={{ background: `radial-gradient(circle at center, ${inkColor}, transparent)` }} 
+                    <div
+                      className="absolute inset-0 opacity-40 group-hover/ink:opacity-60 transition-opacity"
+                      style={{ background: `radial-gradient(circle at center, ${inkColor}, transparent)` }}
                     />
-                    <img 
-                      src={getInkLogo(ink)} 
-                      alt={ink} 
-                      className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] relative z-10 transform group-hover/ink:scale-110 transition-transform duration-300" 
+                    <img
+                      src={getInkLogo(ink)}
+                      alt={ink}
+                      className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] relative z-10 transform group-hover/ink:scale-110 transition-transform duration-300"
                     />
                     {/* Gloss effect */}
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
@@ -328,11 +400,14 @@ export default function DeckDetail() {
             <Button variant="outline" size="lg" className="gap-2 shadow-sm" onClick={() => setShowSocialShare(true)}>
               <Share2 className="w-4 h-4" /> Share
             </Button>
+            <Button variant="outline" size="lg" className="gap-2 shadow-sm border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary" onClick={() => setShowHandSimulator(true)}>
+              <Play className="w-4 h-4 fill-current" /> Test Draw
+            </Button>
             {user && decks.some(d => d.id === deck.id) && !isPublicRoute && (
               publicDecks.some(p => p.id === deck.id) ? (
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Button
+                  size="lg"
+                  variant="outline"
                   className="gap-2 shadow-sm text-amber-500 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors"
                   onClick={() => unpublishDeck(deck.id)}
                   disabled={isUnpublishing}
@@ -341,9 +416,9 @@ export default function DeckDetail() {
                   Unshare
                 </Button>
               ) : (
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Button
+                  size="lg"
+                  variant="outline"
                   className="gap-2 shadow-lg"
                   onClick={() => setShowShareDialog(true)}
                   disabled={isPublishing}
@@ -356,9 +431,9 @@ export default function DeckDetail() {
             {isPublicRoute ? (
               <div className="flex gap-2">
                 {user && (deck as any).userId === user.id && (
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
+                  <Button
+                    size="lg"
+                    variant="outline"
                     className="gap-2 shadow-sm text-amber-500 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10"
                     onClick={() => unpublishDeck(deck.id)}
                     disabled={isUnpublishing}
@@ -368,17 +443,52 @@ export default function DeckDetail() {
                   </Button>
                 )}
                 <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20" asChild>
-                   <Link href={`/builder?import=${deck.id}&source=public`}>
-                     <Layers className="w-4 h-4" /> Clone to My Decks
-                   </Link>
+                  <Link href={`/builder?import=${deck.id}&source=public`}>
+                    <Layers className="w-4 h-4" /> Clone to My Decks
+                  </Link>
                 </Button>
               </div>
             ) : (
-              <Link href={`/builder?edit=${deck.id}`}>
-                <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20">
-                  <Edit className="w-4 h-4" /> Modify in Builder
-                </Button>
-              </Link>
+              <>
+                <Link href={`/builder?edit=${deck.id}`}>
+                  <Button size="lg" className="gap-2 shadow-lg hover:shadow-primary/20">
+                    <Edit className="w-4 h-4" /> Modify in Builder
+                  </Button>
+                </Link>
+                {isPublicRoute && user?.id !== (deck as any).userId && (
+                  <Button 
+                    variant="ghost" 
+                    size="lg" 
+                    className="text-muted-foreground hover:text-destructive transition-colors gap-2"
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase.from("reports").insert({
+                          reporter_id: user?.id,
+                          target_id: deck.id,
+                          target_type: "deck",
+                          reason: "Flagged via public deck view"
+                        });
+
+                        if (error) throw error;
+
+                        toast({
+                          title: "Deck Reported",
+                          description: "Thank you. Our moderation team will review this deck shortly.",
+                          variant: "destructive"
+                        });
+                      } catch (e: any) {
+                        toast({
+                          title: "Report Failed",
+                          description: "There was an issue sending your report. Please try again later.",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    <Flag className="w-4 h-4" /> Report
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -389,7 +499,7 @@ export default function DeckDetail() {
           {/* Deck Display Controls */}
           <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4 mb-6">
             <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
-               <Library className="w-6 h-6 text-primary" /> Decklist
+              <Library className="w-6 h-6 text-primary" /> Decklist
             </h2>
             <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
               <div className="flex items-center gap-1.5 border rounded-md p-0.5 bg-muted/50">
@@ -451,19 +561,19 @@ export default function DeckDetail() {
                           transition={{ delay: idx * 0.02 }}
                           className="relative group/card"
                         >
-                          <CardDisplay 
-                            card={entry.card} 
-                            returnTo={returnPath} 
+                          <CardDisplay
+                            card={entry.card}
+                            returnTo={returnPath}
                             className={cn(
                               "transition-opacity w-full",
                               user && entry.ownedQty === 0 && "opacity-50 grayscale-[0.5]"
-                            )} 
+                            )}
                           />
-                          
+
                           {user ? (
                             <>
                               <div className="absolute -top-2 -right-2 min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
-                                 {entry.ownedQty} <span className="mx-0.5 opacity-40">/</span> {entry.qty}
+                                {entry.ownedQty} <span className="mx-0.5 opacity-40">/</span> {entry.qty}
                               </div>
                               {entry.missingQty > 0 && (
                                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg z-20 whitespace-nowrap border border-white/20">
@@ -473,7 +583,7 @@ export default function DeckDetail() {
                             </>
                           ) : (
                             <div className="absolute -top-2 -right-2 min-w-[28px] h-7 px-2 flex items-center justify-center rounded-lg bg-card border border-primary/20 shadow-lg z-10 font-bold text-xs">
-                               x{entry.qty}
+                              x{entry.qty}
                             </div>
                           )}
                         </motion.div>
@@ -482,9 +592,9 @@ export default function DeckDetail() {
                   ) : (
                     <div className="space-y-1">
                       {group.cards.map((entry, idx) => (
-                        <Link 
+                        <Link
                           key={`${entry.card.id}-${idx}`}
-                          href={`/cards/${entry.card.id}?return=${encodeURIComponent(returnPath)}`}
+                          href={`/cards/${entry.card.id}?returnTo=${encodeURIComponent(returnPath)}`}
                           className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md group transition-colors border border-transparent hover:border-border"
                         >
                           <div className="flex items-center gap-3">
@@ -496,9 +606,9 @@ export default function DeckDetail() {
                           </div>
                           <div className="flex items-center gap-4">
                             <span className="text-xs font-medium px-2 py-0.5 rounded bg-muted uppercase tracking-wider">{entry.card.rarity}</span>
-                            <div 
-                              className="w-2 h-2 rounded-full" 
-                              style={{ backgroundColor: inkHexColors[entry.card.inkColor] }} 
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: inkHexColors[entry.card.inkColor] }}
                             />
                           </div>
                         </Link>
@@ -518,37 +628,92 @@ export default function DeckDetail() {
               <TrendingUp className="w-32 h-32" />
             </div>
             <CardHeader className="pb-4">
-               <CardTitle className="flex items-center gap-2 text-lg">
-                  <Sparkles className="w-4 h-4 text-amber-500" /> Collection Readiness
-               </CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="w-4 h-4 text-amber-500" /> Collection Readiness
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-6">
               {user ? (
                 <>
                   <div className="space-y-2">
-                     <div className="flex justify-between text-sm font-bold">
-                        <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
-                        <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
-                     </div>
-                     <Progress value={analysis.completionPct} className="h-2.5" />
+                    <div className="flex justify-between text-sm font-bold">
+                      <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
+                      <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={analysis.completionPct} className="h-2.5" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-2">
-                     <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Market Value</p>
-                        <p className="text-lg font-bold">{formatPrice(deck.totalValue)}</p>
-                     </div>
-                     <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
-                        <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
-                     </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Market Value</p>
+                      <p className="text-lg font-bold">{formatPrice(deck.totalValue)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
+                      <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
+                    </div>
                   </div>
 
-                  {analysis.missingValue > 0 && (
-                    <Button onClick={handleBuyMissing} size="sm" variant="outline" className="w-full gap-2 border-primary/20 hover:bg-primary/5 text-primary">
-                      <ExternalLink className="w-4 h-4" /> Quick Add Missing to TCGPlayer
-                    </Button>
-                  )}
+                  <div className="space-y-3 pt-2">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Marketplace Options</div>
+                    {analysis.missingValue > 0 ? (
+                      <div className="space-y-2">
+                        <Button 
+                          onClick={handleBuyMissing} 
+                          className="w-full gap-2 bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20"
+                        >
+                          <ShoppingBag className="w-4 h-4" /> Buy Missing on TCGPlayer
+                        </Button>
+                        <Button 
+                          onClick={handleAddMissingToWishlist} 
+                          variant="outline"
+                          className="w-full gap-2 border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary"
+                        >
+                          <Award className="w-4 h-4" /> Add Missing to Wishlist
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold">
+                        <CheckCircle2 className="w-4 h-4" /> You own all cards in this deck!
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        onClick={handleBuyAll} 
+                        variant="outline" 
+                        size="sm"
+                        className="gap-2 text-[11px] font-bold h-9"
+                      >
+                        <ExternalLink className="w-3 h-3" /> Buy All
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="gap-2 text-[11px] font-bold h-9"
+                          >
+                            <Copy className="w-3 h-3" /> Copy List <ChevronDown className="w-3 h-3 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Formats</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={copyDeckList} className="gap-2 text-xs font-medium cursor-pointer">
+                            <FileText className="w-3.5 h-3.5" /> Standard Text
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={copyPixelbornList} className="gap-2 text-xs font-medium cursor-pointer">
+                            <Code className="w-3.5 h-3.5" /> Pixelborn Import
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    
+                    <p className="text-[9px] text-center text-muted-foreground/60 leading-tight">
+                      Help support Lorbound by using our affiliates.
+                    </p>
+                  </div>
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-2 text-center space-y-4">
@@ -560,7 +725,7 @@ export default function DeckDetail() {
                     <p className="text-xs text-muted-foreground">Sign in to see your readiness for this deck.</p>
                   </div>
                   <Button asChild size="sm" className="w-full">
-                    <Link href="/login">Sign In to Lorbound</Link>
+                    <Link href="/auth">Sign In to Lorbound</Link>
                   </Button>
                 </div>
               )}
@@ -596,6 +761,7 @@ export default function DeckDetail() {
                 illegalCardsCount={analysis.illegalCardsCount}
                 format={deck.format}
                 formatPrice={formatPrice}
+                entries={deck.entries}
               />
             </div>
           </div>
@@ -616,10 +782,10 @@ export default function DeckDetail() {
               This will publish your deck to the Public Decks hub for the community to see, upvote, and clone.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex items-center space-x-2 py-4">
-            <Checkbox 
-              id="anonymous" 
+            <Checkbox
+              id="anonymous"
               checked={isAnonymous}
               onCheckedChange={(c) => setIsAnonymous(c as boolean)}
             />
@@ -632,11 +798,11 @@ export default function DeckDetail() {
             <Button variant="outline" onClick={() => setShowShareDialog(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               className="gap-2"
               onClick={() => {
                 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-                
+
                 if (!isUUID(deck.id)) {
                   toast({
                     title: "Legacy Deck ID",
@@ -647,8 +813,8 @@ export default function DeckDetail() {
                   return;
                 }
 
-                const authorName = isAnonymous 
-                  ? "Anonymous" 
+                const authorName = isAnonymous
+                  ? "Anonymous"
                   : (user?.user_metadata?.username || user?.email?.split('@')[0] || "Unknown");
                 publishDeck(deck, authorName);
                 setShowShareDialog(false);
@@ -671,19 +837,19 @@ export default function DeckDetail() {
               Share "{deck.name}" with the Lorcana community.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-6 py-4">
             {/* Social Buttons */}
             <div className="grid grid-cols-2 gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="gap-2 bg-[#1DA1F2]/5 hover:bg-[#1DA1F2]/10 border-[#1DA1F2]/20 text-[#1DA1F2]"
                 onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out my ${deck.format} Lorcana deck "${deck.name}" on Lorbound!`)}&url=${encodeURIComponent(window.location.href)}`, '_blank')}
               >
                 <Twitter className="w-4 h-4 fill-current" /> Twitter
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="gap-2 bg-[#4267B2]/5 hover:bg-[#4267B2]/10 border-[#4267B2]/20 text-[#4267B2]"
                 onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`, '_blank')}
               >
@@ -691,8 +857,8 @@ export default function DeckDetail() {
               </Button>
             </div>
 
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="gap-2 py-6 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 transition-all group"
               onClick={() => {
                 setShowSocialShare(false);
@@ -710,13 +876,13 @@ export default function DeckDetail() {
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Direct Link</Label>
               <div className="flex gap-2">
-                <Input 
-                  readOnly 
-                  value={window.location.href} 
+                <Input
+                  readOnly
+                  value={window.location.href}
                   className="bg-muted/50 text-xs h-9"
                 />
                 <Button size="sm" onClick={copyToClipboard} className="shrink-0 h-9">
-                   Copy
+                  Copy
                 </Button>
               </div>
             </div>
@@ -745,10 +911,26 @@ export default function DeckDetail() {
         onShowCountChange={setShowCount}
         showValue={showValue}
         onShowValueChange={setShowValue}
+        showCostCurve={showCostCurve}
+        onShowCostCurveChange={setShowCostCurve}
+        showInkBreakdown={showInkBreakdown}
+        onShowInkBreakdownChange={setShowInkBreakdown}
+        showTypeBreakdown={showTypeBreakdown}
+        onShowTypeBreakdownChange={setShowTypeBreakdown}
+        showQRCode={showQRCode}
+        onShowQRCodeChange={isPublicRoute || publicDecks.some(p => p.id === deck.id) ? setShowQRCode : undefined}
         isGeneratingPreview={isGeneratingPreview}
         previewError={previewError}
         sharePreviewUrl={sharePreviewUrl}
         onDownload={handleDownload}
+        aspectRatio={aspectRatio}
+        onAspectRatioChange={setAspectRatio}
+      />
+      <DeckHandSimulator
+        open={showHandSimulator}
+        onOpenChange={setShowHandSimulator}
+        entries={deck.entries}
+        deckName={deck.name}
       />
     </div>
   );

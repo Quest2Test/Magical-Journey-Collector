@@ -28,12 +28,12 @@ import { getFormattedSubtitle, getDisplayType, isFoilOnly } from "@/lib/card-uti
 export default function CardDetail() {
   const { id } = useParams();
   const { data: allCards = [], isLoading } = useAllCards();
-   const { getEntry, addCopy, removeCopy, toggleCollected, isCollected } = useCollection();
-   const { formatPrice } = useCurrency();
-   const { toggleWishlist, isInWishlist } = useWishlist();
-   const [imgError, setImgError] = useState(false);
-   const [copying, setCopying] = useState(false);
-   const [showSocialShare, setShowSocialShare] = useState(false);
+  const { getEntry, addCopy, removeCopy, toggleCollected, isCollected } = useCollection();
+  const { formatPrice } = useCurrency();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const [imgError, setImgError] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [showSocialShare, setShowSocialShare] = useState(false);
 
   const decodedId = id ? decodeURIComponent(id) : "";
   const card = allCards.find(c => c.id === decodedId);
@@ -43,14 +43,14 @@ export default function CardDetail() {
 
   const searchStr = useSearch();
   const urlParams = new URLSearchParams(searchStr);
-  const fromUrl = urlParams.get("from");
+  const returnTo = urlParams.get("returnTo");
 
   const { prevCard, nextCard } = useMemo(() => {
     if (!card || !allCards.length) return { prevCard: null, nextCard: null };
     const setCards = allCards
       .filter(c => c.expansion === card.expansion)
       .sort((a, b) => (a.cardNum ?? 9999) - (b.cardNum ?? 9999));
-    
+
     const currentIndex = setCards.findIndex(c => c.id === card.id);
     return {
       prevCard: currentIndex > 0 ? setCards[currentIndex - 1] : null,
@@ -72,8 +72,8 @@ export default function CardDetail() {
       <div className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-3xl font-serif font-bold mb-4">Card Not Found</h1>
         <p className="text-muted-foreground mb-8">Could not find card with ID: {id}</p>
-        <Link href={fromUrl ? fromUrl : "/cards"}>
-          <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> {fromUrl ? "Back to Set" : "Back to Cards"}</Button>
+        <Link href={returnTo ? returnTo : "/cards"}>
+          <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> {returnTo ? "Back" : "Back to Cards"}</Button>
         </Link>
       </div>
     );
@@ -85,8 +85,8 @@ export default function CardDetail() {
 
   const artistCards = card.artist
     ? allCards
-        .filter(c => c.id !== card.id && c.artist === card.artist && !!c.image)
-        .slice(0, 8)
+      .filter(c => c.id !== card.id && c.artist === card.artist && !!c.image)
+      .slice(0, 8)
     : [];
 
   const hexColor = inkHexColors[card.inkColor] ?? "#f59e0b";
@@ -96,27 +96,27 @@ export default function CardDetail() {
   return (
     <div className="container mx-auto px-4 md:px-6 py-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <Link href={fromUrl ? fromUrl : "/cards"} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4 mr-1" /> {fromUrl ? "Back to Set" : "Back to Browse"}
+        <Link href={returnTo ? returnTo : "/cards"} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4 mr-1" /> {returnTo ? "Back" : "Back to Browse"}
         </Link>
 
         {/* Set Navigation */}
         {(prevCard || nextCard) && (
           <div className="flex items-center gap-1">
             {prevCard && (
-              <Link href={`/cards/${encodeURIComponent(prevCard.id)}?from=${fromUrl ? encodeURIComponent(fromUrl) : ""}`}>
+              <Link href={`/cards/${encodeURIComponent(prevCard.id)}?returnTo=${returnTo ? encodeURIComponent(returnTo) : ""}`}>
                 <Button variant="ghost" size="sm" className="h-8 gap-1 pl-1 pr-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all group">
                   <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Prev <span className="opacity-40 font-mono">#{prevCard.cardNum}</span>
                 </Button>
               </Link>
             )}
-            
+
             <div className="px-3 py-1 rounded-full bg-muted/30 border border-border/40 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
-               <span className="text-primary-text font-black">{card.cardNum}</span> / {allCards.filter(c => c.expansion === card.expansion).length}
+              <span className="text-primary-text font-black">{card.cardNum}</span> / {allCards.filter(c => c.expansion === card.expansion).length}
             </div>
 
             {nextCard && (
-              <Link href={`/cards/${encodeURIComponent(nextCard.id)}?from=${fromUrl ? encodeURIComponent(fromUrl) : ""}`}>
+              <Link href={`/cards/${encodeURIComponent(nextCard.id)}?returnTo=${returnTo ? encodeURIComponent(returnTo) : ""}`}>
                 <Button variant="ghost" size="sm" className="h-8 gap-1 pl-3 pr-1 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all group">
                   Next <span className="opacity-40 font-mono">#{nextCard.cardNum}</span> <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </Button>
@@ -144,7 +144,7 @@ export default function CardDetail() {
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={() => setImgError(true)}
                   />
-                  
+
                   {/* Hover Overlay with Enlarge Icon */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
                     <DialogTrigger asChild>
@@ -193,7 +193,7 @@ export default function CardDetail() {
                   </span>
                   <span className="text-[10px] text-muted-foreground/60">Real-time Pricing</span>
                 </div>
-                
+
                 <div className="p-4 space-y-4">
                   {/* Primary CTA (Regional) */}
                   {(() => {
@@ -216,23 +216,23 @@ export default function CardDetail() {
                           <ArrowLeft className="w-4 h-4 rotate-180" />
                         </a>
                         <div className="grid grid-cols-2 gap-2">
-                           {/* Normal Price - Hidden for Foil-Only rarities */}
-                           {!foilOnly && (
-                             <div className="flex flex-col p-2.5 rounded-lg bg-muted/30 border border-border/40">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight mb-1">Normal</span>
-                                <span className="text-sm font-black" style={{ color: hexColor }}>
-                                   {card.priceUsd ? formatPrice(card.priceUsd) : "N/A"}
-                                </span>
-                             </div>
-                           )}
- 
-                           {/* Foil Price - Expand if Normal is hidden */}
-                           <div className={cn("flex flex-col p-2.5 rounded-lg bg-muted/30 border border-border/40", foilOnly ? "col-span-2" : "col-span-1")}>
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight mb-1">Cold Foil</span>
+                          {/* Normal Price - Hidden for Foil-Only rarities */}
+                          {!foilOnly && (
+                            <div className="flex flex-col p-2.5 rounded-lg bg-muted/30 border border-border/40">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight mb-1">Normal</span>
                               <span className="text-sm font-black" style={{ color: hexColor }}>
-                                 {card.priceUsdFoil ? formatPrice(card.priceUsdFoil) : "N/A"}
+                                {card.priceUsd ? formatPrice(card.priceUsd) : "N/A"}
                               </span>
-                           </div>
+                            </div>
+                          )}
+
+                          {/* Foil Price - Expand if Normal is hidden */}
+                          <div className={cn("flex flex-col p-2.5 rounded-lg bg-muted/30 border border-border/40", foilOnly ? "col-span-2" : "col-span-1")}>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight mb-1">Cold Foil</span>
+                            <span className="text-sm font-black" style={{ color: hexColor }}>
+                              {card.priceUsdFoil ? formatPrice(card.priceUsdFoil) : "N/A"}
+                            </span>
+                          </div>
                         </div>
 
                         <a
@@ -248,105 +248,105 @@ export default function CardDetail() {
                   })()}
                 </div>
 
-                  <Button 
-                    variant="outline" 
-                    className="h-10 w-full rounded-xl border-border bg-card/50 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all active:scale-95"
-                    onClick={() => setShowSocialShare(true)}
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Share this Card
-                  </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 w-full rounded-xl border-border bg-card/50 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all active:scale-95"
+                  onClick={() => setShowSocialShare(true)}
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share this Card
+                </Button>
               </div>
             )}
 
-              {/* Collection Tracker */}
-              <div className="rounded-2xl border bg-card/80 backdrop-blur overflow-hidden mt-4">
-                <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">My Collection</span>
-                  <span
-                    className="text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: `${hexColor}22`, color: hexColor }}
-                  >
-                    {collectionEntry.normal + collectionEntry.foil} total
-                  </span>
-                </div>
+            {/* Collection Tracker */}
+            <div className="rounded-2xl border bg-card/80 backdrop-blur overflow-hidden mt-4">
+              <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">My Collection</span>
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: `${hexColor}22`, color: hexColor }}
+                >
+                  {collectionEntry.normal + collectionEntry.foil} total
+                </span>
+              </div>
 
-                <div className="divide-y divide-border/40">
-                  {!foilOnly && (
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <div>
-                        <p className="text-sm font-semibold">Normal</p>
-                        <p className="text-xs text-muted-foreground">Standard print</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => removeCopy(card.id, "normal")}
-                          disabled={collectionEntry.normal === 0}
-                          className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 text-center text-lg font-bold tabular-nums" style={{ color: collectionEntry.normal > 0 ? hexColor : undefined }}>
-                          {collectionEntry.normal}
-                        </span>
-                        <button
-                          onClick={() => addCopy(card.id, "normal")}
-                          className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors"
-                          style={collectionEntry.normal > 0 ? { borderColor: hexColor, color: hexColor } : {}}
-                        >
-                          +
-                        </button>
-                        <button
-                          onClick={() => toggleWishlist(card.id, "normal")}
-                          className={cn(
-                            "w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ml-1",
-                            isInWishlist(card.id, "normal") ? "bg-pink-500 border-pink-400 text-white" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
-                          )}
-                          title="Add to Wishlist"
-                        >
-                          <Heart className={cn("w-4 h-4", isInWishlist(card.id, "normal") && "fill-current")} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
+              <div className="divide-y divide-border/40">
+                {!foilOnly && (
                   <div className="flex items-center justify-between px-4 py-3">
                     <div>
-                      <p className="text-sm font-semibold">Cold Foil</p>
-                      <p className="text-xs text-muted-foreground">Foil treatment</p>
+                      <p className="text-sm font-semibold">Normal</p>
+                      <p className="text-xs text-muted-foreground">Standard print</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => removeCopy(card.id, "foil")}
-                        disabled={collectionEntry.foil === 0}
+                        onClick={() => removeCopy(card.id, "normal")}
+                        disabled={collectionEntry.normal === 0}
                         className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         −
                       </button>
-                      <span className="w-8 text-center text-lg font-bold tabular-nums" style={{ color: collectionEntry.foil > 0 ? hexColor : undefined }}>
-                        {collectionEntry.foil}
+                      <span className="w-8 text-center text-lg font-bold tabular-nums" style={{ color: collectionEntry.normal > 0 ? hexColor : undefined }}>
+                        {collectionEntry.normal}
                       </span>
                       <button
-                        onClick={() => addCopy(card.id, "foil")}
+                        onClick={() => addCopy(card.id, "normal")}
                         className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors"
-                        style={collectionEntry.foil > 0 ? { borderColor: hexColor, color: hexColor } : {}}
+                        style={collectionEntry.normal > 0 ? { borderColor: hexColor, color: hexColor } : {}}
                       >
                         +
                       </button>
                       <button
-                        onClick={() => toggleWishlist(card.id, "foil")}
+                        onClick={() => toggleWishlist(card.id, "normal")}
                         className={cn(
                           "w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ml-1",
-                          isInWishlist(card.id, "foil") ? "bg-amber-500 border-amber-400 text-white" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
+                          isInWishlist(card.id, "normal") ? "bg-pink-500 border-pink-400 text-white" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
                         )}
-                        title="Add to Foil Wishlist"
+                        title="Add to Wishlist"
                       >
-                        <Sparkles className={cn("w-4 h-4", isInWishlist(card.id, "foil") && "fill-current")} />
+                        <Heart className={cn("w-4 h-4", isInWishlist(card.id, "normal") && "fill-current")} />
                       </button>
                     </div>
                   </div>
+                )}
+
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold">Cold Foil</p>
+                    <p className="text-xs text-muted-foreground">Foil treatment</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => removeCopy(card.id, "foil")}
+                      disabled={collectionEntry.foil === 0}
+                      className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      −
+                    </button>
+                    <span className="w-8 text-center text-lg font-bold tabular-nums" style={{ color: collectionEntry.foil > 0 ? hexColor : undefined }}>
+                      {collectionEntry.foil}
+                    </span>
+                    <button
+                      onClick={() => addCopy(card.id, "foil")}
+                      className="w-8 h-8 rounded-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-lg font-bold transition-colors"
+                      style={collectionEntry.foil > 0 ? { borderColor: hexColor, color: hexColor } : {}}
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => toggleWishlist(card.id, "foil")}
+                      className={cn(
+                        "w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ml-1",
+                        isInWishlist(card.id, "foil") ? "bg-amber-500 border-amber-400 text-white" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
+                      )}
+                      title="Add to Foil Wishlist"
+                    >
+                      <Sparkles className={cn("w-4 h-4", isInWishlist(card.id, "foil") && "fill-current")} />
+                    </button>
+                  </div>
                 </div>
               </div>
+            </div>
 
             {/* Tournament Legality */}
             {legality && (
@@ -403,7 +403,7 @@ export default function CardDetail() {
                 </span>
               )}
             </div>
-            
+
             <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-foreground">{card.name}</h1>
             {getFormattedSubtitle(card) && (
               <h2 className="text-xl md:text-2xl font-serif text-muted-foreground/80 italic">{getFormattedSubtitle(card)}</h2>
@@ -450,10 +450,10 @@ export default function CardDetail() {
             {card.classifications && card.classifications.length > 0 && (() => {
               const ORIGINS = ["Storyborn", "Dreamborn", "Floodborn", "Inkborn"];
               const ORIGIN_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-                Storyborn:  { bg: "bg-amber-500/10",   text: "text-amber-600 dark:text-amber-400",   border: "border-amber-500/20",   dot: "#f59e0b" },
-                Dreamborn:  { bg: "bg-violet-500/10",  text: "text-violet-600 dark:text-violet-400",  border: "border-violet-500/20",  dot: "#8b5cf6" },
-                Floodborn:  { bg: "bg-sky-500/10",     text: "text-sky-600 dark:text-sky-400",     border: "border-sky-500/20",     dot: "#38bdf8" },
-                Inkborn:    { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/20", dot: "#10b981" },
+                Storyborn: { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", border: "border-amber-500/20", dot: "#f59e0b" },
+                Dreamborn: { bg: "bg-violet-500/10", text: "text-violet-600 dark:text-violet-400", border: "border-violet-500/20", dot: "#8b5cf6" },
+                Floodborn: { bg: "bg-sky-500/10", text: "text-sky-600 dark:text-sky-400", border: "border-sky-500/20", dot: "#38bdf8" },
+                Inkborn: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/20", dot: "#10b981" },
               };
               const origins = card.classifications.filter(c => ORIGINS.includes(c));
               const roles = card.classifications.filter(c => !ORIGINS.includes(c));
@@ -533,7 +533,7 @@ export default function CardDetail() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
             {artistCards.map(c => (
-              <Link key={c.id} href={`/cards/${encodeURIComponent(c.id)}${fromUrl ? `?from=${fromUrl}` : ""}`}>
+              <Link key={c.id} href={`/cards/${encodeURIComponent(c.id)}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}>
                 <motion.div
                   whileHover={{ y: -3, scale: 1.03 }}
                   transition={{ duration: 0.15 }}
@@ -554,7 +554,7 @@ export default function CardDetail() {
           <h3 className="text-xl font-serif font-bold mb-4 text-muted-foreground">More Like This</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {relatedCards.map(c => (
-              <CardDisplay key={c.id} card={c} returnTo={fromUrl ?? undefined} />
+              <CardDisplay key={c.id} card={c} returnTo={returnTo ?? undefined} />
             ))}
           </div>
         </section>
@@ -569,19 +569,19 @@ export default function CardDetail() {
               Share "{card.name}" with other Illumineers.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-6 py-4">
             {/* Social Buttons */}
             <div className="grid grid-cols-2 gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="gap-2 bg-[#1DA1F2]/5 hover:bg-[#1DA1F2]/10 border-[#1DA1F2]/20 text-[#1DA1F2]"
                 onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this Disney Lorcana card "${card.name}" on Lorbound!`)}&url=${encodeURIComponent(window.location.href)}`, '_blank')}
               >
                 <Twitter className="w-4 h-4 fill-current" /> Twitter
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="gap-2 bg-[#4267B2]/5 hover:bg-[#4267B2]/10 border-[#4267B2]/20 text-[#4267B2]"
                 onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`, '_blank')}
               >
@@ -593,21 +593,21 @@ export default function CardDetail() {
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Direct Link</Label>
               <div className="flex gap-2">
-                <Input 
-                  readOnly 
-                  value={window.location.href} 
+                <Input
+                  readOnly
+                  value={window.location.href}
                   className="bg-muted/50 text-xs h-9"
                 />
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.href);
                     setCopying(true);
                     setTimeout(() => setCopying(false), 2000);
-                  }} 
+                  }}
                   className="shrink-0 h-9"
                 >
-                   {copying ? "Copied!" : "Copy"}
+                  {copying ? "Copied!" : "Copy"}
                 </Button>
               </div>
             </div>

@@ -19,8 +19,15 @@ export function useImageExport(params: Partial<ExportImageParams> & { active: bo
     formatPrice,
     showFormat,
     showCount,
-    showValue
+    showValue,
+    showQRCode,
+    deckUrl
   } = params;
+
+  const [aspectRatio, setAspectRatio] = useState<"standard" | "square">("standard");
+  const [showCostCurve, setShowCostCurve] = useState(true);
+  const [showInkBreakdown, setShowInkBreakdown] = useState(true);
+  const [showTypeBreakdown, setShowTypeBreakdown] = useState(true);
 
   useEffect(() => {
     if (!active || !deckCards || !formatPrice || !inkDistribution) {
@@ -49,7 +56,14 @@ export function useImageExport(params: Partial<ExportImageParams> & { active: bo
           formatPrice,
           showFormat: showFormat ?? true,
           showCount: showCount ?? true,
-          showValue: showValue ?? true
+          showValue: showValue ?? true,
+          showQRCode: showQRCode ?? false,
+          deckUrl,
+          // New params
+          aspectRatio,
+          showCostCurve,
+          showInkBreakdown,
+          showTypeBreakdown
         });
 
         if (blob && isMounted) {
@@ -86,9 +100,15 @@ export function useImageExport(params: Partial<ExportImageParams> & { active: bo
     showFormat,
     showCount,
     showValue,
+    showQRCode,
+    aspectRatio,
+    showCostCurve,
+    showInkBreakdown,
+    showTypeBreakdown,
     // Use stringified versions for stable dependency checking of complex objects
     JSON.stringify(deckCards),
-    JSON.stringify(inkDistribution)
+    JSON.stringify(inkDistribution),
+    deckUrl
   ]);
 
   const handleDownload = () => {
@@ -105,6 +125,14 @@ export function useImageExport(params: Partial<ExportImageParams> & { active: bo
     sharePreviewUrl,
     isGeneratingPreview,
     previewError,
-    handleDownload
+    handleDownload,
+    aspectRatio,
+    setAspectRatio,
+    showCostCurve,
+    setShowCostCurve,
+    showInkBreakdown,
+    setShowInkBreakdown,
+    showTypeBreakdown,
+    setShowTypeBreakdown
   };
 }

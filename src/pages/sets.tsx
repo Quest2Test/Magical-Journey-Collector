@@ -115,7 +115,7 @@ export default function Sets() {
           {promoSets.length > 0 && (
             <div className="pt-16 border-t">
               <div className="flex items-center gap-4 mb-10">
-                <h2 className="font-serif text-3xl font-bold tracking-tight">Special Collections</h2>
+                <h2 className="font-serif text-3xl font-bold tracking-tight">Promo Collections</h2>
                 <div className="flex-1 h-px bg-border/50" />
                 <Sparkles className="w-5 h-5 text-amber-500" />
               </div>
@@ -183,7 +183,7 @@ function SetCard({ set, i, ownedCount, showProgress }: { set: { id: string; name
                 className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border backdrop-blur-md"
                 style={{ color: accent, borderColor: `${accent}44`, backgroundColor: `${accent}11` }}
               >
-                {set.isPromo ? "Special" : `Chapter ${set.setNum}`}
+                {set.isPromo ? "Promo" : `Chapter ${set.setNum}`}
               </div>
             </div>
 

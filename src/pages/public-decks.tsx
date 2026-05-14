@@ -90,7 +90,7 @@ export default function PublicDecks() {
               {/* Top Row: Name and Inks (Header) */}
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="flex flex-col min-w-0">
-                  <Link href={`/decks/public/${deck.id}`}>
+                  <Link href={`/decks/public/${deck.id}?returnTo=/public-decks`}>
                     <h3 className="text-xl font-bold font-serif leading-tight group-hover:text-primary transition-colors truncate cursor-pointer">
                       {deck.name}
                     </h3>
@@ -183,7 +183,7 @@ export default function PublicDecks() {
                       </Button>
                     </div>
                     
-                    <Link href={`/decks/public/${deck.id}`}>
+                    <Link href={`/decks/public/${deck.id}?returnTo=/public-decks`}>
                       <Button size="sm" variant="secondary" className="h-8 gap-1 w-full text-xs font-bold">
                         View <ArrowUpRight className="w-3 h-3" />
                       </Button>
