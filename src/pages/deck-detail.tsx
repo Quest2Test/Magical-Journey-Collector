@@ -243,12 +243,6 @@ export default function DeckDetail() {
     handleDownload,
     aspectRatio,
     setAspectRatio,
-    showCostCurve,
-    setShowCostCurve,
-    showInkBreakdown,
-    setShowInkBreakdown,
-    showTypeBreakdown,
-    setShowTypeBreakdown
   } = useImageExport({
     deckCards: memoizedCards,
     deckName: deck?.name || "Untitled Deck",
@@ -911,12 +905,7 @@ export default function DeckDetail() {
         onShowCountChange={setShowCount}
         showValue={showValue}
         onShowValueChange={setShowValue}
-        showCostCurve={showCostCurve}
-        onShowCostCurveChange={setShowCostCurve}
-        showInkBreakdown={showInkBreakdown}
-        onShowInkBreakdownChange={setShowInkBreakdown}
-        showTypeBreakdown={showTypeBreakdown}
-        onShowTypeBreakdownChange={setShowTypeBreakdown}
+
         showQRCode={showQRCode}
         onShowQRCodeChange={isPublicRoute || publicDecks.some(p => p.id === deck.id) ? setShowQRCode : undefined}
         isGeneratingPreview={isGeneratingPreview}

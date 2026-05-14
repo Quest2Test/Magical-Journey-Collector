@@ -281,12 +281,6 @@ export default function DeckBuilder() {
     handleDownload,
     aspectRatio,
     setAspectRatio,
-    showCostCurve,
-    setShowCostCurve,
-    showInkBreakdown,
-    setShowInkBreakdown,
-    showTypeBreakdown,
-    setShowTypeBreakdown
   } = useImageExport({
     active: shareModalOpen,
     deckCards,
@@ -1166,12 +1160,7 @@ export default function DeckBuilder() {
           onShowCountChange={setShowCount}
           showValue={showValue}
           onShowValueChange={setShowValue}
-          showCostCurve={showCostCurve}
-          onShowCostCurveChange={setShowCostCurve}
-          showInkBreakdown={showInkBreakdown}
-          onShowInkBreakdownChange={setShowInkBreakdown}
-          showTypeBreakdown={showTypeBreakdown}
-          onShowTypeBreakdownChange={setShowTypeBreakdown}
+
           isGeneratingPreview={isGeneratingPreview}
           previewError={previewError}
           sharePreviewUrl={sharePreviewUrl}

@@ -17,9 +17,6 @@ export interface ExportImageParams {
   showQRCode?: boolean;
   deckUrl?: string;
   aspectRatio?: "standard" | "square";
-  showCostCurve?: boolean;
-  showInkBreakdown?: boolean;
-  showTypeBreakdown?: boolean;
 }
 
 const INK_HEX_COLORS: Record<string, string> = {
@@ -45,10 +42,7 @@ export const buildDeckExportImage = async ({
   showValue = true,
   showQRCode = false,
   deckUrl,
-  aspectRatio = "standard",
-  showCostCurve = true,
-  showInkBreakdown = true,
-  showTypeBreakdown = true
+  aspectRatio = "standard"
 }: ExportImageParams): Promise<Blob | null> => {
   const loadImage = (src: string) =>
     new Promise<HTMLImageElement | null>((resolve) => {
