@@ -569,7 +569,7 @@ export default function Profile() {
                     <Settings className="w-4 h-4" /> Settings
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-border/40">
+                <DialogContent className="sm:max-w-[480px] p-0 border-border/40 overflow-hidden flex flex-col max-h-[90vh]">
                   <DialogHeader className="p-6 pb-2">
                     <DialogTitle className="font-serif text-2xl">Profile Settings</DialogTitle>
                     <DialogDescription>
@@ -578,7 +578,7 @@ export default function Profile() {
                   </DialogHeader>
                   
                   <form onSubmit={handleUpdateProfile} className="space-y-0">
-                    <div className="p-6 pt-2 space-y-6">
+                    <div className="p-6 pt-2 space-y-6 overflow-y-auto flex-1 no-scrollbar">
                       {/* Identity Section */}
                       <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
@@ -712,14 +712,15 @@ export default function Profile() {
                             size="sm" 
                             className="h-11 rounded-xl bg-destructive hover:bg-destructive/90 text-white justify-start px-4" 
                             onClick={async () => {
-                              if (confirm("ABSOLUTE DATA WIPE: This will delete everything (Decks, Collection, Wishlist, and Profile Metadata). Your account login will remain, but all progress will be lost. Proceed?")) {
+                              if (confirm("PERMANENT ACCOUNT DELETION: This will delete everything (Decks, Collection, Wishlist, and Profile Metadata). Your account login will remain, but all progress and personal data will be wiped. This action is irreversible. Proceed?")) {
                                 setIsLoading(true);
                                 try {
                                   await Promise.all([
                                     supabase.from("decks").delete().eq("user_id", user?.id),
                                     supabase.from("collections").delete().eq("user_id", user?.id),
                                     supabase.from("wishlists").delete().eq("user_id", user?.id),
-                                    supabase.from("profiles").delete().eq("id", user?.id)
+                                    supabase.from("profiles").delete().eq("id", user?.id),
+                                    supabase.rpc('delete_user')
                                   ]);
                                   
                                   // Sign out the user after wiping data
@@ -735,7 +736,7 @@ export default function Profile() {
                               }
                             }}
                           >
-                            <AlertTriangle className="w-3.5 h-3.5 mr-2" /> Wipe All Data
+                            <AlertTriangle className="w-3.5 h-3.5 mr-2" /> Delete Account & Data
                           </Button>
                         </div>
                       </div>
