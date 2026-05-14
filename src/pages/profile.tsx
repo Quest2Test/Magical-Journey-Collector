@@ -577,8 +577,8 @@ export default function Profile() {
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <form onSubmit={handleUpdateProfile} className="space-y-0">
-                    <div className="p-6 pt-2 space-y-6 overflow-y-auto flex-1 no-scrollbar">
+                  <form onSubmit={handleUpdateProfile} className="space-y-0 flex-1 flex flex-col overflow-hidden">
+                    <div className="p-6 pt-2 space-y-6 overflow-y-auto flex-1 scrollbar-thin">
                       {/* Identity Section */}
                       <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
