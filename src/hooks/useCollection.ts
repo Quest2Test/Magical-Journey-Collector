@@ -2,13 +2,10 @@ import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth-provider";
+import { Card } from "@/data/cards";
+import { Collection, CollectionEntry, calculateCollectionStats } from "@/lib/collection-utils";
+import { getCardVariants } from "@/lib/card-utils";
 
-export type CollectionEntry = {
-  normal: number;
-  foil: number;
-};
-
-export type Collection = Record<string, CollectionEntry>;
 
 export function useCollection(targetUserId?: string, options: { enabled?: boolean } = {}) {
   const { user } = useAuth();
@@ -211,6 +208,14 @@ export function useCollection(targetUserId?: string, options: { enabled?: boolea
     collectedCount,
     totalCopies,
     clearCollection,
+    getStats: (allCards: Card[]) => calculateCollectionStats(collection, allCards),
+    addCard: (card: Card, preferredVariant?: "normal" | "foil") => {
+      const variants = getCardVariants(card);
+      const variant = preferredVariant && variants.includes(preferredVariant) 
+        ? preferredVariant 
+        : variants[0];
+      addCopy(card.id, variant);
+    },
     isLoading: isLoading && !!activeUserId,
     isError,
   };

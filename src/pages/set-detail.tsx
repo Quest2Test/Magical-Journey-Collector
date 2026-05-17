@@ -1070,18 +1070,21 @@ export default function SetDetail() {
                                 {isItemCollected ? "Collected" : "Add to Set"}
                               </Button>
                               <div className="flex gap-1">
-                                <button
-                                  onClick={() => toggleWishlist(card.id, "normal")}
-                                  className={cn(
-                                    "w-10 h-10 rounded-xl border flex items-center justify-center transition-all",
-                                    isInWishlist(card.id, "normal") 
-                                      ? "bg-pink-500 border-pink-400 text-white shadow-lg" 
-                                      : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-                                  )}
-                                  title="Normal Wishlist"
-                                >
-                                  <Heart className={cn("w-4 h-4", isInWishlist(card.id, "normal") && "fill-current")} />
-                                </button>
+                                {!foilOnly && (
+                                  <button
+                                    onClick={() => toggleWishlist(card.id, "normal")}
+                                    className={cn(
+                                      "w-10 h-10 rounded-xl border flex items-center justify-center transition-all",
+                                      isInWishlist(card.id, "normal") 
+                                        ? "bg-pink-500 border-pink-400 text-white shadow-lg" 
+                                        : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                                    )}
+                                    title="Normal Wishlist"
+                                  >
+                                    <Heart className={cn("w-4 h-4", isInWishlist(card.id, "normal") && "fill-current")} />
+                                  </button>
+                                )}
+
                                 <button
                                   onClick={() => toggleWishlist(card.id, "foil")}
                                   className={cn(
@@ -1137,15 +1140,18 @@ export default function SetDetail() {
                               </button>
 
                               <div className="flex gap-1">
-                                <button
-                                  onClick={() => toggleWishlist(card.id, "normal")}
-                                  className={cn(
-                                    "transition-colors",
-                                    isInWishlist(card.id, "normal") ? "text-pink-500" : "text-muted-foreground/40 hover:text-pink-400"
-                                  )}
-                                >
-                                  <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} />
-                                </button>
+                                {!foilOnly && (
+                                  <button
+                                    onClick={() => toggleWishlist(card.id, "normal")}
+                                    className={cn(
+                                      "transition-colors",
+                                      isInWishlist(card.id, "normal") ? "text-pink-500" : "text-muted-foreground/40 hover:text-pink-400"
+                                    )}
+                                  >
+                                    <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} />
+                                  </button>
+                                )}
+
                                 <button
                                   onClick={() => toggleWishlist(card.id, "foil")}
                                   className={cn(

@@ -37,8 +37,23 @@ export function getDisplayType(card: Card): string {
 
 /**
  * Returns true if the card is only available in a foil treatment.
+ * Follows API hints and specific set rules.
  */
 export function isFoilOnly(card: Card): boolean {
   const FOIL_ONLY_RARITIES = ["Enchanted", "Iconic", "Epic"];
-  return FOIL_ONLY_RARITIES.includes(card.rarity);
+  if (FOIL_ONLY_RARITIES.includes(card.rarity)) return true;
+
+  // Follow the API: If priceUsd is missing (null/undefined/0) but priceUsdFoil is present, it's foil-only
+  if (!card.priceUsd && !!card.priceUsdFoil) return true;
+
+
+  return false;
+}
+
+/**
+ * Returns the available variants for a card.
+ */
+export function getCardVariants(card: Card): ("normal" | "foil")[] {
+  if (isFoilOnly(card)) return ["foil"];
+  return ["normal", "foil"];
 }

@@ -1,12 +1,13 @@
 import { Card } from "@/data/cards";
+import { isFoilOnly } from "./card-utils";
+import { Collection, CollectionEntry } from "@/lib/collection-utils";
 
-/**
- * Detects if a card is exclusively available in foil (Enchanted, Iconic).
- */
-export function isFoilOnly(card: Card): boolean {
-  const rarity = card.rarity?.toLowerCase();
-  return rarity === "enchanted" || rarity === "iconic";
-}
+
+export { isFoilOnly };
+
+
+
+
 
 /**
  * Standardized pricing logic for Lorcana cards.
@@ -35,6 +36,15 @@ export function getCardPricing(card: Card) {
 }
 
 /**
+ * Calculates the value of a specific quantity of a card.
+ */
+export function getCardValue(card: Card, entry: CollectionEntry) {
+  const { normal, foil } = getCardPricing(card);
+  return (entry.normal * normal) + (entry.foil * foil);
+}
+
+
+/**
  * Gets the "Base Value" of a card for set completion metrics.
  * Prioritizes normal price, but falls back to foil for foil-only cards.
  */
@@ -48,4 +58,23 @@ export function getBaseCardValue(card: Card) {
  */
 export function getDeckValue(entries: { card: Card; qty: number }[]) {
   return entries.reduce((acc, entry) => acc + (getBaseCardValue(entry.card) * entry.qty), 0);
+}
+
+/**
+ * Calculates the total market value of a collection.
+ */
+export function getCollectionValue(collection: Collection, allCards: Card[]) {
+
+  const cardMap = new Map(allCards.map(c => [c.id, c]));
+  let total = 0;
+
+  for (const [cardId, entry] of Object.entries(collection)) {
+    const card = cardMap.get(cardId);
+    if (!card) continue;
+
+    const pricing = getCardPricing(card);
+    total += (entry.normal * pricing.normal) + (entry.foil * pricing.foil);
+  }
+
+  return total;
 }

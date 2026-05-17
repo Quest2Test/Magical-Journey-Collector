@@ -7,6 +7,7 @@ import { useWishlist } from "@/hooks/useWishlist";
 import { Button } from "./button";
 import { useState, memo } from "react";
 import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
+import { isFoilOnly } from "@/lib/pricing";
 
 interface CardDisplayProps {
   card: Card;
@@ -96,6 +97,7 @@ export const CardDisplay = memo(function CardDisplay({
   const [imgError, setImgError] = useState(false);
   const hasRealImage = !!card.image && !imgError;
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const foilOnly = isFoilOnly(card);
 
   return (
     <motion.div
@@ -128,6 +130,15 @@ export const CardDisplay = memo(function CardDisplay({
 
 
         {/* Text overlay removed as per user request for a clean card-back look */}
+        
+        {isInWishlist(card.id) && (
+          <div className={cn(
+            "absolute top-2 right-2 z-30 w-7 h-7 rounded-full shadow-lg flex items-center justify-center backdrop-blur-md border border-white/20 transition-all scale-100",
+            isInWishlist(card.id, "foil") ? "bg-amber-500 text-white" : "bg-pink-500 text-white"
+          )}>
+            {isInWishlist(card.id, "foil") ? <Sparkles className="w-3.5 h-3.5 fill-current" /> : <Heart className="w-3.5 h-3.5 fill-current" />}
+          </div>
+        )}
 
         {showQuickAdd && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 rounded-xl pointer-events-none group-hover:pointer-events-auto p-4 text-center">
@@ -136,6 +147,7 @@ export const CardDisplay = memo(function CardDisplay({
                 e.preventDefault();
                 onQuickAdd?.(card);
               }}
+
               size="sm"
               className="w-full gap-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg h-9 shadow-lg"
             >
@@ -143,20 +155,22 @@ export const CardDisplay = memo(function CardDisplay({
             </Button>
 
             <div className="flex gap-2 w-full">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  toggleWishlist(card.id, "normal");
-                }}
-                className={cn(
-                  "flex-1 h-9 rounded-lg border flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase transition-all shadow-lg",
-                  isInWishlist(card.id, "normal")
-                    ? "bg-pink-500 border-pink-400 text-white"
-                    : "bg-white/10 border-white/20 text-white hover:bg-white/20"
-                )}
-              >
-                <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} /> Normal
-              </button>
+              {!foilOnly && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleWishlist(card.id, "normal");
+                  }}
+                  className={cn(
+                    "flex-1 h-9 rounded-lg border flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase transition-all shadow-lg",
+                    isInWishlist(card.id, "normal")
+                      ? "bg-pink-500 border-pink-400 text-white"
+                      : "bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  )}
+                >
+                  <Heart className={cn("w-3 h-3", isInWishlist(card.id, "normal") && "fill-current")} /> Normal
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -166,10 +180,11 @@ export const CardDisplay = memo(function CardDisplay({
                   "flex-1 h-9 rounded-lg border flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase transition-all shadow-lg",
                   isInWishlist(card.id, "foil")
                     ? "bg-amber-500 border-amber-400 text-white"
-                    : "bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    : "bg-white/10 border-white/20 text-white hover:bg-white/20",
+                  foilOnly && "flex-[2]"
                 )}
               >
-                <Sparkles className={cn("w-3 h-3", isInWishlist(card.id, "foil") && "fill-current")} /> Foil
+                <Sparkles className={cn("w-3 h-3", isInWishlist(card.id, "foil") && "fill-current")} /> {foilOnly ? "Foil Only" : "Foil"}
               </button>
             </div>
           </div>
