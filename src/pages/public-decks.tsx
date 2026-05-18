@@ -7,6 +7,7 @@ import { usePublicDecks } from "@/hooks/usePublicDecks";
 import { useAuth } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
 import { inkHexColors, getInkLogo } from "@/components/ui/card-display";
+import { getDeckArchetype } from "@/lib/card-utils";
 import { getBaseCardValue } from "@/lib/pricing";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,8 +19,10 @@ export default function PublicDecks() {
   const { user } = useAuth();
 
   const filteredDecks = publicDecks.filter(deck => {
+    const archetypeText = deck.customArchetype || (deck.entries?.length > 0 ? getDeckArchetype(deck.entries) : "");
     const matchesSearch = deck.name.toLowerCase().includes(search.toLowerCase()) || 
-                         deck.authorName.toLowerCase().includes(search.toLowerCase());
+                         deck.authorName.toLowerCase().includes(search.toLowerCase()) ||
+                         archetypeText.toLowerCase().includes(search.toLowerCase());
     if (sortBy === 'my') {
       return matchesSearch && user && deck.userId === user.id;
     }
@@ -95,7 +98,13 @@ export default function PublicDecks() {
                       {deck.name}
                     </h3>
                   </Link>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mt-1.5">
+                    {(deck.customArchetype || deck.entries?.length > 0) && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shadow-sm mr-1">
+                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                        {deck.customArchetype || getDeckArchetype(deck.entries)}
+                      </span>
+                    )}
                     <span>by <span className="font-semibold text-foreground/80">{deck.authorName}</span></span>
                     <span className="opacity-50">•</span>
                     <span className="uppercase tracking-wider font-bold">{deck.format}</span>

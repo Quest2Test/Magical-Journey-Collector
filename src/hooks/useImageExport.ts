@@ -21,7 +21,8 @@ export function useImageExport(params: Partial<ExportImageParams> & { active: bo
     showCount,
     showValue,
     showQRCode,
-    deckUrl
+    deckUrl,
+    customArchetype,
   } = params;
 
   const [aspectRatio, setAspectRatio] = useState<"standard" | "square">("standard");
@@ -57,6 +58,7 @@ export function useImageExport(params: Partial<ExportImageParams> & { active: bo
           showQRCode: showQRCode ?? false,
           deckUrl,
           aspectRatio,
+          customArchetype,
         });
 
         if (blob && isMounted) {
@@ -95,6 +97,7 @@ export function useImageExport(params: Partial<ExportImageParams> & { active: bo
     showValue,
     showQRCode,
     aspectRatio,
+    customArchetype,
     // Use stringified versions for stable dependency checking of complex objects
     JSON.stringify(deckCards),
     JSON.stringify(inkDistribution),

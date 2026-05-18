@@ -16,6 +16,10 @@ export interface PublicDeck extends SavedDeck {
  * Maps DB row to PublicDeck interface
  */
 function mapDbToPublicDeck(row: any): PublicDeck {
+  const metaEntry = row.cards?.find((e: any) => e.card?.id === "meta-archetype");
+  const customArchetype = metaEntry?.customArchetype || row.customArchetype;
+  const cleanCards = row.cards?.filter((e: any) => e.card?.id !== "meta-archetype") || [];
+
   return {
     id: row.id,
     userId: row.user_id,
@@ -23,9 +27,10 @@ function mapDbToPublicDeck(row: any): PublicDeck {
     name: row.name,
     format: row.format as SavedDeck['format'],
     inkColors: row.ink_colors || [],
-    totalCards: row.cards?.reduce((acc: number, e: any) => acc + e.qty, 0) || 0,
+    totalCards: cleanCards?.reduce((acc: number, e: any) => acc + e.qty, 0) || 0,
     totalValue: 0, // Computed dynamically based on current prices, or just keep what was passed
-    entries: row.cards,
+    entries: cleanCards,
+    customArchetype,
     views: row.views || 0,
     upvotes: row.upvotes || 0,
     createdAt: row.created_at,
@@ -39,7 +44,7 @@ export function usePublicDecks(sortBy: 'recent' | 'popular' = 'recent') {
   const queryClient = useQueryClient();
   
   const queryKey = ["public_decks", sortBy];
-
+  
   const { data: publicDecks = [], isLoading } = useQuery<PublicDeck[]>({
     queryKey,
     queryFn: async () => {
@@ -66,6 +71,15 @@ export function usePublicDecks(sortBy: 'recent' | 'popular' = 'recent') {
     mutationFn: async ({ deck, authorName }: { deck: SavedDeck, authorName: string }) => {
       if (!user) throw new Error("Must be logged in to publish a deck");
 
+      const cardsToSave = [...deck.entries];
+      if (deck.customArchetype) {
+        cardsToSave.push({
+          card: { id: "meta-archetype" } as any,
+          qty: 0,
+          customArchetype: deck.customArchetype
+        } as any);
+      }
+
       const { data, error } = await supabase.from("public_decks").upsert({
         id: deck.id,
         user_id: user.id,
@@ -73,7 +87,7 @@ export function usePublicDecks(sortBy: 'recent' | 'popular' = 'recent') {
         name: deck.name,
         format: deck.format,
         ink_colors: deck.inkColors,
-        cards: deck.entries,
+        cards: cardsToSave,
       }).select().single();
 
       if (error) throw error;

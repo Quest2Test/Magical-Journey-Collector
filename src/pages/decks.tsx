@@ -8,6 +8,7 @@ import { useDecks, SavedDeck } from "@/hooks/useDecks";
 import { inkHexColors } from "@/components/ui/card-display";
 import { cn } from "@/lib/utils";
 import { STARTER_DECKS, StarterDeckDefinition } from "@/data/starter-decks";
+import { getDeckArchetype } from "@/lib/card-utils";
 import { useAllCards } from "@/hooks/useCards";
 
 const FORMAT_STYLES: Record<string, { label: string; bg: string; text: string }> = {
@@ -40,9 +41,11 @@ export default function DecksBrowse() {
     return groups;
   }, [hydratedStarters]);
 
-  const filteredDecks = decks.filter(d =>
-    d.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredDecks = decks.filter(d => {
+    const archetypeText = d.customArchetype || (d.entries?.length > 0 ? getDeckArchetype(d.entries) : "");
+    return d.name.toLowerCase().includes(search.toLowerCase()) ||
+           archetypeText.toLowerCase().includes(search.toLowerCase());
+  });
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-8">
@@ -254,6 +257,14 @@ function SavedDeckCard({ deck, i, onDelete, isOfficial }: { deck: SavedDeck; i: 
           {/* Body */}
           <div className="flex flex-col gap-3 p-4 flex-1">
             <div>
+              {(deck.customArchetype || deck.entries?.length > 0) && (
+                <div className="mb-2">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shadow-sm">
+                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                    {deck.customArchetype || getDeckArchetype(deck.entries)}
+                  </span>
+                </div>
+              )}
               <h3 className="font-bold text-lg leading-tight line-clamp-1 mb-0.5">{deck.name}</h3>
               <p className="text-xs text-muted-foreground">{isOfficial ? "Official Starter List" : `Last saved ${updatedDate}`}</p>
             </div>

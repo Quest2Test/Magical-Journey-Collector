@@ -17,7 +17,7 @@ import { useCurrency } from "@/components/currency-provider";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { getFormattedSubtitle, getDisplayType } from "@/lib/card-utils";
+import { getFormattedSubtitle, getDisplayType, getDeckArchetype } from "@/lib/card-utils";
 import { getCardLegality } from "@/lib/legality";
 import { useDecks } from "@/hooks/useDecks";
 import { useSets } from "@/hooks/useCards";
@@ -46,6 +46,7 @@ export default function DeckBuilder() {
   const { data: allCards = [], isLoading } = useAllCards();
   const { data: sets = [] } = useSets();
   const [deckName, setDeckName] = useState("New Deck");
+  const [customArchetype, setCustomArchetype] = useState("");
   const [deckCards, setDeckCards] = useState<{ card: Card; qty: number }[]>([]);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
@@ -65,7 +66,7 @@ export default function DeckBuilder() {
   const [showUnreleased, setShowUnreleased] = useState(false);
   const [smartFilter, setSmartFilter] = useState(true);
   const [groupingMode, setGroupingMode] = useState<"type" | "cost">("cost");
-  const [format, setFormat] = useState<"Any" | "Core" | "Infinity">("Any");
+  const [format, setFormat] = useState<"Any" | "Core" | "Infinity">("Core");
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [deckId, setDeckId] = useState<string>(() => crypto.randomUUID());
   const [importOpen, setImportOpen] = useState(false);
@@ -113,6 +114,7 @@ export default function DeckBuilder() {
         setDeckCards(target.entries);
         setDeckId(target.id);
         setSavedAt(target.createdAt);
+        setCustomArchetype(target.customArchetype || "");
 
         // If there's a sideboard, handle it if it exists in the data
         if ((target as any).sideboard) {
@@ -129,10 +131,11 @@ export default function DeckBuilder() {
     const isImportReq = importParam === "latest";
     const isPublicImport = params.get("source") === "public" && importParam;
 
-    const performImport = (entries: { card: Card; qty: number }[], name: string, deckFormat?: string) => {
+    const performImport = (entries: { card: Card; qty: number }[], name: string, deckFormat?: string, customArch?: string) => {
       setDeckCards(entries);
       setDeckName(name);
       if (deckFormat) setFormat(deckFormat as any);
+      setCustomArchetype(customArch || "");
       setDeckId(crypto.randomUUID()); // Generate new ID for clone
       setSavedAt(null); // Clear saved state
       window.history.replaceState({}, '', '/builder');
@@ -143,7 +146,10 @@ export default function DeckBuilder() {
       import('@/lib/supabase').then(({ supabase }) => {
         supabase.from("public_decks").select("*").eq("id", importParam).single().then(({ data }) => {
           if (data) {
-            performImport(data.cards, `${data.name} (Clone)`, data.format);
+            const metaEntry = data.cards?.find((e: any) => e.card?.id === "meta-archetype");
+            const customArch = metaEntry?.customArchetype;
+            const cleanCards = data.cards?.filter((e: any) => e.card?.id !== "meta-archetype") || [];
+            performImport(cleanCards, `${data.name} (Clone)`, data.format, customArch);
             toast({ title: "Deck Cloned", description: `Cloned ${data.name} to your builder.` });
           }
         });
@@ -294,7 +300,8 @@ export default function DeckBuilder() {
     showFormat,
     showCount,
     showValue,
-    deckUrl: deckId ? `${window.location.origin}/decks/${deckId}` : undefined
+    deckUrl: deckId ? `${window.location.origin}/decks/${deckId}` : undefined,
+    customArchetype,
   });
 
   // Filtering Left Panel
@@ -606,6 +613,7 @@ export default function DeckBuilder() {
       totalCards,
       totalValue,
       entries: deckCards,
+      customArchetype: customArchetype || undefined,
       createdAt: savedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -682,18 +690,68 @@ export default function DeckBuilder() {
         <h1 className="sr-only">Lorcana Deck Builder</h1>
         {/* Top bar content... I'll just keep the existing div and close it correctly */}
         <div className="h-14 border-b bg-card flex items-center justify-between px-4 shrink-0 overflow-x-auto gap-4">
-          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+          <div className="flex items-center gap-3 flex-1 min-w-[200px]">
             <div className="relative group/name">
               <Input
                 value={deckName}
                 onChange={(e) => setDeckName(e.target.value.substring(0, 50))}
-                className="w-[200px] sm:w-[300px] font-serif font-bold text-lg bg-transparent border-transparent hover:border-input focus:border-input focus:ring-1 transition-all shrink-0"
+                className="w-[180px] sm:w-[260px] font-serif font-bold text-lg bg-transparent border-transparent hover:border-input focus:border-input focus:ring-1 transition-all shrink-0"
                 placeholder="Enter deck name..."
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted-foreground opacity-50 group-focus-within:opacity-100 transition-opacity">
                 {deckName.length}/50
               </div>
             </div>
+            {deckCards.length > 0 && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="hidden md:inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 px-2.5 py-1 rounded-full border border-emerald-500/20 shadow-sm shrink-0 transition-all cursor-pointer">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {customArchetype || getDeckArchetype(deckCards)}
+                    <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4 border bg-popover text-popover-foreground shadow-xl rounded-xl z-50">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <h4 className="font-serif font-bold text-sm text-foreground flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-emerald-500 animate-pulse" />
+                        Deck Archetype
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        Customise how this deck is categorised on shared images and listings.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Archetype Name</label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder={getDeckArchetype(deckCards)}
+                          value={customArchetype}
+                          onChange={(e) => setCustomArchetype(e.target.value.substring(0, 40))}
+                          className="h-8 text-xs bg-background/50"
+                        />
+                        {customArchetype && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setCustomArchetype("")}
+                            className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10 shrink-0"
+                            title="Reset to detected archetype"
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground flex items-start gap-1">
+                      <span className="text-emerald-500 font-bold">•</span>
+                      <span>Auto-detected: <strong className="font-semibold text-foreground">{getDeckArchetype(deckCards)}</strong></span>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
           <div className="flex items-center gap-4 shrink-0">
             <Select value={format} onValueChange={(v: any) => setFormat(v)}>
@@ -701,7 +759,6 @@ export default function DeckBuilder() {
                 <SelectValue placeholder="Format" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Any">Any Format</SelectItem>
                 <SelectItem value="Core">Core Constructed</SelectItem>
                 <SelectItem value="Infinity">Infinity Constructed</SelectItem>
               </SelectContent>

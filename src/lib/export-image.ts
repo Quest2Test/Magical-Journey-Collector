@@ -1,6 +1,7 @@
 import { inkHexColors, getInkLogo } from "@/components/ui/card-display";
 import { Card } from "@/data/cards";
 import QRCode from 'qrcode';
+import { getDeckArchetype } from "./card-utils";
 
 export interface ExportImageParams {
   deckCards: { card: Card; qty: number }[];
@@ -17,6 +18,7 @@ export interface ExportImageParams {
   showQRCode?: boolean;
   deckUrl?: string;
   aspectRatio?: "standard" | "square";
+  customArchetype?: string;
 }
 
 const INK_HEX_COLORS: Record<string, string> = {
@@ -42,7 +44,8 @@ export const buildDeckExportImage = async ({
   showValue = true,
   showQRCode = false,
   deckUrl,
-  aspectRatio = "standard"
+  aspectRatio = "standard",
+  customArchetype
 }: ExportImageParams): Promise<Blob | null> => {
   const loadImage = (src: string) =>
     new Promise<HTMLImageElement | null>((resolve) => {
@@ -77,10 +80,10 @@ export const buildDeckExportImage = async ({
   }
 
   // Layout Math
-  const width = 1440; // Slightly wider for 2024 standards
+  const contentWidth = 1440; // Slightly wider for 2024 standards
   const padding = 80;
   const gap = 20;
-  const availableWidthForGrid = width - padding * 2;
+  const availableWidthForGrid = contentWidth - padding * 2;
   const cardWidth = (availableWidthForGrid - (shareColumns - 1) * gap) / shareColumns;
   const cardHeight = cardWidth * (3.5 / 2.5);
 
@@ -89,17 +92,31 @@ export const buildDeckExportImage = async ({
 
   const topSectionHeight = 260;
   const bottomSectionHeight = 120;
-  const height = topSectionHeight + gridHeight + bottomSectionHeight;
+  const contentHeight = topSectionHeight + gridHeight + bottomSectionHeight;
+
+  let canvasWidth = contentWidth;
+  let canvasHeight = contentHeight;
+
+  if (aspectRatio === "square") {
+    const size = Math.max(contentWidth, contentHeight);
+    canvasWidth = size;
+    canvasHeight = size;
+  }
+
+  // Content Offsets for centering
+  const contentOffsetX = (canvasWidth - contentWidth) / 2;
+  const availableVerticalSpaceForGrid = canvasHeight - topSectionHeight - bottomSectionHeight;
+  const gridOffsetY = topSectionHeight + (availableVerticalSpaceForGrid - gridHeight) / 2;
 
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
   // 1. Draw Base Background (Dark Slate)
   ctx.fillStyle = '#020617';
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   // 2. Draw Blurred Card Mosaic (The "WOW" factor)
   // We'll pick up to 6 cards to draw large and blurred in the background
@@ -110,20 +127,22 @@ export const buildDeckExportImage = async ({
   ctx.filter = 'blur(60px) saturate(1.5) brightness(0.4)';
   mosaicImages.forEach((img, i) => {
     if (img) {
-      const x = (i % 4) * (width / 4) - 100;
-      const y = Math.floor(i / 4) * (height / 2) - 100;
-      const size = Math.max(width, height) / 2;
+      const x = (i % 4) * (canvasWidth / 4) - 100;
+      const y = Math.floor(i / 4) * (canvasHeight / 2) - 100;
+      const size = Math.max(canvasWidth, canvasHeight) / 2;
       ctx.drawImage(img, x, y, size, size * (img.height / img.width));
     }
   });
   ctx.restore();
 
   // 3. Draw Gradient Overlay for depth
-  const grad = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width);
+  const grad = ctx.createRadialGradient(canvasWidth / 2, canvasHeight / 2, 0, canvasWidth / 2, canvasHeight / 2, canvasWidth);
   grad.addColorStop(0, 'rgba(15, 23, 42, 0.1)');
   grad.addColorStop(1, 'rgba(2, 6, 23, 0.8)');
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+
 
   // 4. Header Section - Glassmorphism Card
   const headerY = 50;
@@ -135,11 +154,11 @@ export const buildDeckExportImage = async ({
   ctx.shadowBlur = 40;
   ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
   ctx.beginPath();
-  ctx.roundRect(padding - 20, headerY, width - padding * 2 + 40, headerHeight, 32);
+  ctx.roundRect(padding - 20 + contentOffsetX, headerY, contentWidth - padding * 2 + 40, headerHeight, 32);
   ctx.fill();
 
   // Subtle Highlighted Gradient Border
-  const borderGrad = ctx.createLinearGradient(padding - 20, headerY, width - padding * 2, headerY);
+  const borderGrad = ctx.createLinearGradient(padding - 20 + contentOffsetX, headerY, contentWidth - padding * 2 + contentOffsetX, headerY);
   borderGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); // Bright start
 
   if (activeInksList.length > 0) {
@@ -160,7 +179,7 @@ export const buildDeckExportImage = async ({
   ctx.restore();
 
   // Ink Logos in Header
-  let currentInkX = padding + 10;
+  let currentInkX = padding + 10 + contentOffsetX;
   for (const ink of activeInksList) {
     const inkLogo = await loadImage(getInkLogo(ink));
     if (inkLogo) {
@@ -190,14 +209,16 @@ export const buildDeckExportImage = async ({
   ctx.font = 'bold 56px "Outfit", "Inter", sans-serif';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  const nameX = activeInksList.length > 0 ? currentInkX + 10 : padding + 10;
+  const nameX = activeInksList.length > 0 ? currentInkX + 10 : padding + 10 + contentOffsetX;
   ctx.fillText(deckName || 'Untitled Deck', nameX, headerY + 68);
 
   // Stats Pills
   ctx.font = '600 18px "Outfit", "Inter", sans-serif';
-  let statsX = padding + 10;
+  let statsX = padding + 10 + contentOffsetX;
   const statsY = headerY + 115;
   const parts = [];
+  const arch = customArchetype || getDeckArchetype(deckCards);
+  if (arch) parts.push({ label: arch.toUpperCase(), color: '#10b981' });
   if (showFormat) parts.push({ label: format.toUpperCase(), color: '#6366f1' });
   if (showCount) parts.push({ label: `${totalCards} CARDS`, color: '#94a3b8' });
   if (showValue) parts.push({ label: formatPrice(totalValue), color: '#f59e0b' });
@@ -222,12 +243,12 @@ export const buildDeckExportImage = async ({
   if (logo) {
     const lH = 50;
     const lW = logo.width * (lH / logo.height);
-    ctx.drawImage(logo, width - padding - lW - 10, headerY + 55, lW, lH);
+    ctx.drawImage(logo, contentWidth - padding - lW - 10 + contentOffsetX, headerY + 55, lW, lH);
   }
 
   // 5. Grid Drawing
-  const gridX = padding;
-  const gridY = topSectionHeight;
+  const gridX = padding + contentOffsetX;
+  const gridY = gridOffsetY;
 
   const previewCells = (await Promise.allSettled(
     deckCards.map(async entry => {
@@ -313,15 +334,15 @@ export const buildDeckExportImage = async ({
   ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
   ctx.font = '500 14px "Outfit", sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('© DISNEY / RAVENSBURGER • ALL IMAGES PROTECTED', padding, height - 60);
+  ctx.fillText('© DISNEY / RAVENSBURGER • ALL IMAGES PROTECTED', padding + contentOffsetX, canvasHeight - 60);
 
   // 7. QR Code (Stylized with Logo)
   if (showQRCode && deckUrl) {
     try {
       const qrSize = 110;
       const qrPadding = 10;
-      const qrX = width - padding - qrSize;
-      const qrY = height - bottomSectionHeight + (bottomSectionHeight - qrSize) / 2 - 25;
+      const qrX = contentWidth - padding - qrSize + contentOffsetX;
+      const qrY = canvasHeight - bottomSectionHeight + (bottomSectionHeight - qrSize) / 2 - 25;
 
       // Draw QR Background Card
       ctx.save();

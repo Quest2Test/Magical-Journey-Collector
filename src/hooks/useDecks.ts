@@ -18,6 +18,7 @@ export interface SavedDeck {
   totalCards: number;
   totalValue: number;
   entries: SavedDeckEntry[];
+  customArchetype?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -45,6 +46,10 @@ function writeLocalDecks(decks: SavedDeck[]) {
  * Maps DB row to SavedDeck interface
  */
 function mapDbToDeck(row: any): SavedDeck {
+  const metaEntry = row.entries?.find((e: any) => e.card?.id === "meta-archetype");
+  const customArchetype = metaEntry?.customArchetype || row.customArchetype;
+  const cleanEntries = row.entries?.filter((e: any) => e.card?.id !== "meta-archetype") || [];
+
   return {
     id: row.id,
     name: row.name,
@@ -52,7 +57,8 @@ function mapDbToDeck(row: any): SavedDeck {
     inkColors: row.ink_colors || [],
     totalCards: row.total_cards || 0,
     totalValue: Number(row.total_value) || 0,
-    entries: row.entries as SavedDeckEntry[],
+    entries: cleanEntries,
+    customArchetype,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -151,6 +157,15 @@ export function useDecks(targetUserId?: string) {
         return deck;
       }
 
+      const entriesToSave = [...deck.entries];
+      if (deck.customArchetype) {
+        entriesToSave.push({
+          card: { id: "meta-archetype" } as any,
+          qty: 0,
+          customArchetype: deck.customArchetype
+        } as any);
+      }
+
       const { error } = await supabase.from("decks").upsert({
         id: deck.id,
         user_id: user.id,
@@ -159,7 +174,7 @@ export function useDecks(targetUserId?: string) {
         ink_colors: deck.inkColors,
         total_cards: deck.totalCards,
         total_value: deck.totalValue,
-        entries: deck.entries,
+        entries: entriesToSave,
         created_at: deck.createdAt,
         updated_at: new Date().toISOString()
       });
@@ -171,7 +186,7 @@ export function useDecks(targetUserId?: string) {
         name: deck.name,
         format: deck.format,
         ink_colors: deck.inkColors,
-        cards: deck.entries,
+        cards: entriesToSave,
       }).eq('id', deck.id);
 
       return deck;

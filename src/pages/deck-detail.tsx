@@ -10,8 +10,8 @@ import { useCurrency } from "@/components/currency-provider";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useCollection } from "@/hooks/useCollection";
-import { getBaseCardValue } from "@/lib/pricing";
-import { getDisplayType } from "@/lib/card-utils";
+import { getBaseCardValue, getCardPricing } from "@/lib/pricing";
+import { getDisplayType, getFormattedSubtitle, getDeckArchetype } from "@/lib/card-utils";
 import { Progress } from "@/components/ui/progress";
 import { Card as CardContainer, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -127,6 +127,7 @@ export default function DeckDetail() {
     let totalOwned = 0;
     let totalRequired = 0;
     let missingValue = 0;
+    let totalValue = 0;
     let uninkableCount = 0;
     let totalInkCost = 0;
     const inkDist: Record<string, number> = {};
@@ -147,6 +148,7 @@ export default function DeckDetail() {
       totalOwned += Math.min(entry.qty, totalOwnedCount);
       totalRequired += entry.qty;
       missingValue += missingQty * price;
+      totalValue += entry.qty * price;
 
       // Stats
       inkDist[entry.card.inkColor] = (inkDist[entry.card.inkColor] || 0) + entry.qty;
@@ -219,6 +221,7 @@ export default function DeckDetail() {
       totalOwned,
       totalRequired,
       missingValue,
+      totalValue,
       completionPct,
       grouped,
       sortedKeys,
@@ -251,7 +254,7 @@ export default function DeckDetail() {
     deckName: deck?.name || "Untitled Deck",
     format: deck?.format || "Any",
     totalCards: deck?.totalCards || 0,
-    totalValue: deck?.totalValue || 0,
+    totalValue: analysis?.totalValue || 0,
     shareColumns,
     inkDistribution: memoizedInks,
     formatPrice,
@@ -260,7 +263,8 @@ export default function DeckDetail() {
     showValue,
     showQRCode,
     active: showImageExport,
-    deckUrl: window.location.href
+    deckUrl: window.location.href,
+    customArchetype: deck?.customArchetype,
   });
 
   const region = useMemo(() => detectRegion(), []);
@@ -360,36 +364,44 @@ export default function DeckDetail() {
         <div className="absolute inset-0 opacity-10" style={{ background: bannerGradient }} />
         <div className="relative p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-3">
-            <div className="flex gap-2.5">
-              {deck.inkColors.map(ink => {
-                const inkColor = (inkHexColors as Record<string, string>)[ink] || "#888";
-                return (
-                  <div
-                    key={ink}
-                    className="w-12 h-12 rounded-full flex items-center justify-center bg-black/40 border border-white/20 shadow-xl relative group/ink overflow-hidden"
-                    title={ink}
-                    style={{ boxShadow: `0 0 20px ${inkColor}40` }}
-                  >
-                    {/* Inner Gradient/Glow */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex gap-2.5">
+                {deck.inkColors.map(ink => {
+                  const inkColor = (inkHexColors as Record<string, string>)[ink] || "#888";
+                  return (
                     <div
-                      className="absolute inset-0 opacity-40 group-hover/ink:opacity-60 transition-opacity"
-                      style={{ background: `radial-gradient(circle at center, ${inkColor}, transparent)` }}
-                    />
-                    <img
-                      src={getInkLogo(ink)}
-                      alt={ink}
-                      className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] relative z-10 transform group-hover/ink:scale-110 transition-transform duration-300"
-                    />
-                    {/* Gloss effect */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
-                  </div>
-                );
-              })}
+                      key={ink}
+                      className="w-12 h-12 rounded-full flex items-center justify-center bg-black/40 border border-white/20 shadow-xl relative group/ink overflow-hidden"
+                      title={ink}
+                      style={{ boxShadow: `0 0 20px ${inkColor}40` }}
+                    >
+                      {/* Inner Gradient/Glow */}
+                      <div
+                        className="absolute inset-0 opacity-40 group-hover/ink:opacity-60 transition-opacity"
+                        style={{ background: `radial-gradient(circle at center, ${inkColor}, transparent)` }}
+                      />
+                      <img
+                        src={getInkLogo(ink)}
+                        alt={ink}
+                        className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] relative z-10 transform group-hover/ink:scale-110 transition-transform duration-300"
+                      />
+                      {/* Gloss effect */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
+                    </div>
+                  );
+                })}
+              </div>
+              {analysis?.cardsInDeck && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-3.5 py-1.5 rounded-full border border-emerald-500/20 shadow-sm w-fit">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {deck.customArchetype || getDeckArchetype(analysis.cardsInDeck.map(c => ({ card: c.card, qty: c.qty })))}
+                </span>
+              )}
             </div>
             <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight">{deck.name}</h1>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5"><PlaySquare className="w-4 h-4" /> {deck.totalCards} Cards</span>
-              <span className="flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> {formatPrice(deck.totalValue)} Value</span>
+              <span className="flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> {formatPrice(analysis?.totalValue || 0)} Value</span>
               <span className="flex items-center gap-1.5"><Info className="w-4 h-4" /> {deck.format} Format</span>
             </div>
           </div>
