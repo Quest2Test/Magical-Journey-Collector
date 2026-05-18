@@ -29,6 +29,7 @@ const imageProxyPlugin = () => ({
         const contentType = upstream.headers.get('content-type') || 'application/octet-stream'
         res.setHeader('Content-Type', contentType)
         res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
         const buffer = Buffer.from(await upstream.arrayBuffer())
         res.end(buffer)
       } catch (error) {
@@ -62,6 +63,7 @@ const imageProxyPlugin = () => ({
         const contentType = upstream.headers.get('content-type') || 'application/octet-stream'
         res.setHeader('Content-Type', contentType)
         res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
         const buffer = Buffer.from(await upstream.arrayBuffer())
         res.end(buffer)
       } catch (error) {
@@ -86,31 +88,18 @@ export default defineConfig({
   build: {
     target: 'es2020',
     minify: 'esbuild',
-    reportCompressedSize: false,
     rollupOptions: {
-      output: [
-        {
-          format: 'es',
-          entryFileNames: 'js/[name]-[hash].js',
-          chunkFileNames: 'js/[name]-[hash].js',
-          assetFileNames: (assetInfo) => {
-            const name = assetInfo.name || '';
-            const info = name.split('.');
-            const ext = info[info.length - 1];
-            if (/png|jpe?g|gif|svg|webp|ico/.test(ext)) {
-              return `images/[name]-[hash][extname]`;
-            } else if (/woff|woff2|eot|ttf|otf/.test(ext)) {
-              return `fonts/[name]-[hash][extname]`;
-            } else if (ext === 'css') {
-              return `css/[name]-[hash][extname]`;
-            }
-            return `assets/[name]-[hash][extname]`;
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('framer-motion')) return 'vendor-framer-motion';
+            if (id.includes('recharts')) return 'vendor-recharts';
+            if (id.includes('@radix-ui')) return 'vendor-radix';
+            if (id.includes('@supabase')) return 'vendor-supabase';
+            if (id.includes('react/') || id.includes('react-dom/')) return 'vendor-react';
           }
         }
-      ],
-      external: [],
-    },
-    chunkSizeWarningLimit: 750,
-    cssCodeSplit: true,
+      }
+    }
   },
 })

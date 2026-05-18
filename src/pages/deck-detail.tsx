@@ -3,7 +3,7 @@ import { useDecks } from "@/hooks/useDecks";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Edit, ExternalLink, PlaySquare, TrendingUp, Info, LayoutGrid, List as ListIcon, Library, Sparkles, Download, Layers, Globe, Link as LinkIcon } from "lucide-react";
 import { getCardLegality } from "@/lib/legality";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { CardDisplay, inkHexColors, inkGradients, getInkLogo } from "@/components/ui/card-display";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/currency-provider";
@@ -98,6 +98,9 @@ export default function DeckDetail() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [showHandSimulator, setShowHandSimulator] = useState(false);
+  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+
 
   const deck = useMemo(() => {
     if (isPublicRoute) {
@@ -618,35 +621,43 @@ export default function DeckDetail() {
         <div className="space-y-6">
           {/* Collection Snapshot Card */}
           <CardContainer className="border-primary/20 bg-primary/[0.02] shadow-sm overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-              <TrendingUp className="w-32 h-32" />
-            </div>
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Sparkles className="w-4 h-4 text-amber-500" /> Collection Readiness
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {user ? (
-                <>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm font-bold">
-                      <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
-                      <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
-                    </div>
-                    <Progress value={analysis.completionPct} className="h-2.5" />
-                  </div>
+            <button 
+              onClick={() => setIsAnalysisOpen(!isAnalysisOpen)}
+              className="w-full text-left transition-colors hover:bg-primary/[0.05]"
+            >
+              <CardHeader className="pb-4 flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg m-0">
+                  <Sparkles className="w-4 h-4 text-amber-500" /> Deck Readiness
+                </CardTitle>
+                <ChevronDown className={cn("w-5 h-5 text-muted-foreground transition-transform duration-200", isAnalysisOpen && "rotate-180")} />
+              </CardHeader>
+            </button>
+            <AnimatePresence>
+              {isAnalysisOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <CardContent className="space-y-6 pt-0">
+                    {user ? (
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm font-bold">
+                            <span>{analysis.totalOwned} / {analysis.totalRequired} Cards Owned</span>
+                            <span className="text-primary">{analysis.completionPct.toFixed(1)}%</span>
+                          </div>
+                          <Progress value={analysis.completionPct} className="h-2.5" />
+                        </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-1">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Market Value</p>
-                      <p className="text-lg font-bold">{formatPrice(deck.totalValue)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
-                      <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
-                    </div>
-                  </div>
+                        <div className="pt-2">
+                          <div className="space-y-1">
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold leading-none">Cost to Finish</p>
+                            <p className="text-lg font-bold text-amber-500">{formatPrice(analysis.missingValue)}</p>
+                          </div>
+                        </div>
 
                   <div className="space-y-3 pt-2">
                     <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Marketplace Options</div>
@@ -724,40 +735,63 @@ export default function DeckDetail() {
                 </div>
               )}
             </CardContent>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </CardContainer>
 
           {/* Infographics Panel */}
-          <div className="border rounded-3xl bg-card shadow-sm overflow-hidden h-fit">
-            <div className="p-6">
-              <h3 className="text-lg font-serif font-bold mb-6 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" /> Deck Analytics
-              </h3>
-              <DeckAnalysisPanel
-                user={user}
-                totalCards={analysis.totalRequired}
-                deckCardsLength={analysis.cardsInDeck.length}
-                avgCost={analysis.avgCost}
-                pieData={analysis.pieData}
-                typeBreakdown={analysis.typeBreakdown}
-                costCurve={analysis.costCurve}
-                activeInks={analysis.activeInks}
-                uninkableCount={analysis.uninkableCount}
-                collectionStats={{
-                  totalMissing: analysis.totalRequired - analysis.totalOwned,
-                  costToFinish: analysis.missingValue,
-                  missingByCard: analysis.cardsInDeck.reduce((acc, c) => {
-                    if (c.missingQty > 0) acc[c.card.id] = c.missingQty;
-                    return acc;
-                  }, {} as Record<string, number>)
-                }}
-                isLegalSize={analysis.isLegalSize}
-                isLegalInkCount={analysis.isLegalInkCount}
-                illegalCardsCount={analysis.illegalCardsCount}
-                format={deck.format}
-                formatPrice={formatPrice}
-                entries={deck.entries}
-              />
-            </div>
+          <div className="border rounded-3xl bg-card shadow-sm overflow-hidden h-fit flex flex-col">
+            <button
+              onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
+              className="w-full text-left transition-colors hover:bg-muted/50 p-6 pb-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-serif font-bold flex items-center gap-2 m-0">
+                  <TrendingUp className="w-4 h-4 text-primary" /> Deck Analytics
+                </h3>
+                <ChevronDown className={cn("w-5 h-5 text-muted-foreground transition-transform duration-200", isAnalyticsOpen && "rotate-180")} />
+              </div>
+            </button>
+            <AnimatePresence>
+              {isAnalyticsOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-6 pt-0">
+                    <DeckAnalysisPanel
+                      user={user}
+                      totalCards={analysis.totalRequired}
+                      deckCardsLength={analysis.cardsInDeck.length}
+                      avgCost={analysis.avgCost}
+                      pieData={analysis.pieData}
+                      typeBreakdown={analysis.typeBreakdown}
+                      costCurve={analysis.costCurve}
+                      activeInks={analysis.activeInks}
+                      uninkableCount={analysis.uninkableCount}
+                      collectionStats={{
+                        totalMissing: analysis.totalRequired - analysis.totalOwned,
+                        costToFinish: analysis.missingValue,
+                        missingByCard: analysis.cardsInDeck.reduce((acc, c) => {
+                          if (c.missingQty > 0) acc[c.card.id] = c.missingQty;
+                          return acc;
+                        }, {} as Record<string, number>)
+                      }}
+                      isLegalSize={analysis.isLegalSize}
+                      isLegalInkCount={analysis.isLegalInkCount}
+                      illegalCardsCount={analysis.illegalCardsCount}
+                      format={deck.format}
+                      formatPrice={formatPrice}
+                      entries={deck.entries}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

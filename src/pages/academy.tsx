@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Shield, Zap, Sparkles, Droplet, Star, Swords, Target, Scroll, CircleDot, Layers, ChevronDown, ChevronUp, Trophy, Ban, HelpCircle, Gem, Palette, Play } from "lucide-react";
+import { BookOpen, Shield, Zap, Sparkles, Droplet, Star, Swords, Target, Scroll, CircleDot, Layers, ChevronDown, ChevronUp, Trophy, Ban, HelpCircle, Gem, Palette, Play, Box, Film, DollarSign, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getInkLogo, inkHexColors, rarityIcons } from "@/components/ui/card-display";
 import { Link } from "wouter";
@@ -333,7 +333,91 @@ export default function Academy() {
               </div>
             </Collapsible>
 
+            {/* ── Alternative Game Modes ── */}
+            <Collapsible title="Alternative Game Modes" icon={<RefreshCw className="w-5 h-5" />}>
+              <div className="space-y-8">
+                {/* Constructed Variants */}
+                <div>
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Constructed Variants</h4>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="p-5 rounded-xl border bg-muted/30">
+                      <Box className="w-5 h-5 text-muted-foreground mb-3" />
+                      <h4 className="font-bold mb-2 text-foreground">Cube</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">Like draft, but packs are built from a curated selection of cards rather than random boosters.</p>
+                    </div>
+                    <div className="p-5 rounded-xl border bg-muted/30">
+                      <Film className="w-5 h-5 text-muted-foreground mb-3" />
+                      <h4 className="font-bold mb-2 text-foreground">Franchise</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">Build your deck using cards from a single movie franchise, plus Mickey & Friends and Lorcana-origin cards.</p>
+                    </div>
+                    <div className="p-5 rounded-xl border bg-muted/30">
+                      <Ban className="w-5 h-5 text-muted-foreground mb-3" />
+                      <h4 className="font-bold mb-2 text-foreground">Highlander</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">One copy of each card only. No duplicates allowed.</p>
+                    </div>
+                    <div className="p-5 rounded-xl border bg-muted/30">
+                      <Droplet className="w-5 h-5 text-muted-foreground mb-3" />
+                      <h4 className="font-bold mb-2 text-foreground">Mono-color</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">Your entire deck must use a single ink color.</p>
+                    </div>
+                    <div className="p-5 rounded-xl border bg-muted/30">
+                      <DollarSign className="w-5 h-5 text-muted-foreground mb-3" />
+                      <h4 className="font-bold mb-2 text-foreground">Poorcana</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">Commons and uncommons only - no rares, super rares, or legendaries.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pack Rush */}
+                <div className="p-6 rounded-xl border-2 border-primary/20 bg-primary/5">
+                  <h4 className="text-lg font-bold font-serif flex items-center gap-2 mb-3">
+                    <Zap className="w-5 h-5 text-primary" /> Pack Rush
+                  </h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                    A fast, casual format using just two booster packs. Great for playing between rounds, opening a display box at home, or jumping into a game anywhere.
+                  </p>
+
+                  <div className="space-y-4 mb-6">
+                    <div className="flex gap-4">
+                      <div className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs mt-0.5">1</div>
+                      <p className="text-sm text-muted-foreground">Each player takes <strong className="text-foreground">2 unopened booster packs</strong> - any set, or a mix.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs mt-0.5">2</div>
+                      <p className="text-sm text-muted-foreground">Determine the first player, then open your packs <strong className="text-foreground">without looking</strong> at the cards.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs mt-0.5">3</div>
+                      <p className="text-sm text-muted-foreground">Set the marketing/puzzle cards aside. Shuffle everything else together - <strong className="text-foreground">all ink types are allowed</strong>.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs mt-0.5">4</div>
+                      <p className="text-sm text-muted-foreground">Set lore to 0. Draw <strong className="text-foreground">5 cards</strong> for your opening hand.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs mt-0.5">5</div>
+                      <p className="text-sm text-muted-foreground">The marketing cards become <strong className="text-foreground">ink cards</strong> - place them in your inkwell. You start with 2 ink ready.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs mt-0.5">6</div>
+                      <p className="text-sm text-muted-foreground">Play using normal Lorcana rules, with the two exceptions below.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border text-xs font-bold shadow-sm">
+                      <Trophy className="w-3.5 h-3.5 text-amber-500" /> First to 15 lore wins.
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border text-xs font-bold shadow-sm">
+                      <RefreshCw className="w-3.5 h-3.5 text-primary" /> Empty deck? Shuffle discard pile into the deck zone.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Collapsible>
+
             {/* ── Ability Glossary ── */}
+
             <Collapsible title="Ability Glossary" icon={<Sparkles className="w-5 h-5" />}>
               <div className="grid sm:grid-cols-2 gap-4">
                 {KNOWLEDGE_BASE.map((item, i) => (
@@ -437,6 +521,7 @@ export default function Academy() {
                 <p className="text-foreground font-medium">🎨 Inkable vs Non-Inkable</p>
                 <p className="text-foreground font-medium">💎 Rarity Guide</p>
                 <p className="text-foreground font-medium">🏆 Competitive Formats</p>
+                <p className="text-foreground font-medium">🔄 Alternative Game Modes</p>
                 <p className="text-foreground font-medium">✨ Ability Glossary</p>
                 <p className="text-foreground font-medium">🎯 Your First Tournament</p>
                 <p className="text-foreground font-medium">❓ Common Mistakes & FAQ</p>

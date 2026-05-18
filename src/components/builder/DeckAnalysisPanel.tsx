@@ -1,7 +1,10 @@
 import { Link } from "wouter";
 import { SavedDeckEntry } from "@/hooks/useDecks";
 import { Sparkles, ChevronDown, Archive } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as ChartTooltip } from "recharts";
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
+
+const InkCurveChart = lazy(() => import("./InkChartCurve"));
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -76,10 +79,6 @@ export function DeckAnalysisPanel({
     <div className="h-full flex flex-col bg-background min-h-0">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-serif font-bold text-lg">Deck Analysis</h3>
-          </div>
-
           {/* Collection Coverage Toggle */}
           <Collapsible className="bg-primary/5 rounded-xl border border-primary/20 overflow-hidden group/collapsible">
             <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-primary/10 transition-colors [&[data-state=open]>div>svg]:rotate-180">
@@ -220,21 +219,9 @@ export function DeckAnalysisPanel({
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Ink Curve</h4>
             <div className="h-28">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={costCurve} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="cost" tick={{ fontSize: 11 }} />
-                  <ChartTooltip formatter={(val: number, name: string) => [`${val} cards`, name]} contentStyle={{ fontSize: 12 }} />
-                  {activeInks.map(ink => (
-                    <Bar
-                      key={ink}
-                      dataKey={ink}
-                      stackId="curve"
-                      fill={inkHexColors[ink as keyof typeof inkHexColors] ?? "#888"}
-                      radius={activeInks.indexOf(ink) === activeInks.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+                <InkCurveChart costCurve={costCurve} activeInks={activeInks} />
+              </Suspense>
             </div>
           </div>
           

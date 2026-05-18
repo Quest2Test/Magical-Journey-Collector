@@ -213,7 +213,7 @@ export default function Home() {
               transition={{ delay: 0.3 }}
               className="flex items-center gap-4"
             >
-              <Link href="/cards?set=12">
+              <Link href="/sets/12">
                 <Button size="lg" className="h-12 px-8 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 gap-2 font-bold text-white">
                   Browse Expansion <ArrowRight className="w-4 h-4" />
                 </Button>
