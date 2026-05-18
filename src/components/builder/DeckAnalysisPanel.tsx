@@ -4,7 +4,7 @@ import { Sparkles, ChevronDown, Archive } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
-const InkCurveChart = lazy(() => import("./InkChartCurve"));
+const InkCurveChart = lazy(() => import("./InkCurveChart"));
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
